@@ -1,0 +1,38 @@
+import os
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+
+from app.config import settings
+from app.api.meme import router as meme_router
+
+app = FastAPI(title=settings.PROJECT_NAME, debug=settings.DEBUG)
+
+# 允许跨域
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 挂载 API
+app.include_router(meme_router)
+
+# 静态文件映射
+app.mount("/static", StaticFiles(directory=str(settings.STATIC_DIR)), name="static")
+app.mount("/outputs", StaticFiles(directory=str(settings.OUTPUT_DIR)), name="outputs")
+app.mount("/samples", StaticFiles(directory=str(settings.SAMPLES_DIR)), name="samples")
+
+@app.get("/")
+def read_root():
+    index_path = settings.STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return {"message": f"Welcome to {settings.PROJECT_NAME}"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "project": settings.PROJECT_NAME}
