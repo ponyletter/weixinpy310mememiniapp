@@ -11,7 +11,10 @@
       </view>
       <view class="user-id">创作者中心 · 正常服务中</view>
     </view>
-    <button class="btn-xs btn-refresh-user" bindtap="refreshProfile">刷新</button>
+    <view class="hero-actions">
+      <button class="btn-xs btn-config-top" bindtap="openConfigModal">⚙️ 专属配置</button>
+      <button class="btn-xs btn-refresh-user" bindtap="refreshProfile">刷新</button>
+    </view>
   </view>
 
   <!-- 核心制作额度资产卡片 -->
@@ -99,5 +102,116 @@
 
   <view class="copyright-text">
     GIF表情包制作工具 · 微信虚拟支付 2.0 履约支持
+  </view>
+
+  <!-- 动图专属参数配置弹窗 (个人中心右上角进入) -->
+  <view wx:if="{{showConfigModal}}" class="modal-mask">
+    <view class="modal-card card config-modal-card">
+      <view class="modal-header">
+        <text class="modal-title">⚙️ 动图生成与画质配置</text>
+        <text class="btn-reset-text" bindtap="resetConfig">恢复默认</text>
+      </view>
+
+      <!-- 极速制作模式 -->
+      <view class="config-row">
+        <view class="config-info">
+          <view class="config-name">⚡ 极速制作模式</view>
+          <view class="config-tip">开启后通过并行渲染加速，缩短制作时间</view>
+        </view>
+        <switch checked="{{config.fastMode}}" bindchange="onToggleFastMode" color="#4f46e5" />
+      </view>
+
+      <view class="config-divider"></view>
+
+      <!-- 尺寸分辨率 -->
+      <view class="config-row-vertical">
+        <view class="config-label-row">
+          <text class="config-name">📐 动图分辨率</text>
+          <text class="config-badge-desc">{{config.resolution === '240x240' ? '微信推荐标准' : config.resolution === '180x180' ? '超轻量省体积' : '高清画质'}}</text>
+        </view>
+        <view class="seg-grid grid-3">
+          <view 
+            class="seg-item {{config.resolution === '240x240' ? 'active' : ''}}" 
+            bindtap="setResolution" 
+            data-val="240x240"
+          >240×240</view>
+          <view 
+            class="seg-item {{config.resolution === '180x180' ? 'active' : ''}}" 
+            bindtap="setResolution" 
+            data-val="180x180"
+          >180×180</view>
+          <view 
+            class="seg-item {{config.resolution === '300x300' ? 'active' : ''}}" 
+            bindtap="setResolution" 
+            data-val="300x300"
+          >300×300</view>
+        </view>
+      </view>
+
+      <view class="config-divider"></view>
+
+      <!-- 流畅度帧率 -->
+      <view class="config-row-vertical">
+        <view class="config-label-row">
+          <text class="config-name">🎞️ 画面流畅度 (帧率)</text>
+          <text class="config-badge-desc">{{config.fps === 8 ? '8 FPS (标准)' : config.fps === 12 ? '12 FPS (流畅)' : '6 FPS (轻巧)'}}</text>
+        </view>
+        <view class="seg-grid grid-3">
+          <view 
+            class="seg-item {{config.fps === 8 ? 'active' : ''}}" 
+            bindtap="setFps" 
+            data-val="{{8}}"
+          >8 FPS</view>
+          <view 
+            class="seg-item {{config.fps === 12 ? 'active' : ''}}" 
+            bindtap="setFps" 
+            data-val="{{12}}"
+          >12 FPS</view>
+          <view 
+            class="seg-item {{config.fps === 6 ? 'active' : ''}}" 
+            bindtap="setFps" 
+            data-val="{{6}}"
+          >6 FPS</view>
+        </view>
+      </view>
+
+      <view class="config-divider"></view>
+
+      <!-- 智能体积压缩 -->
+      <view class="config-row">
+        <view class="config-info">
+          <view class="config-name">🗜️ 智能压缩 (微信规范)</view>
+          <view class="config-tip">自动将动图体积优化至 1MB 以内</view>
+        </view>
+        <switch checked="{{config.smartCompress}}" bindchange="onToggleSmartCompress" color="#4f46e5" />
+      </view>
+
+      <view class="config-divider"></view>
+
+      <!-- 播放循环方式 -->
+      <view class="config-row">
+        <view class="config-info">
+          <view class="config-name">🔁 播放方式</view>
+          <view class="config-tip">{{config.loopCount === 0 ? '无限循环播放 (推荐)' : '仅播放 1 次'}}</view>
+        </view>
+        <view class="seg-mini">
+          <view 
+            class="seg-mini-item {{config.loopCount === 0 ? 'active' : ''}}" 
+            bindtap="setLoopCount" 
+            data-val="{{0}}"
+          >循环</view>
+          <view 
+            class="seg-mini-item {{config.loopCount === 1 ? 'active' : ''}}" 
+            bindtap="setLoopCount" 
+            data-val="{{1}}"
+          >1次</view>
+        </view>
+      </view>
+
+      <view class="modal-actions" style="margin-top: 28rpx;">
+        <button class="btn-secondary" style="flex: 1;" bindtap="closeConfigModal">取消</button>
+        <button class="btn-primary" style="flex: 1;" bindtap="saveAndCloseConfig">保存配置</button>
+      </view>
+    </view>
   </view>
 </view>

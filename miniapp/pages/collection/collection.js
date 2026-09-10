@@ -44,7 +44,14 @@ Page({
         method: 'GET',
         success: (res) => {
           if (res.data && res.data.data) {
-            this.setData({ myCollections: res.data.data });
+            const list = res.data.data.map(item => {
+              let cover = item.cover_url || '';
+              if (cover && cover.startsWith('/')) {
+                cover = `${app.globalData.baseURL}${cover}`;
+              }
+              return { ...item, cover_url: cover };
+            });
+            this.setData({ myCollections: list });
           }
         }
       });
@@ -56,7 +63,14 @@ Page({
       method: 'GET',
       success: (res) => {
         if (res.data && res.data.data) {
-          this.setData({ exploreCollections: res.data.data });
+          const list = res.data.data.map(item => {
+            let cover = item.cover_url || '';
+            if (cover && cover.startsWith('/')) {
+              cover = `${app.globalData.baseURL}${cover}`;
+            }
+            return { ...item, cover_url: cover };
+          });
+          this.setData({ exploreCollections: list });
         }
         if (cb) cb();
       }

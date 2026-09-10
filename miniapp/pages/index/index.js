@@ -15,16 +15,7 @@ Page({
     progress: 0,
     stageText: '',
     gifResultUrl: '',
-    taskId: '',
-
-    // 动图专属参数配置 (参考制作大师，默认开启极速模式，支持一键重置)
-    config: {
-      fastMode: true,
-      resolution: '240x240',
-      fps: 8,
-      smartCompress: true,
-      loopCount: 0
-    }
+    taskId: ''
   },
 
   onLoad() {
@@ -84,43 +75,6 @@ Page({
     if (mode === 'sketch') {
       setTimeout(() => this.initSketchCanvas(), 200);
     }
-  },
-
-  // --- 动图配置处理 ---
-  onToggleFastMode(e) {
-    this.setData({ ['config.fastMode']: e.detail.value });
-  },
-
-  setResolution(e) {
-    const val = e.currentTarget.dataset.val;
-    this.setData({ ['config.resolution']: val });
-  },
-
-  setFps(e) {
-    const val = Number(e.currentTarget.dataset.val);
-    this.setData({ ['config.fps']: val });
-  },
-
-  onToggleSmartCompress(e) {
-    this.setData({ ['config.smartCompress']: e.detail.value });
-  },
-
-  setLoopCount(e) {
-    const val = Number(e.currentTarget.dataset.val);
-    this.setData({ ['config.loopCount']: val });
-  },
-
-  resetConfig() {
-    this.setData({
-      config: {
-        fastMode: true,
-        resolution: '240x240',
-        fps: 8,
-        smartCompress: true,
-        loopCount: 0
-      }
-    });
-    wx.showToast({ title: '已恢复默认设置', icon: 'success' });
   },
 
   // --- 图片上传 ---
@@ -250,16 +204,17 @@ Page({
       gifResultUrl: ''
     });
 
+    const gifConfig = app.getGifConfig();
     const formData = {
       action_type: this.data.selectedTemplate,
       character_desc: this.data.characterDesc,
       custom_caption: this.data.caption,
-      fps: this.data.config.fps || 8,
-      resolution: this.data.config.resolution || '240x240',
-      fast_mode: this.data.config.fastMode ? '1' : '0',
-      loop_count: this.data.config.loopCount,
+      fps: gifConfig.fps || 8,
+      resolution: gifConfig.resolution || '240x240',
+      fast_mode: gifConfig.fastMode ? '1' : '0',
+      loop_count: gifConfig.loopCount || 0,
       openid: app.globalData.openid || '',
-      is_sketch: this.data.mode === 'sketch'
+      is_sketch: this.data.mode === 'sketch' ? '1' : '0'
     };
 
     const uploadUrl = `${app.globalData.baseURL}/api/generate-async`;

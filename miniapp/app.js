@@ -1,13 +1,28 @@
 App({
   globalData: {
-    // 本地开发直接使用美国服务器 IP+端口 (微信开发者工具勾选“不校验合法域名”即可)
-    // 上线时切换为: https://meme.tg-cc755.cn
-    baseURL: 'http://204.44.67.184:8290',
+    // 微信规范强制使用 HTTPS 域名
+    baseURL: 'https://meme.tg-cc755.cn',
     userInfo: null,
     openid: '',
     quota: 0,
     isVip: false,
     inviterCode: ''
+  },
+
+  getGifConfig() {
+    const cfg = wx.getStorageSync('gif_config');
+    if (cfg && typeof cfg === 'object') return cfg;
+    return {
+      fastMode: true,
+      resolution: '240x240',
+      fps: 8,
+      smartCompress: true,
+      loopCount: 0
+    };
+  },
+
+  setGifConfig(cfg) {
+    wx.setStorageSync('gif_config', cfg);
   },
 
   onLaunch(options) {

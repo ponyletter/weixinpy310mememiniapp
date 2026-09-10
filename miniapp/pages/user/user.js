@@ -8,15 +8,25 @@ Page({
       { package_id: 'item_500', name: '超值包 (120次)', price: 500, price_yuan: '5', quota: 120, unit_price: '0.04', badge_text: '爆款推荐' },
       { package_id: 'item_990', name: '尊享包 (300次/VIP)', price: 990, price_yuan: '9.9', quota: 300, unit_price: '0.03', badge_text: '年度特惠' }
     ],
-    redeemCode: ''
+    redeemCode: '',
+    showConfigModal: false,
+    config: {
+      fastMode: true,
+      resolution: '240x240',
+      fps: 8,
+      smartCompress: true,
+      loopCount: 0
+    }
   },
 
   onLoad() {
+    this.setData({ config: app.getGifConfig() });
     this.fetchData();
     this.fetchPackages();
   },
 
   onShow() {
+    this.setData({ config: app.getGifConfig() });
     this.fetchData();
   },
 
@@ -142,6 +152,59 @@ Page({
     });
   },
 
+  openConfigModal() {
+    this.setData({
+      showConfigModal: true,
+      config: app.getGifConfig()
+    });
+  },
+
+  closeConfigModal() {
+    this.setData({ showConfigModal: false });
+  },
+
+  onToggleFastMode(e) {
+    this.setData({ ['config.fastMode']: e.detail.value });
+  },
+
+  setResolution(e) {
+    const val = e.currentTarget.dataset.val;
+    this.setData({ ['config.resolution']: val });
+  },
+
+  setFps(e) {
+    const val = Number(e.currentTarget.dataset.val);
+    this.setData({ ['config.fps']: val });
+  },
+
+  onToggleSmartCompress(e) {
+    this.setData({ ['config.smartCompress']: e.detail.value });
+  },
+
+  setLoopCount(e) {
+    const val = Number(e.currentTarget.dataset.val);
+    this.setData({ ['config.loopCount']: val });
+  },
+
+  resetConfig() {
+    const defaultCfg = {
+      fastMode: true,
+      resolution: '240x240',
+      fps: 8,
+      smartCompress: true,
+      loopCount: 0
+    };
+    this.setData({ config: defaultCfg });
+    app.setGifConfig(defaultCfg);
+    wx.showToast({ title: '已恢复默认设置', icon: 'success' });
+  },
+
+  saveAndCloseConfig() {
+    app.setGifConfig(this.data.config);
+    this.setData({ showConfigModal: false });
+    wx.showToast({ title: '配置已更新保存', icon: 'success' });
+  },
+
   goToOrderCenter() {
     wx.navigateTo({
       url: '/pages/order/order'
@@ -151,7 +214,7 @@ Page({
   onShareAppMessage() {
     const code = this.data.user.invite_code || '';
     return {
-      title: '送你10次免费AI表情包制作额度，一键生成微信动图！',
+      title: '送你10次免费动图制作额度，一键生成微信专属表情包！',
       path: `/pages/index/index?inviter=${code}`,
       imageUrl: ''
     };
