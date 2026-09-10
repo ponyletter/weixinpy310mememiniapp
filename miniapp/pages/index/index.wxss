@@ -520,14 +520,87 @@
 .result-actions {
   width: 100%;
   margin-top: 24rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.action-btn-share {
+  width: 100% !important;
+  margin-bottom: 18rpx;
+  padding: 22rpx 0;
+  font-size: 30rpx;
+  font-weight: 700;
+  background: linear-gradient(135deg, #07c160 0%, #059669 100%);
+  color: #ffffff;
+  border-radius: 20rpx;
+  box-shadow: 0 8rpx 24rpx rgba(7, 193, 96, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border: none;
+}
+
+.action-btn-share:active {
+  transform: scale(0.98);
+  opacity: 0.92;
+}
+
+.btn-share-icon {
+  font-size: 34rpx;
+}
+
+.result-actions-sub {
+  width: 100%;
 }
 
 .action-btn {
+  width: 100% !important;
   padding: 20rpx 0;
   font-size: 26rpx;
   border-radius: 16rpx;
   white-space: nowrap;
 }
+
+/* 微信原生表情添加秘籍提示 */
+.emoticon-guide-card {
+  margin-top: 22rpx;
+  background: #f8fafc;
+  border: 1rpx dashed #cbd5e1;
+  border-radius: 16rpx;
+  padding: 18rpx 22rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.emoticon-guide-card .guide-header {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.emoticon-guide-card .guide-tag {
+  font-size: 20rpx;
+  font-weight: 700;
+  background: #e0e7ff;
+  color: #4338ca;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.emoticon-guide-card .guide-hint {
+  font-size: 22rpx;
+  color: #475569;
+  font-weight: 600;
+}
+
+.emoticon-guide-card .guide-text {
+  font-size: 21rpx;
+  color: #64748b;
+  line-height: 1.55;
+}
+
 
 /* ========== 模版抽屉 (底部弹出) ========== */
 .drawer-mask {

@@ -31,7 +31,13 @@ Page({
     newColTitle: ''
   },
 
-  onLoad() {
+  onLoad(options) {
+    if (options && options.inviter) {
+      app.globalData.inviterCode = options.inviter;
+    }
+    if (options && options.ref_tpl) {
+      wx.setStorageSync('preselect_tpl', { id: options.ref_tpl });
+    }
     const dismissed = wx.getStorageSync('dismiss_fav_tip');
     if (dismissed) {
       this.setData({ showFavoriteTip: false });
@@ -946,6 +952,37 @@ Page({
       clearInterval(this.pollTimer);
       this.pollTimer = null;
     }
+  },
+
+  // --- 微信社交裂变分享 ---
+  onShareAppMessage(options) {
+    const user = (app.globalData && app.globalData.userInfo) || {};
+    const inviteCode = user.invite_code || app.globalData.inviterCode || '';
+    
+    // 如果当前已有生成好的动图，卡片直出动图封面并引导做同款
+    if (this.data.gifResultUrl) {
+      const titleTag = this.data.caption || this.data.selectedTemplateTitle || '专属';
+      return {
+        title: `🔥 快接招！我刚用 AI 做了【${titleTag}】表情包，快来看看！`,
+        path: `/pages/index/index?inviter=${inviteCode}&ref_tpl=${this.data.selectedTemplate}`,
+        imageUrl: this.data.gifResultUrl
+      };
+    }
+
+    // 默认首页分享
+    return {
+      title: '送你 10 次免费动图制作额度，一键生成微信专属表情包！',
+      path: `/pages/index/index?inviter=${inviteCode}`
+    };
+  },
+
+  onShareTimeline() {
+    const titleTag = this.data.caption || this.data.selectedTemplateTitle || 'AI专属表情包';
+    return {
+      title: `我用 AI 做了【${titleTag}】动态表情包，一键定制超好玩！`,
+      query: `ref_tpl=${this.data.selectedTemplate}`,
+      imageUrl: this.data.gifResultUrl || ''
+    };
   }
 });
 

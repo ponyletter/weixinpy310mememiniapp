@@ -281,5 +281,32 @@ Page({
         wx.showToast({ title: '网络异常', icon: 'none' });
       }
     });
+  },
+
+  onShareAppMessage(options) {
+    const user = (app.globalData && app.globalData.userInfo) || {};
+    const inviteCode = user.invite_code || app.globalData.inviterCode || '';
+
+    if (this.data.remixResultUrl) {
+      const cap = this.data.captionText || '神配文';
+      return {
+        title: `🔥 看看我给表情包配的文案【${cap}】，太真实了！`,
+        path: `/pages/remix/remix?inviter=${inviteCode}`,
+        imageUrl: this.data.remixResultUrl
+      };
+    }
+
+    return {
+      title: '表情包自由！一键神配文二次创作你的专属动图',
+      path: `/pages/remix/remix?inviter=${inviteCode}`
+    };
+  },
+
+  onShareTimeline() {
+    const cap = this.data.captionText || '神配文';
+    return {
+      title: `我二创了【${cap}】表情包，快来试试！`,
+      imageUrl: this.data.remixResultUrl || ''
+    };
   }
 });

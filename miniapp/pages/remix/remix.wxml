@@ -95,8 +95,22 @@
     </view>
     <image class="remix-result-img" src="{{remixResultUrl}}" mode="aspectFit"></image>
     <view class="remix-actions">
-      <button class="btn-secondary" style="flex: 1;" bindtap="saveRemixGif">💾 保存至相册</button>
-      <button class="btn-primary" style="flex: 1;" bindtap="addToCollection">📁 加入合集</button>
+      <!-- 裂变核心入口 -->
+      <button class="btn-primary btn-remix-share" open-type="share">
+        🚀 分享给好友 / 微信群斗图
+      </button>
+      <view class="remix-sub-btns">
+        <button class="btn-secondary btn-remix-sub" bindtap="saveRemixGif">💾 保存至相册</button>
+        <button class="btn-secondary btn-remix-sub" bindtap="addToCollection">📁 加入合集</button>
+      </view>
+      <!-- 微信原生表情添加秘籍提示 -->
+      <view class="emoticon-guide-card">
+        <view class="guide-header">
+          <text class="guide-tag">💡 发表情秘籍</text>
+          <text class="guide-hint">如何直接在聊天中当表情发送？</text>
+        </view>
+        <text class="guide-text">点击「保存至相册」➔ 微信聊天输入框点右侧「+」➔「表情」➔「❤️ 自定义表情」➔「+添加」，即可在聊天中直接甩出动图！</text>
+      </view>
     </view>
   </view>
 </view>

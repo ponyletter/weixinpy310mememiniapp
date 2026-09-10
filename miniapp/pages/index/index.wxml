@@ -163,9 +163,25 @@
           binderror="onGifLoadError"
         ></image>
       </view>
-      <view class="result-actions grid-2">
-        <button class="btn-secondary action-btn" bindtap="saveGifToAlbum">💾 保存到手机相册</button>
-        <button class="btn-primary action-btn" bindtap="openAddToCollection">📁 存入表情合集</button>
+      <view class="result-actions">
+        <!-- 核心裂变入口：一键分享给好友/微信群，携带动态卡片封面与同款制作链接 -->
+        <button class="btn-primary action-btn-share" open-type="share">
+          <text class="btn-share-icon">🚀</text>
+          <text class="btn-share-text">分享给好友 / 微信群斗图</text>
+        </button>
+        <!-- 辅助操作：保存到手机相册 + 存入表情合集 -->
+        <view class="result-actions-sub grid-2">
+          <button class="btn-secondary action-btn" bindtap="saveGifToAlbum">💾 保存到手机相册</button>
+          <button class="btn-secondary action-btn" bindtap="openAddToCollection">📁 存入表情合集</button>
+        </view>
+        <!-- 微信原生表情添加秘籍提示 -->
+        <view class="emoticon-guide-card">
+          <view class="guide-header">
+            <text class="guide-tag">💡 发表情秘籍</text>
+            <text class="guide-hint">如何直接在聊天中当表情发送？</text>
+          </view>
+          <text class="guide-text">点击「保存相册」➔ 微信聊天窗点击输入框右侧「+」➔「表情」➔「❤️ 自定义表情」➔「+添加」，即可在聊天中直接甩出动图！</text>
+        </view>
       </view>
     </view>
   </view>
