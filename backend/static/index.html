@@ -71,6 +71,15 @@
         </div>
         <textarea id="promptOutput" readonly rows="5"></textarea>
         <p class="tip">✨ <strong>原生动感字幕</strong>：无需任何外置字体覆盖！ChatGPT 会直接在 16 帧画面中绘制与画风完全融合、随动作弹跳的艺术字。</p>
+
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(255,255,255,0.15);">
+          <button class="btn btn-primary btn-lg" id="btnAIGenerate" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: 100%;">
+            ✨ Plus 账号原生驱动：一键 AI 出图并生成透明 GIF
+          </button>
+          <div id="aiLoadingStatus" style="display: none; margin-top: 10px; color: #34d399; text-align: center; font-size: 14px;">
+            ⏳ 正在通过海外网关调用 ChatGPT Plus 绘制 16 宫格雪碧图 (预计 25~35 秒)，请稍候...
+          </div>
+        </div>
       </div>
     </section>
 

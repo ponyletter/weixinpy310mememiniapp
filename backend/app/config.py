@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     # 域名与外部基础 URL（如果配置了反代或直接访问）
     PUBLIC_BASE_URL: str = ""
 
+    # CLIProxyAPI 反代配置 (ChatGPT Plus 出海中转)
+    CPA_API_BASE: str = "http://127.0.0.1:8317/v1"
+    CPA_API_KEY: str = "sk-meme-cliproxy-secret-2026"
+    CPA_IMAGE_MODEL: str = "gpt-image-2"
+
     class Config:
         env_file = ".env"
         extra = "ignore"

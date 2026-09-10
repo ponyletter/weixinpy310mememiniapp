@@ -203,6 +203,48 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // 4. AI 一键出图并制作 GIF (调用 ChatGPT Plus 原生出图)
+  const btnAIGenerate = document.getElementById("btnAIGenerate");
+  const aiLoadingStatus = document.getElementById("aiLoadingStatus");
+
+  if (btnAIGenerate) {
+    btnAIGenerate.addEventListener("click", async () => {
+      const origText = btnAIGenerate.innerText;
+      btnAIGenerate.disabled = true;
+      btnAIGenerate.innerText = "⏳ 正在通过海外 Plus 账号生图中 (约需 25~35 秒)...";
+      if (aiLoadingStatus) aiLoadingStatus.style.display = "block";
+
+      const formData = new FormData();
+      formData.append("action_type", currentTemplateId);
+      formData.append("custom_caption", captionInput.value.trim());
+      formData.append("character_desc", charDescInput.value.trim());
+      formData.append("fps", fpsRange.value);
+      formData.append("make_transparent", chkTransparent.checked);
+      formData.append("padding_percent", padSelect.value);
+
+      try {
+        const resp = await fetch("/api/generate-and-process", {
+          method: "POST",
+          body: formData
+        });
+        const json = await resp.json();
+
+        if (json.code === 0 && json.data) {
+          fileNameDisplay.textContent = "✨ 来自 ChatGPT Plus (Images 2.5) 原生出图并完成切割";
+          displayResults(json.data);
+        } else {
+          alert("AI 出图或切片失败: " + (json.detail || json.message || "未知错误"));
+        }
+      } catch (err) {
+        alert("网络请求异常: " + err.message);
+      } finally {
+        btnAIGenerate.disabled = false;
+        btnAIGenerate.innerText = origText;
+        if (aiLoadingStatus) aiLoadingStatus.style.display = "none";
+      }
+    });
+  }
+
   // 渲染结果
   function displayResults(data) {
     resultCard.style.display = "block";
