@@ -8,7 +8,7 @@
       🖼️ 多图拼动图
     </view>
     <view class="remix-tab {{tab === 'caption' ? 'active' : ''}}" bindtap="switchTab" data-tab="caption">
-      ✍️ 动图改字
+      🖼️ 图片/动图加字
     </view>
   </view>
 
@@ -64,25 +64,26 @@
     </button>
   </view>
 
-  <!-- 模式 3: 动图二次改字 -->
+  <!-- 模式 3: 图片/动图加字与二创 -->
   <view wx:if="{{tab === 'caption'}}" class="card action-box">
-    <view class="section-title">上传已有表情包重写台词</view>
+    <view class="section-title">选择图片或表情包添加台词</view>
     <view wx:if="{{!srcGifPath}}" class="upload-zone" bindtap="chooseGifToEdit">
-      <text class="upload-icon">🎨</text>
-      <text class="upload-title">点击上传需要二创改字的表情包 (GIF)</text>
+      <text class="upload-icon">🖼️</text>
+      <text class="upload-title">点击上传图片或动图 (支持 PNG/JPG/GIF)</text>
+      <text class="upload-sub">自动添加微信经典描边神字幕 · 支持保存相册与存入合集</text>
     </view>
     <view wx:else class="selected-wrap">
       <image class="preview-gif" src="{{srcGifPath}}" mode="aspectFit"></image>
-      <button class="btn-xs remove-btn" bindtap="clearSrcGif">换一张动图</button>
+      <button class="btn-xs remove-btn" bindtap="clearSrcGif">换一张图片/动图</button>
     </view>
 
     <view class="form-item" style="margin-top: 20rpx;">
-      <text class="form-label">全新台词:</text>
-      <input class="form-input" placeholder="换上你的独家神台词" value="{{captionText}}" bindinput="onInputCaption" />
+      <text class="form-label">台词字幕:</text>
+      <input class="form-input" placeholder="输入你想追加的神台词 (如: 听懂掌声、收到)" value="{{captionText}}" bindinput="onInputCaption" />
     </view>
 
     <button class="btn-primary" style="margin-top: 24rpx;" bindtap="editGifCaption" loading="{{isConverting}}">
-      🔥 重新渲染并改字
+      ⚡ 一键合成表情包
     </button>
   </view>
 

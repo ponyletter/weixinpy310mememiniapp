@@ -64,15 +64,31 @@
   margin-top: 12rpx;
 }
 
-.btn-save-tag {
+.meme-item-actions {
   position: absolute;
-  top: 16rpx;
-  right: 16rpx;
+  top: 14rpx;
+  right: 14rpx;
+  display: flex;
+  gap: 8rpx;
+}
+
+.btn-save-tag {
   font-size: 20rpx;
   background: rgba(255, 255, 255, 0.9);
   color: #059669;
   border: 1rpx solid #a7f3d0;
-  padding: 4rpx 14rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 10rpx;
+  font-weight: 600;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.btn-del-item-tag {
+  font-size: 20rpx;
+  background: rgba(255, 255, 255, 0.9);
+  color: #ef4444;
+  border: 1rpx solid #fecaca;
+  padding: 4rpx 10rpx;
   border-radius: 10rpx;
   font-weight: 600;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);

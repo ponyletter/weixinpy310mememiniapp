@@ -98,6 +98,40 @@ Page({
     wx.switchTab({ url: '/pages/index/index' });
   },
 
+  deleteItem(e) {
+    const itemId = e.currentTarget.dataset.id;
+    if (!itemId) return;
+
+    wx.showModal({
+      title: '确认移除',
+      content: '确定要从该合集中移除这张表情吗？',
+      confirmColor: '#ef4444',
+      success: (mRes) => {
+        if (mRes.confirm) {
+          wx.showLoading({ title: '正在移除...' });
+          wx.request({
+            url: `${app.globalData.baseURL}/api/collection/item/delete`,
+            method: 'POST',
+            data: { item_id: itemId },
+            success: (res) => {
+              wx.hideLoading();
+              if (res.data && res.data.success) {
+                wx.showToast({ title: '已移除', icon: 'success' });
+                this.fetchDetail(this.data.collectionId);
+              } else {
+                wx.showToast({ title: '移除失败', icon: 'none' });
+              }
+            },
+            fail: () => {
+              wx.hideLoading();
+              wx.showToast({ title: '网络超时', icon: 'none' });
+            }
+          });
+        }
+      }
+    });
+  },
+
   onShareAppMessage() {
     const col = this.data.collection;
     return {

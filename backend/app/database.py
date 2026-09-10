@@ -413,15 +413,50 @@ def get_user_orders(openid: str) -> List[Dict[str, Any]]:
 # --- 表情包合集管理 (Collections) ---
 
 def create_collection(openid: str, title: str, description: str = "", cover_url: str = "") -> Dict[str, Any]:
-    collection_id = f"col_{uuid.uuid4().hex[:8]}"
     with get_db() as conn:
         cursor = conn.cursor()
+        # 检查是否已存在同名合集，避免重复创建
+        cursor.execute("SELECT collection_id FROM collections WHERE openid = ? AND title = ?", (openid, title))
+        row = cursor.fetchone()
+        if row:
+            return get_collection_detail(row["collection_id"])
+
+        collection_id = f"col_{uuid.uuid4().hex[:8]}"
         cursor.execute('''
             INSERT INTO collections (collection_id, openid, title, description, cover_url)
             VALUES (?, ?, ?, ?, ?)
         ''', (collection_id, openid, title, description, cover_url))
         conn.commit()
     return get_collection_detail(collection_id)
+
+def delete_collection(collection_id: str, openid: str = "") -> bool:
+    """删除指定合集及其关联条目"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if openid:
+            cursor.execute("DELETE FROM collections WHERE collection_id = ? AND openid = ?", (collection_id, openid))
+        else:
+            cursor.execute("DELETE FROM collections WHERE collection_id = ?", (collection_id,))
+        cursor.execute("DELETE FROM collection_items WHERE collection_id = ?", (collection_id,))
+        conn.commit()
+    return True
+
+def delete_collection_item(item_id: int) -> bool:
+    """删除合集内的某个单张表情"""
+    with get_db() as conn:
+        conn.execute("DELETE FROM collection_items WHERE id = ?", (item_id,))
+        conn.commit()
+    return True
+
+def delete_meme_task(task_id: str, openid: str = "") -> bool:
+    """从历史创作库中删除指定动图作品"""
+    with get_db() as conn:
+        if openid:
+            conn.execute("DELETE FROM meme_tasks WHERE task_id = ? AND openid = ?", (task_id, openid))
+        else:
+            conn.execute("DELETE FROM meme_tasks WHERE task_id = ?", (task_id,))
+        conn.commit()
+    return True
 
 def add_item_to_collection(collection_id: str, gif_url: str, title: str = "") -> Dict[str, Any]:
     with get_db() as conn:

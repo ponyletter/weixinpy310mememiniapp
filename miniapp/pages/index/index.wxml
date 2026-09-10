@@ -1,4 +1,13 @@
 <view class="container">
+  <!-- 顶部添加收藏/「我的小程序」快捷引导气泡 -->
+  <view wx:if="{{showFavoriteTip}}" class="favorite-guide-bar">
+    <view class="fav-guide-content" bindtap="showFavoriteTutorial">
+      <text class="fav-icon">⭐</text>
+      <text class="fav-text">点击右上角 <text class="fav-dots">···</text> 添加到「我的小程序」或「收藏」，下次使用更快捷！</text>
+    </view>
+    <text class="fav-close" bindtap="dismissFavoriteTip">✕</text>
+  </view>
+
   <!-- 顶部状态栏：剩余额度与极速签到 -->
   <view class="top-bar card">
     <view class="user-quota">
@@ -113,17 +122,13 @@
     {{isGenerating ? '逐帧渲染动图中...' : '🚀 立即制作动图 (扣1次额度)'}}
   </button>
 
-  <!-- 动图预览与导出区 (清爽白底棋盘格) -->
-  <view class="section-title" style="margin-top: 36rpx;">4. 制作结果与导出</view>
-  <view class="preview-card card checkerboard-bg">
-    <!-- 状态 1: 空闲等待制作 -->
-    <view wx:if="{{!isGenerating && !gifResultUrl}}" class="preview-idle">
-      <text class="idle-icon">🎬</text>
-      <text class="idle-text">设置好形象与模版后，点击上方立即制作</text>
-      <text class="idle-subtext">透明背景 · 原生跳跃汉字动图 · 支持一键存入微信</text>
-    </view>
-
-    <!-- 状态 2: 正在逐帧渲染中 (清爽动画进度条) -->
+  <!-- 动图预览与导出区 (清爽白底棋盘格，在制作中或完成时自动展开) -->
+  <view wx:if="{{isGenerating || gifResultUrl}}" class="section-title" style="margin-top: 36rpx;">
+    <text>4. 制作结果与导出</text>
+    <text class="section-sub">{{isGenerating ? 'AI 正在渲染中' : '制作成功已交付'}}</text>
+  </view>
+  <view wx:if="{{isGenerating || gifResultUrl}}" class="preview-card card checkerboard-bg">
+    <!-- 状态 1: 正在逐帧渲染中 (清爽动画进度条) -->
     <view wx:if="{{isGenerating}}" class="generating-wrap">
       <view class="loading-spinner"></view>
       <view class="progress-box">
@@ -135,7 +140,7 @@
       </view>
     </view>
 
-    <!-- 状态 3: 制作成功 (展示 GIF 与导出操作) -->
+    <!-- 状态 2: 制作成功 (展示 GIF 与导出操作) -->
     <view wx:if="{{gifResultUrl && !isGenerating}}" class="result-wrap">
       <image class="result-gif" src="{{gifResultUrl}}" mode="aspectFit"></image>
       <view class="result-actions grid-2">

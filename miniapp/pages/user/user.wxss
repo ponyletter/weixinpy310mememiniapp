@@ -760,6 +760,12 @@
   color: #ffffff;
 }
 
+.btn-del-history {
+  background: #fef2f2;
+  color: #ef4444;
+  border: 1rpx solid #fecaca;
+}
+
 /* 历史存入合集弹窗 */
 .col-select-card {
   width: 86%;

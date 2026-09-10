@@ -603,3 +603,47 @@
 }
 
 
+
+/* 顶部收藏小程序快捷引导条 */
+.favorite-guide-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  border: 1rpx solid #c7d2fe;
+  border-radius: 18rpx;
+  padding: 16rpx 22rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 14rpx rgba(79, 70, 229, 0.08);
+}
+
+.fav-guide-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.fav-icon {
+  font-size: 28rpx;
+  margin-right: 12rpx;
+}
+
+.fav-text {
+  font-size: 22rpx;
+  color: #3730a3;
+  line-height: 1.4;
+}
+
+.fav-dots {
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+}
+
+.fav-close {
+  font-size: 26rpx;
+  color: #818cf8;
+  padding: 8rpx 14rpx;
+  cursor: pointer;
+}

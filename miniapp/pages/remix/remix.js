@@ -162,16 +162,16 @@ Page({
 
   editGifCaption() {
     if (!this.data.srcGifPath) {
-      wx.showToast({ title: '请上传动图', icon: 'none' });
+      wx.showToast({ title: '请上传图片或动图', icon: 'none' });
       return;
     }
     if (!this.data.captionText.trim()) {
-      wx.showToast({ title: '请输入新台词', icon: 'none' });
+      wx.showToast({ title: '请输入台词字幕', icon: 'none' });
       return;
     }
 
     this.setData({ isConverting: true });
-    wx.showLoading({ title: '正在改字重绘...' });
+    wx.showLoading({ title: '正在合成表情包...' });
 
     wx.uploadFile({
       url: `${app.globalData.baseURL}/api/convert/edit-caption`,
@@ -187,23 +187,26 @@ Page({
         try { data = JSON.parse(data); } catch(e) {}
         if (data && data.success) {
           this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.gif_url}` });
-          wx.showToast({ title: '改字成功！', icon: 'success' });
+          wx.showToast({ title: '合成成功！', icon: 'success' });
         } else {
-          wx.showToast({ title: '改字失败', icon: 'none' });
+          wx.showToast({ title: (data && data.detail) || '合成失败', icon: 'none' });
         }
       },
       fail: () => {
         wx.hideLoading();
         this.setData({ isConverting: false });
+        wx.showToast({ title: '网络超时', icon: 'none' });
       }
     });
   },
 
   saveRemixGif() {
     if (!this.data.remixResultUrl) return;
+    wx.showLoading({ title: '正在下载...' });
     wx.downloadFile({
       url: this.data.remixResultUrl,
       success: (res) => {
+        wx.hideLoading();
         if (res.tempFilePath) {
           wx.saveImageToPhotosAlbum({
             filePath: res.tempFilePath,
@@ -211,14 +214,72 @@ Page({
             fail: () => wx.showToast({ title: '保存失败', icon: 'none' })
           });
         }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '下载失败', icon: 'none' });
       }
     });
   },
 
   addToCollection() {
     if (!this.data.remixResultUrl) return;
-    wx.navigateTo({
-      url: `/pages/collection/collection?add_gif=${encodeURIComponent(this.data.remixResultUrl)}`
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+    wx.showLoading({ title: '正在存入...' });
+    wx.request({
+      url: `${app.globalData.baseURL}/api/collection/list?openid=${openid}`,
+      method: 'GET',
+      success: (res) => {
+        let cols = (res.data && res.data.data) || [];
+        const saveToCol = (colId) => {
+          wx.request({
+            url: `${app.globalData.baseURL}/api/collection/add-item`,
+            method: 'POST',
+            data: {
+              collection_id: colId,
+              gif_url: this.data.remixResultUrl,
+              title: this.data.captionText || '二创表情'
+            },
+            success: (sRes) => {
+              wx.hideLoading();
+              wx.showModal({
+                title: '存入成功 🎉',
+                content: '已成功存入表情合集！可前往底栏【表情合集】查看或打包分享给好友。',
+                confirmText: '前往查看',
+                cancelText: '留在本页',
+                success: (mRes) => {
+                  if (mRes.confirm) {
+                    wx.switchTab({ url: '/pages/collection/collection' });
+                  }
+                }
+              });
+            },
+            fail: () => {
+              wx.hideLoading();
+              wx.showToast({ title: '存入失败', icon: 'none' });
+            }
+          });
+        };
+
+        if (cols.length === 0) {
+          wx.request({
+            url: `${app.globalData.baseURL}/api/collection/create`,
+            method: 'POST',
+            data: { openid: openid, title: '我的精选表情', description: '默认表情合集' },
+            success: (cRes) => {
+              if (cRes.data && cRes.data.data) {
+                saveToCol(cRes.data.data.collection_id);
+              }
+            }
+          });
+        } else {
+          saveToCol(cols[0].collection_id);
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络异常', icon: 'none' });
+      }
     });
   }
 });

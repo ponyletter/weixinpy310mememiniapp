@@ -9,7 +9,8 @@ from PIL import Image
 from app.config import settings
 from app.core.sprite_processor import SpriteProcessor
 from app.core.prompt_templates import PROMPT_TEMPLATES
-from app.database import check_and_deduct_quota, refund_quota, get_db
+from app.database import check_and_deduct_quota, refund_quota, get_db, delete_meme_task
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api", tags=["Meme GIF"])
 
@@ -571,4 +572,18 @@ def list_history(openid: Optional[str] = None):
             cursor.execute("SELECT * FROM meme_tasks WHERE status = 'completed' ORDER BY created_at DESC LIMIT 20")
         rows = [dict(r) for r in cursor.fetchall()]
     return {"code": 0, "data": rows}
+
+class DeleteMemeRequest(BaseModel):
+    task_id: str
+    openid: Optional[str] = ""
+
+@router.post("/delete")
+@router.post("/meme/delete")
+def delete_meme(req: DeleteMemeRequest):
+    """从历史创作库中删除指定动图"""
+    if not req.task_id:
+        raise HTTPException(status_code=400, detail="任务ID不能为空")
+    delete_meme_task(req.task_id, req.openid or "")
+    return {"success": True, "message": "作品已从历史记录中删除"}
+
 

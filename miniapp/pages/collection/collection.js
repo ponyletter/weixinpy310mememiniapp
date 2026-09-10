@@ -172,6 +172,43 @@ Page({
     this.setData({ currentShareItem: e.currentTarget.dataset.item });
   },
 
+  deleteCollection(e) {
+    const id = e.currentTarget.dataset.id;
+    const title = e.currentTarget.dataset.title || '该合集';
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+
+    wx.showModal({
+      title: '确认删除合集',
+      content: `确定要删除【${title}】吗？`,
+      confirmColor: '#ef4444',
+      success: (mRes) => {
+        if (mRes.confirm) {
+          wx.showLoading({ title: '正在删除...' });
+          wx.request({
+            url: `${app.globalData.baseURL}/api/collection/delete`,
+            method: 'POST',
+            data: { collection_id: id, openid: openid },
+            success: (res) => {
+              wx.hideLoading();
+              if (res.data && res.data.success) {
+                wx.showToast({ title: '合集已删除', icon: 'success' });
+                this.fetchData();
+              } else {
+                wx.showToast({ title: (res.data && res.data.detail) || '删除失败', icon: 'none' });
+              }
+            },
+            fail: () => {
+              wx.hideLoading();
+              wx.showToast({ title: '网络超时', icon: 'none' });
+            }
+          });
+        }
+      }
+    });
+  },
+
+  stopBubble() {},
+
   onShareAppMessage() {
     const item = this.data.currentShareItem;
     if (item) {

@@ -29,7 +29,10 @@
     >
       <image class="meme-img" src="{{item.full_url || item.gif_url}}" mode="aspectFit"></image>
       <view class="meme-title">{{item.title || 'GIF动图'}}</view>
-      <view class="btn-save-tag">保存</view>
+      <view class="meme-item-actions">
+        <view class="btn-save-tag">保存</view>
+        <view class="btn-del-item-tag" catchtap="deleteItem" data-id="{{item.id}}">🗑️</view>
+      </view>
     </view>
   </view>
 

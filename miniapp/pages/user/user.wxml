@@ -100,10 +100,6 @@
       <text class="menu-text">🎨 查看历史创作动图 (我的相册)</text>
       <text class="menu-arrow">›</text>
     </view>
-    <view class="menu-item" bindtap="openEditModal">
-      <text class="menu-text">👤 编辑个人基础资料 (头像/昵称/签名)</text>
-      <text class="menu-arrow">›</text>
-    </view>
     <view class="menu-item" bindtap="goToOrderCenter">
       <text class="menu-text">🧾 查看充值与开通订单记录</text>
       <text class="menu-arrow">›</text>
@@ -414,8 +410,9 @@
               <view class="history-date">{{item.created_at}}</view>
             </view>
             <view class="history-btns">
-              <button class="btn-xs-history btn-save-album" bindtap="saveHistoryToAlbum" data-url="{{item.full_gif_url}}">保存相册</button>
-              <button class="btn-xs-history btn-add-col" bindtap="openHistorySaveColModal" data-item="{{item}}">存入合集</button>
+              <button class="btn-xs-history btn-save-album" bindtap="saveHistoryToAlbum" data-url="{{item.full_gif_url}}">相册</button>
+              <button class="btn-xs-history btn-add-col" bindtap="openHistorySaveColModal" data-item="{{item}}">合集</button>
+              <button class="btn-xs-history btn-del-history" bindtap="deleteHistoryItem" data-id="{{item.task_id}}">删除</button>
             </view>
           </view>
         </view>

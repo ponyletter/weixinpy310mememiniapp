@@ -397,6 +397,42 @@ Page({
     });
   },
 
+  deleteHistoryItem(e) {
+    const taskId = e.currentTarget.dataset.id;
+    if (!taskId) return;
+    const openid = this.data.user.openid || app.globalData.openid || '';
+
+    wx.showModal({
+      title: '确认删除',
+      content: '确定要将这张动图从历史相册中删除吗？',
+      confirmColor: '#ef4444',
+      success: (mRes) => {
+        if (mRes.confirm) {
+          wx.showLoading({ title: '正在删除...' });
+          wx.request({
+            url: `${app.globalData.baseURL}/api/meme/delete`,
+            method: 'POST',
+            data: { task_id: taskId, openid: openid },
+            success: (res) => {
+              wx.hideLoading();
+              if (res.data && res.data.success) {
+                const newList = this.data.historyList.filter(item => item.task_id !== taskId);
+                this.setData({ historyList: newList });
+                wx.showToast({ title: '作品已删除', icon: 'success' });
+              } else {
+                wx.showToast({ title: (res.data && res.data.detail) || '删除失败', icon: 'none' });
+              }
+            },
+            fail: () => {
+              wx.hideLoading();
+              wx.showToast({ title: '网络超时', icon: 'none' });
+            }
+          });
+        }
+      }
+    });
+  },
+
   // ---------------- 支付与兑换 ----------------
   fetchPackages() {
     wx.request({

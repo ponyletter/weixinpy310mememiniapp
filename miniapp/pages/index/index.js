@@ -20,6 +20,7 @@ Page({
     fsColor: '#1e293b',
     fsLineWidth: 6,
     sketchTempPath: '',
+    showFavoriteTip: true,
     showCollectionModal: false,
     userCollections: [],
     selectedColId: '',
@@ -27,6 +28,10 @@ Page({
   },
 
   onLoad() {
+    const dismissed = wx.getStorageSync('dismiss_fav_tip');
+    if (dismissed) {
+      this.setData({ showFavoriteTip: false });
+    }
     this.fetchTemplates();
     this.updateQuotaInfo();
     this.initSketchCanvas();
@@ -694,6 +699,22 @@ Page({
     app.invokeVirtualPayment('item_100', () => {
       this.updateQuotaInfo();
     });
-  }
+  },
+
+  dismissFavoriteTip() {
+    this.setData({ showFavoriteTip: false });
+    wx.setStorageSync('dismiss_fav_tip', true);
+  },
+
+  showFavoriteTutorial() {
+    wx.showModal({
+      title: '添加到我的小程序 ⭐',
+      content: '点击右上角「···」按钮，选择「添加到我的小程序」或「添加到桌面」，聊天时直接快捷发图！',
+      showCancel: false,
+      confirmText: '我知道了'
+    });
+  },
+
+  stopBubble() {}
 });
 
