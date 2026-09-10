@@ -284,10 +284,41 @@ def redeem_coupon(openid: str, code: str) -> Dict[str, Any]:
     code = code.strip().upper()
     with get_db() as conn:
         cursor = conn.cursor()
+
+        # 1. 检查是否输入的是用户自己的邀请码
+        cursor.execute("SELECT invite_code, invited_by, free_quota, purchased_quota FROM users WHERE openid = ?", (openid,))
+        curr_user = cursor.fetchone()
+        if curr_user and curr_user["invite_code"] and curr_user["invite_code"].upper() == code:
+            return {"success": False, "error": "不能使用自己的邀请码哦！快将邀请码分享给微信好友吧~"}
+
+        # 2. 检查是否是他人的有效专属邀请码
+        cursor.execute("SELECT openid, free_quota FROM users WHERE invite_code = ?", (code,))
+        inviter = cursor.fetchone()
+        if inviter:
+            if curr_user and curr_user["invited_by"]:
+                return {"success": False, "error": "您已经绑定过邀请人，不可重复绑定邀请码"}
+            inviter_openid = inviter["openid"]
+            if inviter_openid == openid:
+                return {"success": False, "error": "不能使用自己的邀请码哦！"}
+            
+            # 双方各奖 5 次制作额度
+            cursor.execute("UPDATE users SET invited_by = ?, free_quota = free_quota + 5 WHERE openid = ?", (code, openid))
+            cursor.execute("UPDATE users SET free_quota = free_quota + 5 WHERE openid = ?", (inviter_openid,))
+            conn.commit()
+            
+            remaining = (curr_user["free_quota"] + curr_user["purchased_quota"] + 5) if curr_user else 5
+            return {
+                "success": True,
+                "reward_quota": 5,
+                "message": "成功接受好友邀请！双方各获得 5 次制作额度 🎉",
+                "remaining_quota": remaining
+            }
+
+        # 3. 检查常规活动兑换码
         cursor.execute("SELECT * FROM coupons WHERE code = ? AND is_active = 1", (code,))
         coupon = cursor.fetchone()
         if not coupon:
-            return {"success": False, "error": "兑换码不存在或已失效"}
+            return {"success": False, "error": "兑换码或邀请码不存在或已失效"}
         
         cursor.execute("SELECT id FROM coupon_redemptions WHERE openid = ? AND code = ?", (openid, code))
         if cursor.fetchone():

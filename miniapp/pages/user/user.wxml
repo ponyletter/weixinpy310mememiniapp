@@ -53,7 +53,9 @@
     <view 
       wx:for="{{packages}}" 
       wx:key="package_id" 
-      class="pkg-card card {{item.package_id === 'item_500' ? 'featured' : ''}}"
+      class="pkg-card card {{selectedPackageId === item.package_id ? 'featured selected' : ''}}"
+      bindtap="selectPackage"
+      data-id="{{item.package_id}}"
     >
       <view class="pkg-badge">{{item.badge_text || '特惠'}}</view>
       <view class="pkg-title">{{item.name}}</view>

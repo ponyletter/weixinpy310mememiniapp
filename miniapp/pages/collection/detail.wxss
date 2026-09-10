@@ -5,10 +5,28 @@
   border: 1rpx solid #edf2f7;
 }
 
+.hero-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .hero-title {
   font-size: 36rpx;
   font-weight: 800;
   color: #1e293b;
+  flex: 1;
+}
+
+.btn-del-col-top {
+  font-size: 22rpx;
+  color: #ef4444;
+  background: #fef2f2;
+  border: 1rpx solid #fecaca;
+  padding: 8rpx 18rpx;
+  border-radius: 30rpx;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .hero-desc {
@@ -64,34 +82,33 @@
   margin-top: 12rpx;
 }
 
-.meme-item-actions {
-  position: absolute;
-  top: 14rpx;
-  right: 14rpx;
+.meme-card-actions {
   display: flex;
-  gap: 8rpx;
+  gap: 12rpx;
+  width: 100%;
+  margin-top: 14rpx;
 }
 
-.btn-save-tag {
-  font-size: 20rpx;
-  background: rgba(255, 255, 255, 0.9);
-  color: #059669;
-  border: 1rpx solid #a7f3d0;
-  padding: 4rpx 12rpx;
-  border-radius: 10rpx;
+.btn-xs-meme {
+  flex: 1;
+  font-size: 22rpx;
   font-weight: 600;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+  padding: 8rpx 0;
+  border-radius: 10rpx;
+  line-height: 1.3;
+  text-align: center;
 }
 
-.btn-del-item-tag {
-  font-size: 20rpx;
-  background: rgba(255, 255, 255, 0.9);
-  color: #ef4444;
+.btn-save-action {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1rpx solid #bbf7d0;
+}
+
+.btn-del-action {
+  background: #fef2f2;
+  color: #dc2626;
   border: 1rpx solid #fecaca;
-  padding: 4rpx 10rpx;
-  border-radius: 10rpx;
-  font-weight: 600;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .empty-hint {

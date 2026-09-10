@@ -181,8 +181,11 @@ class SpriteProcessor:
 
         gif_frames = []
         for pf in processed_frames:
+            # 关键：先将帧叠加在纯白背景上，彻底消除 Windows/查看器中将透明误显为黑色的问题
+            white_bg = Image.new("RGBA", pf.size, (255, 255, 255, 255))
+            composed = Image.alpha_composite(white_bg, pf)
             alpha = pf.split()[-1]
-            p_img = pf.convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=255)
+            p_img = composed.convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=255)
             mask = Image.eval(alpha, lambda a: 255 if a <= 128 else 0)
             p_img.paste(255, mask)
             gif_frames.append(p_img)

@@ -132,6 +132,72 @@ Page({
     });
   },
 
+  deleteCurrentCollection() {
+    const col = this.data.collection;
+    const id = this.data.collectionId;
+    if (!id) return;
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+
+    wx.showModal({
+      title: '确认删除合集',
+      content: `确定要删除合集【${col.title || '此合集'}】吗？删除后合集内的所有表情归档将被移除。`,
+      confirmColor: '#ef4444',
+      success: (mRes) => {
+        if (mRes.confirm) {
+          wx.showLoading({ title: '正在删除...' });
+          wx.request({
+            url: `${app.globalData.baseURL}/api/collection/delete`,
+            method: 'POST',
+            data: { collection_id: id, openid: openid },
+            success: (res) => {
+              wx.hideLoading();
+              if (res.data && res.data.success) {
+                wx.showToast({ title: '合集已成功删除', icon: 'success' });
+                setTimeout(() => {
+                  wx.switchTab({ url: '/pages/collection/collection' });
+                }, 800);
+              } else {
+                wx.showToast({ title: (res.data && res.data.detail) || '删除失败', icon: 'none' });
+              }
+            },
+            fail: () => {
+              wx.hideLoading();
+              wx.showToast({ title: '网络超时', icon: 'none' });
+            }
+          });
+        }
+      }
+    });
+  },
+
+  saveMemeDirect(e) {
+    const rawUrl = e.currentTarget.dataset.url;
+    if (!rawUrl) return;
+    const url = rawUrl.startsWith('http') ? rawUrl : `${app.globalData.baseURL}${rawUrl}`;
+
+    wx.showLoading({ title: '正在保存到相册...' });
+    wx.downloadFile({
+      url: url,
+      success: (dRes) => {
+        wx.hideLoading();
+        if (dRes.tempFilePath) {
+          wx.saveImageToPhotosAlbum({
+            filePath: dRes.tempFilePath,
+            success: () => wx.showToast({ title: '已保存至手机相册！', icon: 'success' }),
+            fail: (err) => {
+              console.error(err);
+              wx.showToast({ title: '保存失败，请检查相册权限', icon: 'none' });
+            }
+          });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '下载失败', icon: 'none' });
+      }
+    });
+  },
+
   onShareAppMessage() {
     const col = this.data.collection;
     return {

@@ -8,6 +8,7 @@ Page({
       { package_id: 'item_500', name: '超值包 (120次)', price: 500, price_yuan: '5', quota: 120, unit_price: '0.04', badge_text: '爆款推荐' },
       { package_id: 'item_990', name: '尊享包 (300次/VIP)', price: 990, price_yuan: '9.9', quota: 300, unit_price: '0.03', badge_text: '年度特惠' }
     ],
+    selectedPackageId: 'item_500',
     redeemCode: '',
     showConfigModal: false,
     showFaqModal: false,
@@ -455,8 +456,15 @@ Page({
     });
   },
 
-  buyPackage(e) {
+  selectPackage(e) {
     const pkgId = e.currentTarget.dataset.id;
+    if (pkgId) {
+      this.setData({ selectedPackageId: pkgId });
+    }
+  },
+
+  buyPackage(e) {
+    const pkgId = e.currentTarget.dataset.id || this.data.selectedPackageId;
     app.invokeVirtualPayment(pkgId, () => {
       this.fetchData();
     });
@@ -503,6 +511,18 @@ Page({
     const code = this.data.redeemCode.trim();
     if (!code) {
       wx.showToast({ title: '请输入兑换码', icon: 'none' });
+      return;
+    }
+
+    // 前端防呆校验：不能使用自己的邀请码
+    const myInvite = (this.data.user.invite_code || '').trim().toUpperCase();
+    if (myInvite && code.toUpperCase() === myInvite) {
+      wx.showModal({
+        title: '提示',
+        content: '不能使用自己的邀请码哦！快把邀请码分享给微信好友吧~',
+        showCancel: false,
+        confirmText: '我知道了'
+      });
       return;
     }
 
