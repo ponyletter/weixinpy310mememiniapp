@@ -177,6 +177,11 @@ Page({
     const title = e.currentTarget.dataset.title || '该合集';
     const openid = app.globalData.openid || wx.getStorageSync('openid');
 
+    if (id && (id.startsWith('col_tpl_') || id.startsWith('col_official_'))) {
+      wx.showToast({ title: '精选广场官方合集不可删除', icon: 'none' });
+      return;
+    }
+
     wx.showModal({
       title: '确认删除合集',
       content: `确定要删除【${title}】吗？`,
