@@ -989,7 +989,7 @@ Page({
   },
 
   goToRecharge() {
-    app.invokeVirtualPayment('item_100', () => {
+    app.invokeVirtualPayment('meme_100', () => {
       this.updateQuotaInfo();
     });
   },

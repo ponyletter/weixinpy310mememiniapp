@@ -145,11 +145,15 @@ def init_db():
             )
         ''')
 
-        # 预置三大极简黄金道具 (低同行80%以上)
+        # 清理旧的历史无效道具
+        cursor.execute("DELETE FROM packages WHERE package_id IN ('item_100', 'item_500', 'item_990')")
+        conn.commit()
+
+        # 预置三大极简黄金道具 (正式微信虚拟支付已上架发布)
         default_packages = [
-            ("item_100", "动图制作尝鲜包1元", "尝鲜包 (20次)", 100, 20, 0, "超低破冰", 1),
-            ("item_500", "动图制作超值包5元", "超值包 (120次)", 500, 120, 0, "爆款推荐", 2),
-            ("item_990", "动图制作尊享包9元9", "尊享包 (300次/VIP)", 990, 300, 1, "年度特惠", 3),
+            ("meme_100", "动图制作尝鲜包1元", "尝鲜包 (20次)", 100, 20, 0, "超低破冰", 1),
+            ("meme_500", "动图制作超值包5元", "超值包 (120次)", 500, 120, 0, "爆款推荐", 2),
+            ("meme_990", "动图制作尊享包9元9", "尊享包 (300次/VIP)", 990, 300, 1, "年度特惠", 3),
         ]
         for pkg_id, title, name, price, quota, is_vip, badge, sort_order in default_packages:
             cursor.execute('''
@@ -527,7 +531,7 @@ def mark_order_paid(order_id: str, wx_order_id: str = "") -> bool:
         openid = order['openid']
         quota_reward = order['quota_reward']
         pkg_id = order['package_id']
-        is_vip_pkg = 1 if pkg_id == 'item_990' else 0
+        is_vip_pkg = 1 if pkg_id in ('meme_990', 'item_990') else 0
 
         cursor.execute('''
             UPDATE users SET 
