@@ -145,20 +145,19 @@ def init_db():
             )
         ''')
 
-        # 清理旧的历史无效道具
-        cursor.execute("DELETE FROM packages WHERE package_id IN ('item_100', 'item_500', 'item_990')")
-        conn.commit()
-
-        # 预置三大极简黄金道具 (正式微信虚拟支付已上架发布)
+        # 预置三大极简黄金道具 (meme_ 为前端主显，item_ 开启底层兼容以支持旧版请求)
         default_packages = [
-            ("meme_100", "动图制作尝鲜包1元", "尝鲜包 (20次)", 100, 20, 0, "超低破冰", 1),
-            ("meme_500", "动图制作超值包5元", "超值包 (120次)", 500, 120, 0, "爆款推荐", 2),
-            ("meme_990", "动图制作尊享包9元9", "尊享包 (300次/VIP)", 990, 300, 1, "年度特惠", 3),
+            ("meme_100", "动图制作尝鲜包1元", "尝鲜包 (20次)", 100, 20, 0, "超低破冰", 1, 1),
+            ("meme_500", "动图制作超值包5元", "超值包 (120次)", 500, 120, 0, "爆款推荐", 2, 1),
+            ("meme_990", "动图制作尊享包9元9", "尊享包 (300次/VIP)", 990, 300, 1, "年度特惠", 3, 1),
+            ("item_100", "动图制作尝鲜包1元", "尝鲜包 (20次)", 100, 20, 0, "超低破冰", 4, 0),
+            ("item_500", "动图制作超值包5元", "超值包 (120次)", 500, 120, 0, "爆款推荐", 5, 0),
+            ("item_990", "动图制作尊享包9元9", "尊享包 (300次/VIP)", 990, 300, 1, "年度特惠", 6, 0),
         ]
-        for pkg_id, title, name, price, quota, is_vip, badge, sort_order in default_packages:
+        for pkg_id, title, name, price, quota, is_vip, badge, sort_order, is_active in default_packages:
             cursor.execute('''
-                INSERT INTO packages (package_id, title, name, price, quota, is_vip, badge_text, sort_order)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO packages (package_id, title, name, price, quota, is_vip, badge_text, sort_order, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(package_id) DO UPDATE SET
                     title=excluded.title,
                     name=excluded.name,
@@ -166,8 +165,9 @@ def init_db():
                     quota=excluded.quota,
                     is_vip=excluded.is_vip,
                     badge_text=excluded.badge_text,
-                    sort_order=excluded.sort_order
-            ''', (pkg_id, title, name, price, quota, is_vip, badge, sort_order))
+                    sort_order=excluded.sort_order,
+                    is_active=excluded.is_active
+            ''', (pkg_id, title, name, price, quota, is_vip, badge, sort_order, is_active))
 
         # 预置默认兑换码
         default_coupons = [
