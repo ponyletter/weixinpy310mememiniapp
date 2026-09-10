@@ -125,7 +125,7 @@
   <!-- 动图预览与导出区 (清爽白底棋盘格，在制作中或完成时自动展开) -->
   <view wx:if="{{isGenerating || gifResultUrl}}" class="section-title" style="margin-top: 36rpx;">
     <text>4. 制作结果与导出</text>
-    <text class="section-sub">{{isGenerating ? 'AI 正在渲染中' : '制作成功已交付'}}</text>
+    <text class="section-sub">{{isGenerating ? '正在逐帧渲染中' : '制作成功已交付'}}</text>
   </view>
   <view wx:if="{{isGenerating || gifResultUrl}}" class="preview-card card checkerboard-bg">
     <!-- 状态 1: 正在逐帧渲染中 (清爽动画进度条) -->

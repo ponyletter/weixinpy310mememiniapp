@@ -191,14 +191,14 @@ async def generate_and_process(
                 )
 
             if resp.status_code != 200:
-                raise HTTPException(status_code=502, detail=f"AI 出图服务异常 ({resp.status_code}): {resp.text}")
+                raise HTTPException(status_code=502, detail=f"动图生成服务异常 ({resp.status_code}): {resp.text}")
             resp_data = resp.json()
     except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="AI 生成图片超时 (超过150秒)，请稍后重试")
+        raise HTTPException(status_code=504, detail="动图生成超时 (超过150秒)，请稍后重试")
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"请求 AI 网关失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"请求服务网关失败: {str(e)}")
 
     # 3. 解析图片数据
     item = resp_data.get("data", [{}])[0]
@@ -346,7 +346,7 @@ async def run_generate_pipeline(
                 )
 
             if resp.status_code != 200:
-                raise RuntimeError(f"AI 出图服务异常 ({resp.status_code}): {resp.text}")
+                raise RuntimeError(f"动图生成服务异常 ({resp.status_code}): {resp.text}")
             resp_data = resp.json()
 
         item = resp_data.get("data", [{}])[0]
@@ -358,7 +358,7 @@ async def run_generate_pipeline(
                 img_res = await client.get(item["url"])
                 source_image = Image.open(io.BytesIO(img_res.content)).convert("RGB")
         else:
-            raise RuntimeError("未能从 AI 响应中解析出图片数据")
+            raise RuntimeError("未能从响应中解析出图片数据")
 
         # 阶段 3：多尺度主间隙物理网格切割
         TASK_STORE[task_id] = {
@@ -563,13 +563,12 @@ def list_samples():
 @router.get("/history")
 @router.get("/meme/history")
 def list_history(openid: Optional[str] = None):
-    """获取用户生成表情包历史或全局作品展示"""
+    """获取用户个人历史动图作品（私密个人创作，凭本人 openid 隔离获取）"""
+    if not openid or not openid.strip():
+        return {"code": 0, "data": []}
     with get_db() as conn:
         cursor = conn.cursor()
-        if openid:
-            cursor.execute("SELECT * FROM meme_tasks WHERE openid = ? ORDER BY created_at DESC LIMIT 30", (openid,))
-        else:
-            cursor.execute("SELECT * FROM meme_tasks WHERE status = 'completed' ORDER BY created_at DESC LIMIT 20")
+        cursor.execute("SELECT * FROM meme_tasks WHERE openid = ? ORDER BY created_at DESC LIMIT 50", (openid.strip(),))
         rows = [dict(r) for r in cursor.fetchall()]
     return {"code": 0, "data": rows}
 

@@ -125,7 +125,7 @@ def init_db():
                 title TEXT NOT NULL,
                 description TEXT DEFAULT '',
                 cover_url TEXT DEFAULT '',
-                is_public INTEGER DEFAULT 1,
+                is_public INTEGER DEFAULT 0,
                 view_count INTEGER DEFAULT 0,
                 share_count INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -179,6 +179,22 @@ def init_db():
                     reward_quota=excluded.reward_quota
             ''', (code, title, reward))
 
+        # 预置官方公共广场精选合集 (公开展示模板，不包含任何个人用户的私密作品)
+        official_collections = [
+            ("col_official_1", "official", "🔥 打工人周一发疯系列", "精选职场解压神图，开会摸鱼必备", "/samples/sample_run.png", 1),
+            ("col_official_2", "official", "🐱 萌宠戏精动态日常", "超萌小猫小狗搞怪动图合集", "/samples/sample_run.png", 1),
+            ("col_official_3", "official", "💬 微信群聊斗图神作", "神级反转表情包，聊天不冷场", "/samples/sample_run.png", 1),
+        ]
+        for col_id, openid, title, desc, cover, is_pub in official_collections:
+            cursor.execute('''
+                INSERT INTO collections (collection_id, openid, title, description, cover_url, is_public)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(collection_id) DO UPDATE SET
+                    title=excluded.title,
+                    description=excluded.description,
+                    is_public=excluded.is_public
+            ''', (col_id, openid, title, desc, cover, is_pub))
+
         conn.commit()
 
 # --- 用户管理 ---
@@ -206,6 +222,16 @@ def get_or_create_user(openid: str, session_key: str = "", inviter_code: str = "
             conn.commit()
             cursor.execute("SELECT * FROM users WHERE openid = ?", (openid,))
             row = cursor.fetchone()
+
+        # 无论新老用户，均自动确保拥有属于自己的默认私密合集，无需手动点击创建
+        cursor.execute("SELECT collection_id FROM collections WHERE openid = ?", (openid,))
+        if not cursor.fetchone():
+            default_col_id = f"col_{uuid.uuid4().hex[:8]}"
+            cursor.execute('''
+                INSERT INTO collections (collection_id, openid, title, description, cover_url, is_public)
+                VALUES (?, ?, '我的精选表情', '专属默认表情小抽屉，随时收集喜爱的动图', '/samples/sample_run.png', 0)
+            ''', (default_col_id, openid))
+            conn.commit()
         else:
             updates = ["last_login = CURRENT_TIMESTAMP"]
             params = []
@@ -453,9 +479,10 @@ def create_collection(openid: str, title: str, description: str = "", cover_url:
             return get_collection_detail(row["collection_id"])
 
         collection_id = f"col_{uuid.uuid4().hex[:8]}"
+        # 用户创作的合集默认私密 (is_public = 0)，绝不在公开广场向他人泄露
         cursor.execute('''
-            INSERT INTO collections (collection_id, openid, title, description, cover_url)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO collections (collection_id, openid, title, description, cover_url, is_public)
+            VALUES (?, ?, ?, ?, ?, 0)
         ''', (collection_id, openid, title, description, cover_url))
         conn.commit()
     return get_collection_detail(collection_id)
@@ -534,18 +561,39 @@ def get_user_collections(openid: str) -> List[Dict[str, Any]]:
             LEFT JOIN collection_items ci ON c.collection_id = ci.collection_id
             WHERE c.openid = ?
             GROUP BY c.collection_id
-            ORDER BY c.created_at DESC
+            ORDER BY c.created_at ASC
         ''', (openid,))
-        return [dict(r) for r in cursor.fetchall()]
+        cols = [dict(r) for r in cursor.fetchall()]
+
+        # 如果用户尚未拥有合集，自动创建默认专属合集并返回，无需手动点击新建
+        if not cols and openid:
+            default_col_id = f"col_{uuid.uuid4().hex[:8]}"
+            cursor.execute('''
+                INSERT INTO collections (collection_id, openid, title, description, cover_url, is_public)
+                VALUES (?, ?, '我的精选表情', '专属默认表情小抽屉，随时收集喜爱的动图', '/samples/sample_run.png', 0)
+            ''', (default_col_id, openid))
+            conn.commit()
+            return [{
+                "collection_id": default_col_id,
+                "openid": openid,
+                "title": "我的精选表情",
+                "description": "专属默认表情小抽屉，随时收集喜爱的动图",
+                "cover_url": "/samples/sample_run.png",
+                "is_public": 0,
+                "item_count": 0,
+                "view_count": 0
+            }]
+        return cols
 
 def get_public_collections(limit: int = 15) -> List[Dict[str, Any]]:
+    """广场探索只展示系统官方预设模板，绝不包含任何个人用户的私密作品"""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
             SELECT c.*, COUNT(ci.id) as item_count
             FROM collections c
             LEFT JOIN collection_items ci ON c.collection_id = ci.collection_id
-            WHERE c.is_public = 1
+            WHERE c.is_public = 1 AND (c.openid = 'official' OR c.openid = 'system')
             GROUP BY c.collection_id
             ORDER BY c.view_count DESC, c.created_at DESC
             LIMIT ?

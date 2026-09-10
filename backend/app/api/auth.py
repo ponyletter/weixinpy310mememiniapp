@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from typing import Optional
 from app.config import settings
 from app.database import (
+    get_db,
     get_or_create_user,
     get_user,
     update_user_profile,
@@ -108,6 +109,15 @@ def get_profile(openid: str = Query("")):
     user_copy.pop("session_key", None)
     total_quota = user_copy.get("free_quota", 0) + user_copy.get("purchased_quota", 0)
     user_copy["total_quota"] = total_quota
+
+    # 统计用户当前作品相册中实际存在的动图数量，删除后实时更新
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM meme_tasks WHERE openid = ?", (clean_openid,))
+        w_row = cursor.fetchone()
+        works_cnt = w_row[0] if w_row else 0
+    user_copy["works_count"] = works_cnt
+    user_copy["total_generated"] = works_cnt
     return {"success": True, "user": user_copy}
 
 @router.post("/update-profile")

@@ -142,7 +142,7 @@ async def edit_caption(
 
 @router.post("/caption-suggest")
 def caption_suggest(keyword: str = Form(""), style: str = Form("all")):
-    """【AI 爆笑文案/台词推荐】一键生成多种风格文案嘴替"""
+    """【爆笑文案/台词推荐】一键生成多种风格文案嘴替"""
     keyword = keyword.strip() or "打工"
     presets = {
         "crazy": [

@@ -34,8 +34,8 @@
         <view class="q-label">已开通制作额度</view>
       </view>
       <view class="quota-cell" bindtap="openHistoryModal">
-        <view class="q-val" style="color: #4f46e5;">{{user.total_generated || 0}}</view>
-        <view class="q-label">累计已制作 (点此查看)</view>
+        <view class="q-val" style="color: #4f46e5;">{{user.works_count !== undefined ? user.works_count : (user.total_generated || 0)}}</view>
+        <view class="q-label">我的作品库 (点此查看)</view>
       </view>
     </view>
     <button class="btn-primary" style="margin-top: 24rpx;" bindtap="handleDailyCheckin">
@@ -99,7 +99,7 @@
   <!-- 官方订单中心与服务菜单入口 -->
   <view class="card menu-card">
     <view class="menu-item" bindtap="openHistoryModal">
-      <text class="menu-text">🎨 查看历史创作动图 (我的相册)</text>
+      <text class="menu-text">🎨 我的作品相册 (支持保存相册/删除)</text>
       <text class="menu-arrow">›</text>
     </view>
     <view class="menu-item" bindtap="goToOrderCenter">
@@ -376,7 +376,7 @@
     <view class="modal-card card history-modal-card" catchtap="stopBubble">
       <view class="modal-header">
         <view class="history-title-box">
-          <text class="modal-title">🎨 历史创作相册</text>
+          <text class="modal-title">🎨 我的作品相册</text>
           <text class="history-count-badge" wx:if="{{historyList.length > 0}}">{{historyList.length}} 个作品</text>
         </view>
         <text class="btn-close-icon" bindtap="closeHistoryModal">✕</text>
@@ -412,9 +412,9 @@
               <view class="history-date">{{item.created_at}}</view>
             </view>
             <view class="history-btns">
-              <button class="btn-xs-history btn-save-album" bindtap="saveHistoryToAlbum" data-url="{{item.full_gif_url}}">相册</button>
-              <button class="btn-xs-history btn-add-col" bindtap="openHistorySaveColModal" data-item="{{item}}">合集</button>
-              <button class="btn-xs-history btn-del-history" bindtap="deleteHistoryItem" data-id="{{item.task_id}}">删除</button>
+              <button class="btn-xs-history btn-save-album" bindtap="saveHistoryToAlbum" data-url="{{item.full_gif_url}}">保存相册</button>
+              <button class="btn-xs-history btn-add-col" bindtap="openHistorySaveColModal" data-item="{{item}}">存入合集</button>
+              <button class="btn-xs-history btn-del-history" bindtap="deleteHistoryItem" data-id="{{item.task_id}}">删除作品</button>
             </view>
           </view>
         </view>
