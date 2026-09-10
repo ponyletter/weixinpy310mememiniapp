@@ -48,4 +48,5 @@ backend/storage/uploads/*
 !backend/storage/uploads/.gitkeep
 backend/storage/outputs/*
 !backend/storage/outputs/.gitkeep
-
+# Scratch and temp research
+scratch/
