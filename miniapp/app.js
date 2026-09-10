@@ -122,17 +122,22 @@ App({
   // 微信虚拟支付 2.0 统一下单与收银台调用
   invokeVirtualPayment(packageId, onSuccess, onFail) {
     const that = this;
-    if (!that.globalData.openid) {
-      wx.showToast({ title: '请先登录', icon: 'none' });
+    const openid = that.globalData.openid || wx.getStorageSync('openid');
+    if (!openid) {
+      wx.showToast({ title: '正在登录中，请稍候...', icon: 'none' });
+      that.silentLogin(() => {
+        that.invokeVirtualPayment(packageId, onSuccess, onFail);
+      });
       return;
     }
+    that.globalData.openid = openid;
 
     wx.showLoading({ title: '正在拉起收银台...' });
     wx.request({
       url: `${that.globalData.baseURL}/api/pay/create-order`,
       method: 'POST',
       data: {
-        openid: that.globalData.openid,
+        openid: openid,
         package_id: packageId
       },
       success: (res) => {
@@ -154,30 +159,60 @@ App({
                 if (onSuccess) onSuccess();
               },
               fail: (err) => {
-                console.log("真机虚拟支付回调/取消:", err);
-                // 如果在开发者工具模拟器环境，提示可使用测试充值
-                if (err.errMsg && (err.errMsg.includes("-15001") || err.errMsg.includes("not support"))) {
+                console.warn("微信虚拟支付回调异常/取消:", err);
+                const errMsg = (err && (err.errMsg || err.message)) || '';
+
+                // 1. 用户主动取消支付
+                if (errMsg.includes("cancel") || errMsg.includes("取消")) {
+                  wx.showToast({ title: '已取消支付', icon: 'none' });
+                  if (onFail) onFail(err);
+                  return;
+                }
+
+                // 2. 模拟器环境、电脑开发工具或暂未挂载收银台
+                const isDevOrNotSupport = errMsg.includes("-15001") || 
+                                          errMsg.includes("not support") || 
+                                          errMsg.includes("不支持") || 
+                                          errMsg.includes("developer tools") || 
+                                          errMsg.includes("system error") ||
+                                          errMsg.includes("fail");
+
+                if (isDevOrNotSupport) {
                   wx.showModal({
                     title: '开发者环境提示',
-                    content: '当前环境未挂载金融收银台。是否直接模拟完成 1 元/5 元测试支付？',
+                    content: '检测到当前运行在开发工具或模拟器环境（微信虚拟支付金融收银台需在安卓真机端运行）。\n\n是否直接模拟完成本次额度充值进行流程测试？',
                     confirmText: '模拟完成',
+                    cancelText: '取消',
                     success: (mRes) => {
                       if (mRes.confirm) {
+                        wx.showLoading({ title: '正在结算...' });
                         wx.request({
                           url: `${that.globalData.baseURL}/api/pay/mock-pay`,
                           method: 'POST',
                           data: { order_id: payData.order_id },
                           success: () => {
+                            wx.hideLoading();
                             wx.showToast({ title: '模拟支付成功！', icon: 'success' });
                             that.fetchUserProfile();
                             if (onSuccess) onSuccess();
+                          },
+                          fail: () => {
+                            wx.hideLoading();
+                            wx.showToast({ title: '模拟结算失败', icon: 'none' });
                           }
                         });
                       }
                     }
                   });
-                } else if (onFail) {
-                  onFail(err);
+                } else {
+                  // 3. 真机端其它原因（如 iOS 受限或商户号未完成实名绑定）
+                  wx.showModal({
+                    title: '支付提示',
+                    content: `拉起支付遇到问题：${errMsg}。\n\n提示：iOS 设备受苹果政策限制暂不支持小程序虚拟支付，请使用安卓手机体验；或点击下方【邀请好友】免费获赠额度！`,
+                    showCancel: false,
+                    confirmText: '我知道了'
+                  });
+                  if (onFail) onFail(err);
                 }
               }
             });
@@ -185,16 +220,17 @@ App({
             // 兼容低版本
             wx.showModal({
               title: '提示',
-              content: '当前微信版本过低，请升级微信后再发起充值'
+              content: '当前微信版本过低或基础库不支持虚拟支付，请升级微信后再试。'
             });
           }
         } else {
-          wx.showToast({ title: res.data.detail || '下单失败', icon: 'none' });
+          wx.showToast({ title: (res.data && res.data.detail) || '下单失败', icon: 'none' });
         }
       },
-      fail: () => {
+      fail: (err) => {
         wx.hideLoading();
-        wx.showToast({ title: '网络连接超时', icon: 'none' });
+        wx.showToast({ title: '网络请求失败', icon: 'none' });
+        if (onFail) onFail(err);
       }
     });
   }

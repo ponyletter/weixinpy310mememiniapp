@@ -159,7 +159,7 @@
     <view wx:if="{{isGenerating}}" class="generating-wrap">
       <view class="loading-spinner"></view>
       <view class="progress-box">
-        <view class="progress-bar" style="width: {{progress}}%;"></view>
+        <progress percent="{{progress}}" stroke-width="7" border-radius="5" activeColor="#4f46e5" backgroundColor="#f1f5f9" />
       </view>
       <view class="stage-text">{{stageText}} ({{progress}}%)</view>
       <view class="stage-tip">
