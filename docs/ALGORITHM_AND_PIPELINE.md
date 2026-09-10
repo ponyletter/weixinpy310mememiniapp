@@ -148,13 +148,136 @@ rgba[bg_mask, 3] = 0  # 仅把外围纯白置零
 ## 四、服务部署与 API 说明
 
 ### 1. 核心接口
-- `GET /api/templates`：获取 5 套内置爆款动作提示词模板；
-- `POST /api/prompt-builder`：输入角色描述与字幕，动态拼装原生字效 Prompt；
+- `GET /api/templates`：获取内置爆款动作提示词模板；
+- `POST /api/prompt-builder`：输入角色描述、字幕与参考图标识，动态拼装原生字效 Prompt；
 - `POST /api/process-sprite`：接收 4×4 精灵图，执行切片、去底与 GIF 合成；
+- `POST /api/generate-async`：【推荐】异步启动 AI 生图任务，20ms 立即返回 `task_id`，后台安全执行；
+- `GET /api/task-status/{task_id}`：毫秒级轮询异步任务物理进度与完成数据；
+- `POST /api/generate-and-process`：同步一键生图与合成接口；
 - `GET /outputs/{task_id}/meme_result.gif`：产出 GIF 直链；
 - `GET /outputs/{task_id}/frames_pack.zip`：16 帧透明 PNG 打包下载。
 
-### 2. 运行环境
-- Conda 环境：`weixinpy310mememiniapp` (Python 3.10)
-- 服务端口：`8290` (FastAPI + Uvicorn)
-- 在线 H5 地址：`http://204.44.67.184:8290`
+### 2. 运行环境与网络入口
+- **业务后端**：FastAPI + Uvicorn 运行在 `http://0.0.0.0:8290`
+- **H5 在线测试控制台**：`http://204.44.67.184:8290`
+- **海外 AI 网关入口**：`https://cpa.tg-cc755.cn/v1`（已挂载 Let's Encrypt 官方 SSL 证书）
+- **Conda 环境**：`weixinpy310mememiniapp` (Python 3.10)
+
+---
+
+## 五、阶段 3：ChatGPT Plus 账号反代与独立网关架构 (CLIProxyAPI)
+
+### 1. 国内业务机与海外反代机分工拓扑 (微信小程序标准生产架构)
+
+```mermaid
+flowchart TD
+    subgraph ClientLayer ["用户端 (微信小程序 / 外部业务)"]
+        WX["微信小程序客户端"]
+        External["其他扩展业务 (Cursor / 企微机器人 / 知识库)"]
+    end
+
+    subgraph CNServer ["国内云服务器 (已备案节点)"]
+        CN_API["FastAPI 业务后端<br>https://meme.tg-cc755.cn"]
+        CN_DB["用户数据 / 微信虚拟支付 / 动图缓存"]
+    end
+
+    subgraph USServer ["海外中转服务器 (204.44.67.184)"]
+        NginxGateway["Nginx 反向代理 (443 SSL)<br>https://cpa.tg-cc755.cn"]
+        CPA["CLIProxyAPI 容器服务 (8317)<br>持久化 OAuth 会话池"]
+    end
+
+    subgraph Upstream ["OpenAI 官方集群"]
+        PlusAccount["ChatGPT Plus 账号"]
+        ImagesModel["ChatGPT Images 2.5 (gpt-image-2)"]
+    end
+
+    WX -- "直连国内备案域名 (合规 100%)" --> CN_API
+    External -- "标准 OpenAI API 格式" --> NginxGateway
+    CN_API -- "服务端内网/专线 HTTPS 请求" --> NginxGateway
+    NginxGateway --> CPA
+    CPA -- "自动刷新 OAuth Token" --> PlusAccount --> ImagesModel
+```
+
+- **微信合规 100%**：微信小程序公众平台**只添加国内备案域名**（`https://meme.tg-cc755.cn`），小程序前端根本不与海外服务器直接握手，完全符合微信合规审查；
+- **国内极速秒开**：所有前端静态资源、切图运算、动图直链全部走国内 CDN/BGP 线路，低延时（20ms~50ms）；
+- **DNS 域名无冲突**：主域名 `tg-cc755.cn` 下，国内域名 `meme.tg-cc755.cn` 指向国内机器，`cpa.tg-cc755.cn` 指向海外机器，完全独立解析，互不干扰；
+- **海外 Plus 节点隐蔽安全**：海外反代作为内部计算算力池，避免公网扫描与频繁封号。
+
+### 2. Codex Device Code 设备码授权流程
+- 无头服务器免桌面浏览器交互：
+  ```bash
+  docker exec cli-proxy-api /CLIProxyAPI/CLIProxyAPI -codex-device-login
+  ```
+- 用户在本地浏览器打开 `https://auth.openai.com/codex/device`，输入 8 位授权码后同意授权；
+- 容器捕获凭据保存至持久化目录 `/root/cliproxyapi/auths`，实现后台静默全自动刷新。
+
+---
+
+## 六、长连接超时 Bug 复盘与异步任务轮询方案
+
+### 1. 遇到的 Bug 现象
+- 用户在前端点击生成后，控制台弹窗报错：
+  ```text
+  网络请求异常: Failed to execute 'json' on 'Response': Unexpected end of JSON input
+  ```
+
+### 2. 日志深度排查与根本原因
+1. **真实执行结果**：后端实际上 **100% 成功生成并完成了切片**！
+   - CLIProxyAPI 调用 `/v1/images/edits` 图生图耗时 **47.5 秒**；
+   - 加上多尺度网格物理切片与去底合成（约 3.5 秒），**单次 HTTP 请求在服务器端持续了近 52 秒**；
+   - 生成产物 `df4492bd/meme_result.gif` (436 KB) 完整保存在磁盘。
+2. **连接截断原因**：
+   - 用户访问经过了移动代理/VPN，中间网关或浏览器为了清理僵尸长连接，对“空闲无数据流传输的 HTTP 请求”存在 **45~50 秒的静默超时保护（Idle Timeout）**；
+   - 超过 50 秒后，客户端或代理单方面断开 TCP 连接（RST）；
+   - 当后端处理完毕下发 200 响应时，前端接收到的是已断开连接的 0 字节空响应体；
+   - JavaScript 对空字符串执行 `await resp.json()`，抛出经典的 `SyntaxError: Unexpected end of JSON input`。
+
+### 3. 彻底解决方案：异步任务队列 + 毫秒级轻量轮询机制 (工业级标准)
+类似 Midjourney / OpenAI 的处理方式，彻底弃用单一长连接，全面异步化：
+1. **即时任务创建 (`POST /api/generate-async`)**：
+   - 接收用户参数并生成唯一 `task_id`；
+   - 启动后台协程 `asyncio.create_task(run_generate_pipeline(...))`；
+   - **20 毫秒内立即向前端返回** `{"code": 0, "data": {"task_id": "..."}}`，彻底消除长连接挂起；
+2. **轻量状态轮询 (`GET /api/task-status/{task_id}`)**：
+   - 前端每 1.5 秒轮询一次任务状态，单次请求仅需 5~10ms，消耗忽略不计；
+   - 实时返回当前物理阶段与真实百分比：
+     - `10%`：组装角色提示词与人设语义对齐；
+     - `25%`：ChatGPT Plus 逐帧绘制 16 宫格雪碧图；
+     - `75%`：多尺度主间隙物理网格切割与角色紧致包络裁剪；
+     - `90%`：固定色差泛洪去底并封装微信 GIF；
+     - `100%`：制作完成，返回 GIF 直链、ZIP 包与 16 帧预览；
+3. **容灾与体验**：
+   - 无论网络如何抖动、用户是否中途刷新页面，后台任务均安全执行完毕；
+   - 彻底告别超时与解析报错。
+
+---
+
+## 七、H5 前端交互全面升级
+
+### 1. 顶部双模式 Tab 结构解耦
+- **【✨ AI 智能生图模式】**：主推一站式体验，人设参考图 (可选) + 选动作 + 填字幕 (可选) ➔ 自动切片合成成品动图；
+- **【📁 已有 4×4 精灵图切片】**：针对在 ChatGPT 网页端直接生成的 16 宫格图，直接拖入此处 2 秒极速切片去底。
+
+### 2. 角色参考图片上传 (图片角色一致性)
+- 新增人设图片上传框（支持头像、自拍、手绘、立绘拖拽与缩略图实时预览）；
+- 上传后自动触发图生图接口（`/v1/images/edits`），严格保证角色的五官、发型、服饰与色调在 16 帧中完全一致；
+- 配备“✕ 清空图片”按钮，可随时切换回纯文字描述生成。
+
+### 3. 字幕与图片的完全“可选性”
+- **字幕可选**：配备“清空字幕”快捷按钮。清空后提示词智能调整为“纯动作肢体表情包，不绘制任何汉字或字母字幕”；
+- **参考图可选**：标明 `[可选 · 强烈推荐]`，即使不上传任何图片，仅输入角色文字描述也能一键出图。
+
+### 4. 拟物 tqdm 风格动态进度条
+- 实时展示仿终端 CLI 的 `tqdm` 进度条：
+  ```text
+  [██████████████░░░░░░░░░░] 65% | 耗时: 18s / 预计 32s | 阶段 2/4: ChatGPT Plus (Images 2.5) 正在逐帧绘制 16 宫格雪碧图...
+  ```
+- 由后端轮询的真实阶段驱动，进度反馈真实透明。
+
+### 5. 贪吃蛇互动小游戏 (Snake Game)
+- 生图通常需要 25~35 秒，在出图等待期嵌入原生 Canvas 贪吃蛇小游戏：
+  - **电脑端**：支持键盘方向键（`↑` `↓` `←` `→`）及 `W` `A` `S` `D` 操作；
+  - **手机端**：配备贴心的触屏虚拟十字方向键（`▲` `▼` `◄` `►`），单手即可顺畅操作；
+  - **积分系统**：吃红苹果计分，本地持久化记录最高分；
+  - **顺畅收尾**：后端生图切片完成并返回数据时，提示最终得分并平滑滚动到成品动图展示区，彻底消除等待焦虑，显著提升用户留存率！
+
