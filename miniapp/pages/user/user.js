@@ -24,7 +24,7 @@ Page({
     // 商务与开发者交流弹窗
     showConsultModal: false,
     contactWeChat: {
-      name: '数创工坊 · 开发者微信',
+      name: '表情包制作 · 开发者微信',
       wechatId: 'Mykahr'
     },
 
