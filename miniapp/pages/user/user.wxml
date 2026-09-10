@@ -89,19 +89,93 @@
     <button class="btn-primary btn-redeem" bindtap="submitRedeem">兑换</button>
   </view>
 
-  <!-- 官方订单中心与在线客服入口 -->
+  <!-- 官方订单中心与服务菜单入口 -->
   <view class="card menu-card">
     <view class="menu-item" bindtap="goToOrderCenter">
       <text class="menu-text">🧾 查看充值与开通订单记录</text>
       <text class="menu-arrow">›</text>
     </view>
+    <view class="menu-item" bindtap="openFaqModal">
+      <text class="menu-text">❓ 常见问题与使用解答 (FAQ)</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="openAgreementModal">
+      <text class="menu-text">📜 用户须知与服务协议</text>
+      <text class="menu-arrow">›</text>
+    </view>
     <button class="btn-contact-native" open-type="contact">
-      💬 常见使用帮助与微信在线客服
+      💬 微信在线人工客服
     </button>
   </view>
 
   <view class="copyright-text">
     GIF表情包制作工具 · 微信虚拟支付 2.0 履约支持
+  </view>
+
+  <!-- 常见问题与使用解答 (FAQ) 弹窗 -->
+  <view wx:if="{{showFaqModal}}" class="modal-mask" bindtap="closeFaqModal">
+    <view class="modal-card card info-modal-card" catchtap="stopBubble">
+      <view class="modal-header">
+        <text class="modal-title">❓ 常见问题与使用解答</text>
+        <text class="btn-close-icon" bindtap="closeFaqModal">✕</text>
+      </view>
+      <scroll-view scroll-y class="info-scroll">
+        <view class="faq-item">
+          <view class="faq-q">Q1: 制作一个动态表情包需要多长时间？</view>
+          <view class="faq-a">通常在 15~35 秒内自动生成完毕。系统采用智能并行渲染引擎与物理网格切片流水线，若高峰期有轻微排队，请稍候片刻或刷新查看。</view>
+        </view>
+        <view class="faq-item">
+          <view class="faq-q">Q2: 制作出的动图能直接在微信发给好友吗？</view>
+          <view class="faq-a">完全可以！所有输出的 GIF 均严格按照微信动图规范压缩（体积稳定在 &lt;1MB、自动去白底透明化），在制作完成页面长按即可保存到手机相册，或直接在微信聊天框添加为自定义表情。</view>
+        </view>
+        <view class="faq-item">
+          <view class="faq-q">Q3: 免费制作额度每天都会有吗？</view>
+          <view class="faq-a">是的！每天进入个人中心点击【每日签到】即可免费领取 3 次体验额度；此外将小程序分享给好友，双方各能额外获赠 5 次额度，每日可领。</view>
+        </view>
+        <view class="faq-item">
+          <view class="faq-q">Q4: 充值开通的算力包有使用期限吗？</view>
+          <view class="faq-a">没有任何有效期限制！所有开通的制作算力均为永久有效、随充随用，并且额度与您的微信身份永久绑定，支持多设备无缝同步。</view>
+        </view>
+        <view class="faq-item">
+          <view class="faq-q">Q5: 如果制作遇到异常会扣除我的额度吗？</view>
+          <view class="faq-a">绝对不会！系统采用严格的交付扣费机制，只有在动图全部切片合成完毕并成功交付预览时才会扣减 1 次额度。若中途因网络中断或异常失败，额度自动原路返还。</view>
+        </view>
+      </scroll-view>
+      <button class="btn-primary" style="margin-top: 24rpx; width: 100%;" bindtap="closeFaqModal">我知道了</button>
+    </view>
+  </view>
+
+  <!-- 用户须知与服务协议 弹窗 -->
+  <view wx:if="{{showAgreementModal}}" class="modal-mask" bindtap="closeAgreementModal">
+    <view class="modal-card card info-modal-card" catchtap="stopBubble">
+      <view class="modal-header">
+        <text class="modal-title">📜 用户须知与服务协议</text>
+        <text class="btn-close-icon" bindtap="closeAgreementModal">✕</text>
+      </view>
+      <scroll-view scroll-y class="info-scroll">
+        <view class="agreement-section">
+          <view class="agreement-h">一、服务说明与数字化工具性质</view>
+          <view class="agreement-p">本小程序致力于为广大创作者与微信用户提供连贯动态表情包排版、物理切片、画质优化与透明化合成等轻量级在线数字化工具服务。用户可通过上传参考素材或选取模板进行个性化生成。</view>
+        </view>
+        <view class="agreement-section">
+          <view class="agreement-h">二、虚拟商品与交付规范</view>
+          <view class="agreement-p">本平台提供的动图制作算力属于虚拟数字化在线计算与排版服务。虚拟商品一经开通充值、或动图生成交付完毕即视为履约完成，不支持无理由退款。如因不可抗力或网络故障导致出图失败，系统将自动补还相应制作额度。</view>
+        </view>
+        <view class="agreement-section">
+          <view class="agreement-h">三、合规承诺与内容准则</view>
+          <view class="agreement-p">用户使用本工具上传的肖像、手绘或文字素材，应确保已取得合法授权或拥有完整知识产权。严禁利用本工具制作、传播带有低俗色情、暴力恐怖、虚假欺诈、侵犯他人名誉权或肖像权等违法违规内容。违者本平台有权冻结账号并移交相关部门处理。</view>
+        </view>
+        <view class="agreement-section">
+          <view class="agreement-h">四、隐私保护与数据存储</view>
+          <view class="agreement-p">我们高度尊重并保护用户个人隐私。平台仅基于微信开放平台提供的匿名标识（OpenID）用于记录用户的算力余额及订单状态，不收集任何用户姓名、手机号等私密身份信息。生成素材经加密隔离保存，仅供用户本人下载与管理。</view>
+        </view>
+        <view class="agreement-section">
+          <view class="agreement-h">五、官方客服与售后咨询</view>
+          <view class="agreement-p">用户在支付、开通或动图制作过程中如遇任何问题，可随时通过个人中心【微信在线人工客服】联系平台运营人员，我们将在工作时间内快速为您核验与处理。</view>
+        </view>
+      </scroll-view>
+      <button class="btn-primary" style="margin-top: 24rpx; width: 100%;" bindtap="closeAgreementModal">同意并关闭</button>
+    </view>
   </view>
 
   <!-- 动图专属参数配置弹窗 (个人中心右上角进入) -->

@@ -10,6 +10,8 @@ Page({
     ],
     redeemCode: '',
     showConfigModal: false,
+    showFaqModal: false,
+    showAgreementModal: false,
     config: {
       fastMode: true,
       resolution: '240x240',
@@ -204,6 +206,24 @@ Page({
     this.setData({ showConfigModal: false });
     wx.showToast({ title: '配置已更新保存', icon: 'success' });
   },
+
+  openFaqModal() {
+    this.setData({ showFaqModal: true });
+  },
+
+  closeFaqModal() {
+    this.setData({ showFaqModal: false });
+  },
+
+  openAgreementModal() {
+    this.setData({ showAgreementModal: true });
+  },
+
+  closeAgreementModal() {
+    this.setData({ showAgreementModal: false });
+  },
+
+  stopBubble() {},
 
   goToOrderCenter() {
     wx.navigateTo({
