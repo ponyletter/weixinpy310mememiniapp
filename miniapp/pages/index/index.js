@@ -13,6 +13,7 @@ Page({
     refImagePath: '',
     characterDesc: '',
     caption: '么么哒',
+    customActionText: '',
     isGenerating: false,
     progress: 0,
     stageText: '',
@@ -48,6 +49,26 @@ Page({
         refImagePath: app.globalData.tempEditedImage
       });
       app.globalData.tempEditedImage = null;
+    }
+
+    const preselect = wx.getStorageSync('preselect_tpl');
+    if (preselect && preselect.id) {
+      wx.removeStorageSync('preselect_tpl');
+      const found = (this.data.templates || []).find(t => t.id === preselect.id);
+      if (found) {
+        this.setData({
+          selectedTemplate: found.id,
+          selectedTemplateTitle: found.title,
+          selectedTemplateDesc: found.action,
+          caption: preselect.caption || found.default_caption || this.data.caption
+        });
+      } else {
+        this.setData({
+          selectedTemplate: preselect.id,
+          caption: preselect.caption || this.data.caption
+        });
+      }
+      wx.showToast({ title: '已载入同款模板', icon: 'success' });
     }
   },
 
@@ -129,6 +150,28 @@ Page({
   selectTemplateFromDrawer(e) {
     this.selectTemplate(e);
     this.closeTemplateDrawer();
+  },
+
+  onInputCustomAction(e) {
+    this.setData({ customActionText: e.detail.value });
+  },
+
+  pickCustomActionIdea() {
+    const ideas = [
+      '双手叉腰仰天长笑，眼角笑出泪花',
+      '委屈巴巴揉眼睛抹眼泪，嘴巴扁扁抽泣',
+      '双手竖起大拇指疯狂点赞，伴随节奏摇摆',
+      '双手捧咖啡慢慢吹气轻啜，满脸惬意享受',
+      '震惊地张大嘴巴双手抱头，双眼瞪圆如铜铃',
+      '双手作揖连连拜谢，身体不断前倾作揖',
+      '拿着放大镜探头探脑，好奇地左顾右盼暗中观察'
+    ];
+    wx.showActionSheet({
+      itemList: ideas,
+      success: (res) => {
+        this.setData({ customActionText: ideas[res.tapIndex] });
+      }
+    });
   },
 
   switchMode(e) {
@@ -380,6 +423,11 @@ Page({
   startGenerate() {
     if (this.data.isGenerating) return;
 
+    if (this.data.selectedTemplate === 'custom' && !this.data.customActionText.trim()) {
+      wx.showToast({ title: '请填写自定义动作描述', icon: 'none' });
+      return;
+    }
+
     if (this.data.quota <= 0 && !this.data.isVip) {
       wx.showModal({
         title: '制作额度不足',
@@ -424,6 +472,7 @@ Page({
       action_type: this.data.selectedTemplate,
       character_desc: this.data.characterDesc,
       custom_caption: this.data.caption,
+      custom_action: this.data.customActionText ? this.data.customActionText.trim() : '',
       fps: gifConfig.fps || 8,
       resolution: gifConfig.resolution || '240x240',
       fast_mode: gifConfig.fastMode ? '1' : '0',

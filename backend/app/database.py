@@ -4,6 +4,7 @@ import datetime
 import time
 import uuid
 from typing import Optional, List, Dict, Any
+from fastapi import HTTPException
 from app.config import settings
 
 def get_db():
@@ -179,21 +180,110 @@ def init_db():
                     reward_quota=excluded.reward_quota
             ''', (code, title, reward))
 
-        # 预置官方公共广场精选合集 (公开展示模板，不包含任何个人用户的私密作品)
+        # 清理旧版占位合集
+        cursor.execute("DELETE FROM collections WHERE collection_id IN ('col_official_1', 'col_official_2', 'col_official_3')")
+        cursor.execute("DELETE FROM collection_items WHERE collection_id IN ('col_official_1', 'col_official_2', 'col_official_3')")
+
+        # 预置官方精选广场动作模板合集 (调用官方预设模板生成的高质量预览合集，普通用户无法删除)
         official_collections = [
-            ("col_official_1", "official", "🔥 打工人周一发疯系列", "精选职场解压神图，开会摸鱼必备", "/samples/sample_run.png", 1),
-            ("col_official_2", "official", "🐱 萌宠戏精动态日常", "超萌小猫小狗搞怪动图合集", "/samples/sample_run.png", 1),
-            ("col_official_3", "official", "💬 微信群聊斗图神作", "神级反转表情包，聊天不冷场", "/samples/sample_run.png", 1),
+            (
+                "col_tpl_kiss", 
+                "official", 
+                "💖 飞吻示爱 · 甜心萌动合集", 
+                "基于模板【飞吻示爱】专属动作拆解，超甜飞吻、爱心波波连贯动图", 
+                "/outputs/70b2b422/meme_result.gif", 
+                1,
+                [
+                    ("/outputs/70b2b422/meme_result.gif", "么么哒"),
+                    ("/outputs/711f2ca2/meme_result.gif", "想你了"),
+                    ("/outputs/13549834/meme_result.gif", "爱你哦"),
+                ]
+            ),
+            (
+                "col_tpl_battle", 
+                "official", 
+                "⚡ Q版暴击 · 连击热血合集", 
+                "基于模板【Q版战斗暴击】街机风动作拆解，蓄力重拳与打击感动图", 
+                "/outputs/4089e262/meme_result.gif", 
+                1,
+                [
+                    ("/outputs/4089e262/meme_result.gif", "吃我一拳"),
+                    ("/outputs/44f1e9d9/meme_result.gif", "重拳出击"),
+                    ("/outputs/28264dac/meme_result.gif", "超能爆发"),
+                ]
+            ),
+            (
+                "col_tpl_worker", 
+                "official", 
+                "💼 职场摸鱼 · 打工人神图合集", 
+                "基于模板【打工人摸鱼日常】职场共鸣动作拆解，疯狂敲键盘与偷闲神作", 
+                "/outputs/48947b60/meme_result.gif", 
+                1,
+                [
+                    ("/outputs/48947b60/meme_result.gif", "疯狂敲键盘"),
+                    ("/outputs/52d4875d/meme_result.gif", "收到好的"),
+                    ("/outputs/d30bd69c/meme_result.gif", "下班冲鸭"),
+                ]
+            ),
+            (
+                "col_tpl_pet", 
+                "official", 
+                "🐾 治愈萌宠 · 呆萌待机合集", 
+                "基于模板【萌宠呆萌待机】无缝呼吸微动图，眨眼晃耳朵萌翻全场", 
+                "/outputs/c4e1c36c/meme_result.gif", 
+                1,
+                [
+                    ("/outputs/c4e1c36c/meme_result.gif", "乖巧等待"),
+                    ("/outputs/d66e1f02/meme_result.gif", "暗中观察"),
+                    ("/outputs/df4492bd/meme_result.gif", "求抱抱"),
+                ]
+            ),
+            (
+                "col_tpl_dance", 
+                "official", 
+                "🕺 魔性摇摆 · 比心蹦迪合集", 
+                "基于模板【魔性比心摇摆舞】左右律动魔性变出爱心，聊天斗图炸场", 
+                "/outputs/0d042857/meme_result.gif", 
+                1,
+                [
+                    ("/outputs/0d042857/meme_result.gif", "比心心"),
+                    ("/outputs/2e17168a/meme_result.gif", "开心摇摆"),
+                    ("/outputs/39a8a984/meme_result.gif", "快乐起飞"),
+                ]
+            ),
+            (
+                "col_tpl_custom", 
+                "official", 
+                "✨ 自由创意 · 自定义动作合集", 
+                "使用【自定义动作模板】生成的专属个性创意动图", 
+                "/outputs/4f147210/meme_result.gif", 
+                1,
+                [
+                    ("/outputs/4f147210/meme_result.gif", "仰天大笑"),
+                    ("/outputs/5766edbd/meme_result.gif", "委屈抹泪"),
+                    ("/outputs/7ab23202/meme_result.gif", "疯狂比赞"),
+                ]
+            ),
         ]
-        for col_id, openid, title, desc, cover, is_pub in official_collections:
+
+        for col_id, openid, title, desc, cover, is_pub, items in official_collections:
             cursor.execute('''
                 INSERT INTO collections (collection_id, openid, title, description, cover_url, is_public)
                 VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(collection_id) DO UPDATE SET
                     title=excluded.title,
                     description=excluded.description,
+                    cover_url=excluded.cover_url,
                     is_public=excluded.is_public
             ''', (col_id, openid, title, desc, cover, is_pub))
+
+            cursor.execute("SELECT COUNT(*) FROM collection_items WHERE collection_id = ?", (col_id,))
+            if cursor.fetchone()[0] == 0:
+                for idx, (gif_url, item_title) in enumerate(items, 1):
+                    cursor.execute('''
+                        INSERT INTO collection_items (collection_id, gif_url, title, sort_order)
+                        VALUES (?, ?, ?, ?)
+                    ''', (col_id, gif_url, item_title, idx))
 
         conn.commit()
 
@@ -488,21 +578,42 @@ def create_collection(openid: str, title: str, description: str = "", cover_url:
     return get_collection_detail(collection_id)
 
 def delete_collection(collection_id: str, openid: str = "") -> bool:
-    """删除指定合集及其关联条目"""
+    """删除指定合集及其关联条目 (精选广场官方合集不可删除)"""
     with get_db() as conn:
         cursor = conn.cursor()
-        if openid:
-            cursor.execute("DELETE FROM collections WHERE collection_id = ? AND openid = ?", (collection_id, openid))
-        else:
-            cursor.execute("DELETE FROM collections WHERE collection_id = ?", (collection_id,))
+        cursor.execute("SELECT openid, is_public FROM collections WHERE collection_id = ?", (collection_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False
+        # 官方精选广场合集绝不允许普通用户删除
+        if row["openid"] in ("official", "system") or row["is_public"] == 1:
+            raise HTTPException(status_code=403, detail="精选广场官方合集不可删除")
+        if openid and row["openid"] != openid:
+            raise HTTPException(status_code=403, detail="无权删除该合集")
+        cursor.execute("DELETE FROM collections WHERE collection_id = ?", (collection_id,))
         cursor.execute("DELETE FROM collection_items WHERE collection_id = ?", (collection_id,))
         conn.commit()
     return True
 
-def delete_collection_item(item_id: int) -> bool:
-    """删除合集内的某个单张表情"""
+def delete_collection_item(item_id: int, openid: str = "") -> bool:
+    """删除合集内的某个单张表情 (官方精选表情不可删除)"""
     with get_db() as conn:
-        conn.execute("DELETE FROM collection_items WHERE id = ?", (item_id,))
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT c.openid, c.is_public 
+            FROM collection_items ci
+            JOIN collections c ON ci.collection_id = c.collection_id
+            WHERE ci.id = ?
+        ''', (item_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False
+        # 官方精选广场合集中的表情不可删除
+        if row["openid"] in ("official", "system") or row["is_public"] == 1:
+            raise HTTPException(status_code=403, detail="精选广场官方合集中的表情不可删除")
+        if openid and row["openid"] != openid:
+            raise HTTPException(status_code=403, detail="无权删除该合集中的表情")
+        cursor.execute("DELETE FROM collection_items WHERE id = ?", (item_id,))
         conn.commit()
     return True
 

@@ -86,7 +86,21 @@
 
   <!-- 台词与角色描述：紧凑折叠 -->
   <view class="form-compact card">
-    <view class="form-item-compact">
+    <!-- 当选择“自定义动作”模板时，呈现专属动作流描述输入框 -->
+    <view wx:if="{{selectedTemplate === 'custom'}}" class="form-item-compact custom-action-item">
+      <view class="form-label-row">
+        <text class="form-label-sm form-label-highlight">✨ 自定义动作描述 (必填)</text>
+        <text class="btn-xs-inline btn-idea-highlight" bindtap="pickCustomActionIdea">💡 动作灵感</text>
+      </view>
+      <input
+        class="form-input-compact custom-action-input"
+        placeholder="例如: 双手叉腰大笑 / 委屈抹眼泪 / 疯狂比大拇指..."
+        value="{{customActionText}}"
+        bindinput="onInputCustomAction"
+      />
+    </view>
+
+    <view class="form-item-compact" style="{{selectedTemplate === 'custom' ? 'margin-top: 14rpx;' : ''}}">
       <view class="form-label-row">
         <text class="form-label-sm">弹幕台词</text>
         <text class="btn-xs-inline" bindtap="getCaptionSuggestions">✨ 灵感</text>

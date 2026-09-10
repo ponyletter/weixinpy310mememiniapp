@@ -335,6 +335,29 @@
   box-sizing: border-box;
 }
 
+.custom-action-item {
+  background: #fdf4ff;
+  border: 1rpx solid #f0abfc;
+  border-radius: 16rpx;
+  padding: 16rpx 18rpx;
+  margin-bottom: 6rpx;
+}
+
+.form-label-highlight {
+  color: #a21caf;
+  font-weight: 700;
+}
+
+.btn-idea-highlight {
+  background: #fae8ff !important;
+  color: #c026d3 !important;
+}
+
+.custom-action-input {
+  background: #ffffff !important;
+  border: 1rpx solid #e879f9 !important;
+}
+
 /* ========== 动图生成主按钮 ========== */
 .btn-generate {
   width: 100% !important;

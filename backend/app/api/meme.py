@@ -25,7 +25,8 @@ def get_templates():
             "title": t["title"],
             "desc": t["desc"],
             "action": t["action"],
-            "default_caption": t["default_caption"]
+            "default_caption": t["default_caption"],
+            "is_custom": t.get("is_custom", False)
         })
     return {
         "code": 0,
@@ -40,10 +41,11 @@ def build_prompt(
     custom_caption: str = Form(""),
     has_image: bool = Form(False),
     is_sketch: bool = Form(False),
+    custom_action: str = Form(""),
 ):
     """根据动作与角色描述，动态生成让 ChatGPT 原生绘制动态跳跃汉字的专用 Prompt"""
     template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
-    final_prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch)
+    final_prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch, custom_action.strip())
 
     return {
         "code": 0,
@@ -136,6 +138,7 @@ async def generate_and_process(
     action_type: str = Form("kiss"),
     custom_caption: str = Form(""),
     character_desc: str = Form(""),
+    custom_action: str = Form(""),
     fps: int = Form(8),
     make_transparent: bool = Form(True),
     padding_percent: float = Form(2.5),
@@ -148,7 +151,7 @@ async def generate_and_process(
     # 1. 组装提示词
     has_image = ref_image is not None and getattr(ref_image, "filename", None) not in [None, ""]
     template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
-    prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image)
+    prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, False, custom_action.strip())
 
     # 2. 调用 CLIProxyAPI (ChatGPT Plus 出海中转网关)
     headers = {
@@ -280,6 +283,7 @@ async def run_generate_pipeline(
     padding_percent: float,
     is_sketch: bool = False,
     openid: str = "",
+    custom_action: str = "",
 ):
     """后台异步执行完整的生图、切割与动图合成流水线"""
     import io
@@ -298,7 +302,7 @@ async def run_generate_pipeline(
 
         has_image = ref_image_bytes is not None and len(ref_image_bytes) > 0
         template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
-        prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch)
+        prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch, custom_action.strip())
 
         # 阶段 2：请求画质渲染引擎出图
         TASK_STORE[task_id] = {
@@ -470,6 +474,7 @@ async def generate_async(
     action_type: str = Form("kiss"),
     custom_caption: str = Form(""),
     character_desc: str = Form(""),
+    custom_action: Optional[str] = Form(""),
     fps: int = Form(8),
     make_transparent: bool = Form(True),
     padding_percent: float = Form(2.5),
@@ -510,7 +515,8 @@ async def generate_async(
         make_transparent=make_transparent,
         padding_percent=padding_percent,
         is_sketch=is_sketch,
-        openid=openid or ""
+        openid=openid or "",
+        custom_action=custom_action or ""
     ))
 
     return {

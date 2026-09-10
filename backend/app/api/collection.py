@@ -30,6 +30,7 @@ class DeleteCollectionRequest(BaseModel):
 
 class DeleteItemRequest(BaseModel):
     item_id: int
+    openid: Optional[str] = ""
 
 @router.post("/create")
 def create_new_collection(req: CreateCollectionRequest):
@@ -50,7 +51,7 @@ def delete_col(req: DeleteCollectionRequest):
 @router.post("/item/delete")
 def delete_item(req: DeleteItemRequest):
     """删除合集中的某个单张表情"""
-    delete_collection_item(req.item_id)
+    delete_collection_item(req.item_id, req.openid or "")
     return {"success": True, "message": "表情条目已删除"}
 
 @router.post("/add-item")

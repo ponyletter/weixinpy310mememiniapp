@@ -3,7 +3,8 @@
   <view class="col-hero card">
     <view class="hero-top-row">
       <view class="hero-title">{{collection.title}}</view>
-      <button class="btn-xs btn-del-col-top" bindtap="deleteCurrentCollection">🗑️ 删除此合集</button>
+      <button wx:if="{{isOwner}}" class="btn-xs btn-del-col-top" bindtap="deleteCurrentCollection">🗑️ 删除此合集</button>
+      <view wx:else class="badge badge-featured">✨ 官方精选模板</view>
     </view>
     <view class="hero-desc">{{collection.description || '精选表情包小抽屉'}}</view>
     <view class="hero-stats">
@@ -32,7 +33,8 @@
       <view class="meme-title text-ellipsis">{{item.title || 'GIF动图'}}</view>
       <view class="meme-card-actions">
         <button class="btn-xs-meme btn-save-action" catchtap="saveMemeDirect" data-url="{{item.full_url || item.gif_url}}">💾 保存相册</button>
-        <button class="btn-xs-meme btn-del-action" catchtap="deleteItem" data-id="{{item.id}}">🗑️ 删除</button>
+        <button wx:if="{{isOwner}}" class="btn-xs-meme btn-del-action" catchtap="deleteItem" data-id="{{item.id}}">🗑️ 删除</button>
+        <button wx:else class="btn-xs-meme btn-make-same" catchtap="goToMakeSame" data-item="{{item}}">🎨 做同款</button>
       </view>
     </view>
   </view>

@@ -75,8 +75,10 @@
   <view class="section-title">👥 好友互动福利 (双方各得 5 次)</view>
   <view class="card invite-card">
     <view class="invite-info">
-      <text class="invite-label">我的专属邀请码:</text>
-      <text class="invite-code">{{user.invite_code || '---'}}</text>
+      <view class="invite-meta">
+        <text class="invite-label">专属邀请码:</text>
+        <text class="invite-code">{{user.invite_code || '---'}}</text>
+      </view>
       <button class="btn-xs btn-copy" bindtap="copyInviteCode">复制口令</button>
     </view>
     <button class="btn-secondary btn-invite-full" open-type="share">

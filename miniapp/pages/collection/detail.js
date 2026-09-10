@@ -3,7 +3,8 @@ const app = getApp();
 Page({
   data: {
     collectionId: '',
-    collection: {}
+    collection: {},
+    isOwner: false
   },
 
   onLoad(options) {
@@ -30,6 +31,15 @@ Page({
         wx.hideLoading();
         if (res.data && res.data.data) {
           const col = res.data.data;
+          const currentOpenid = app.globalData.openid || wx.getStorageSync('openid');
+          const isOwner = Boolean(
+            col.openid && 
+            col.openid === currentOpenid && 
+            col.openid !== 'official' && 
+            col.openid !== 'system' && 
+            !col.is_public
+          );
+
           // 处理条目图片绝对路径
           if (col.items) {
             col.items = col.items.map(item => {
@@ -40,7 +50,10 @@ Page({
               return { ...item, full_url: fullUrl };
             });
           }
-          this.setData({ collection: col });
+          this.setData({ 
+            collection: col,
+            isOwner: isOwner
+          });
           wx.setNavigationBarTitle({ title: col.title || '表情包合集' });
         }
         if (cb) cb();
@@ -98,9 +111,32 @@ Page({
     wx.switchTab({ url: '/pages/index/index' });
   },
 
+  goToMakeSame(e) {
+    const item = e.currentTarget.dataset.item || {};
+    const colId = (this.data.collection && this.data.collection.collection_id) || '';
+    let tplId = 'kiss';
+    if (colId.includes('battle')) tplId = 'battle_chibi';
+    else if (colId.includes('worker')) tplId = 'slack_worker';
+    else if (colId.includes('pet')) tplId = 'pet_idle';
+    else if (colId.includes('dance')) tplId = 'heart_dance';
+    else if (colId.includes('custom')) tplId = 'custom';
+
+    wx.setStorageSync('preselect_tpl', {
+      id: tplId,
+      caption: item.title || ''
+    });
+    wx.switchTab({ url: '/pages/index/index' });
+  },
+
   deleteItem(e) {
+    if (!this.data.isOwner) {
+      wx.showToast({ title: '精选广场官方表情不可删除', icon: 'none' });
+      return;
+    }
+
     const itemId = e.currentTarget.dataset.id;
     if (!itemId) return;
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
 
     wx.showModal({
       title: '确认移除',
@@ -112,14 +148,14 @@ Page({
           wx.request({
             url: `${app.globalData.baseURL}/api/collection/item/delete`,
             method: 'POST',
-            data: { item_id: itemId },
+            data: { item_id: itemId, openid: openid },
             success: (res) => {
               wx.hideLoading();
               if (res.data && res.data.success) {
                 wx.showToast({ title: '已移除', icon: 'success' });
                 this.fetchDetail(this.data.collectionId);
               } else {
-                wx.showToast({ title: '移除失败', icon: 'none' });
+                wx.showToast({ title: (res.data && res.data.detail) || '移除失败', icon: 'none' });
               }
             },
             fail: () => {
@@ -133,6 +169,11 @@ Page({
   },
 
   deleteCurrentCollection() {
+    if (!this.data.isOwner) {
+      wx.showToast({ title: '精选广场官方合集不可删除', icon: 'none' });
+      return;
+    }
+
     const col = this.data.collection;
     const id = this.data.collectionId;
     if (!id) return;

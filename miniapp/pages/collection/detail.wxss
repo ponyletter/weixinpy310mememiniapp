@@ -120,6 +120,23 @@
   border: 1rpx solid #fecaca !important;
 }
 
+.btn-make-same {
+  background: #f0fdf4 !important;
+  color: #15803d !important;
+  border: 1rpx solid #bbf7d0 !important;
+}
+
+.badge-featured {
+  font-size: 22rpx;
+  color: #d97706;
+  background: #fef3c7;
+  border: 1rpx solid #fde68a;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .empty-hint {
   text-align: center;
   color: #94a3b8;

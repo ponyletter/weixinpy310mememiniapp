@@ -3,10 +3,11 @@
 支持让 ChatGPT 原生在每一帧中绘制随动作跳跃的动态艺术汉字！
 """
 
-def build_meme_prompt(template_id: str, char_desc: str = "", caption: str = "", has_image: bool = False, is_sketch: bool = False) -> str:
-    """根据动作模板、角色描述、文字内容、是否有参考图及是否为手绘草图，智能组装提示词"""
+def build_meme_prompt(template_id: str, char_desc: str = "", caption: str = "", has_image: bool = False, is_sketch: bool = False, custom_action: str = "") -> str:
+    """根据动作模板、角色描述、文字内容、是否有参考图、是否手绘草图及自定义动作，智能组装提示词"""
     char_desc = (char_desc or "").strip()
     caption = (caption or "").strip()
+    custom_action = (custom_action or "").strip()
 
     # 1. 角色人设从句 (支持手绘草图 SketchUP 模式与常规图生图)
     if is_sketch:
@@ -62,6 +63,13 @@ def build_meme_prompt(template_id: str, char_desc: str = "", caption: str = "", 
             f"动作流程：角色左右欢快律动，双手从胸前变出弹跳发光的爱心，第 16 帧平滑循环回第 1 帧。\n"
             f"{text_clause}"
             f"规格：纯白底色，四周留白充足，各帧独立无跨格交叉。"
+        ),
+        "custom": (
+            f"为我生成该角色（{char_clause}）的半身像连贯动图表情拆分帧。\n"
+            f"使用 4行×4列 布局共生成 16 个连续小动作。用户专属自定义动作流程：【{custom_action or '充满个性的生动特色动作，肢体与表情富有表现力'}】。\n"
+            f"16 帧动作流程自然递进连贯，第 16 帧平滑无缝循环回第 1 帧。\n"
+            f"{text_clause}"
+            f"规格要求：16 个小图片呈 4列×4行 精确排列共 16 帧，尺寸均一，固定机位，主体和文字严禁超出所属单元格，四周预留 30~50px 充足纯白空白便于切割。背景必须为纯白色（RGB 255,255,255），不要画任何分割线、边框或水印，画面比例 1:1。"
         )
     }
 
@@ -74,7 +82,8 @@ PROMPT_TEMPLATES = [
         "desc": "可爱的飞吻分解动作，适合日常情侣/社交互动",
         "action": "飞吻示爱",
         "default_caption": "爱你哦",
-        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("kiss", char, text, has_image, is_sketch)
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="": build_meme_prompt("kiss", char, text, has_image, is_sketch, custom_action)
     },
     {
         "id": "battle_chibi",
@@ -82,15 +91,17 @@ PROMPT_TEMPLATES = [
         "desc": "准备→蓄力→出击→冲击峰值→收势，打击感拉满",
         "action": "战斗出击",
         "default_caption": "吃我一拳",
-        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("battle_chibi", char, text, has_image, is_sketch)
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="": build_meme_prompt("battle_chibi", char, text, has_image, is_sketch, custom_action)
     },
     {
         "id": "slack_worker",
         "title": "打工人摸鱼日常 (魔性搞笑)",
         "desc": "疯狂敲键盘→偷打哈欠→喝水偷瞄，打工人必备共鸣",
-        "action": "摸鱼",
+        "action": "摸鱼日常",
         "default_caption": "疯狂摸鱼中",
-        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("slack_worker", char, text, has_image, is_sketch)
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="": build_meme_prompt("slack_worker", char, text, has_image, is_sketch, custom_action)
     },
     {
         "id": "pet_idle",
@@ -98,7 +109,8 @@ PROMPT_TEMPLATES = [
         "desc": "呼吸起伏、眨眼与耳朵摆动，无缝循环萌化人心",
         "action": "呆萌晃动",
         "default_caption": "乖巧等待",
-        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("pet_idle", char, text, has_image, is_sketch)
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="": build_meme_prompt("pet_idle", char, text, has_image, is_sketch, custom_action)
     },
     {
         "id": "heart_dance",
@@ -106,7 +118,17 @@ PROMPT_TEMPLATES = [
         "desc": "欢快左右律动，双手从胸前变出爱心",
         "action": "比心摇摆",
         "default_caption": "比心心",
-        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("heart_dance", char, text, has_image, is_sketch)
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="": build_meme_prompt("heart_dance", char, text, has_image, is_sketch, custom_action)
+    },
+    {
+        "id": "custom",
+        "title": "✨ 自定义动作 (自由创意)",
+        "desc": "支持自由输入专属动作、微表情或剧情动作流程",
+        "action": "自定义专属动作",
+        "default_caption": "看我的",
+        "is_custom": True,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="": build_meme_prompt("custom", char, text, has_image, is_sketch, custom_action)
     }
 ]
 
