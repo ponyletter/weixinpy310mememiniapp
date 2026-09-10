@@ -182,7 +182,8 @@ def init_db():
 
         # 清理旧版占位合集
         cursor.execute("DELETE FROM collections WHERE collection_id IN ('col_official_1', 'col_official_2', 'col_official_3')")
-        cursor.execute("DELETE FROM collection_items WHERE collection_id IN ('col_official_1', 'col_official_2', 'col_official_3')")
+        cursor.execute("DELETE FROM collection_items WHERE collection_id IN ('col_official_1', 'col_official_2', 'col_official_3', 'col_tpl_pet', 'col_tpl_worker', 'col_tpl_dance')")
+        cursor.execute("DELETE FROM collections WHERE collection_id IN ('col_tpl_pet', 'col_tpl_worker', 'col_tpl_dance')")
 
         # 预置官方精选广场动作模板合集 (调用官方预设模板生成的高质量预览合集，普通用户无法删除)
         official_collections = [
@@ -191,12 +192,11 @@ def init_db():
                 "official", 
                 "💖 飞吻示爱 · 甜心萌动合集", 
                 "基于模板【飞吻示爱】专属动作拆解，超甜飞吻、爱心波波连贯动图", 
-                "/outputs/70b2b422/meme_result.gif", 
+                "/outputs/70b2b422/thumb.jpg", 
                 1,
                 [
                     ("/outputs/70b2b422/meme_result.gif", "么么哒"),
                     ("/outputs/711f2ca2/meme_result.gif", "想你了"),
-                    ("/outputs/13549834/meme_result.gif", "爱你哦"),
                 ]
             ),
             (
@@ -204,51 +204,11 @@ def init_db():
                 "official", 
                 "⚡ Q版暴击 · 连击热血合集", 
                 "基于模板【Q版战斗暴击】街机风动作拆解，蓄力重拳与打击感动图", 
-                "/outputs/4089e262/meme_result.gif", 
+                "/outputs/4089e262/thumb.jpg", 
                 1,
                 [
                     ("/outputs/4089e262/meme_result.gif", "吃我一拳"),
                     ("/outputs/44f1e9d9/meme_result.gif", "重拳出击"),
-                    ("/outputs/28264dac/meme_result.gif", "超能爆发"),
-                ]
-            ),
-            (
-                "col_tpl_worker", 
-                "official", 
-                "💼 职场摸鱼 · 打工人神图合集", 
-                "基于模板【打工人摸鱼日常】职场共鸣动作拆解，疯狂敲键盘与偷闲神作", 
-                "/outputs/48947b60/meme_result.gif", 
-                1,
-                [
-                    ("/outputs/48947b60/meme_result.gif", "疯狂敲键盘"),
-                    ("/outputs/52d4875d/meme_result.gif", "收到好的"),
-                    ("/outputs/d30bd69c/meme_result.gif", "下班冲鸭"),
-                ]
-            ),
-            (
-                "col_tpl_pet", 
-                "official", 
-                "🐾 治愈萌宠 · 呆萌待机合集", 
-                "基于模板【萌宠呆萌待机】无缝呼吸微动图，眨眼晃耳朵萌翻全场", 
-                "/outputs/c4e1c36c/meme_result.gif", 
-                1,
-                [
-                    ("/outputs/c4e1c36c/meme_result.gif", "乖巧等待"),
-                    ("/outputs/d66e1f02/meme_result.gif", "暗中观察"),
-                    ("/outputs/df4492bd/meme_result.gif", "求抱抱"),
-                ]
-            ),
-            (
-                "col_tpl_dance", 
-                "official", 
-                "🕺 魔性摇摆 · 比心蹦迪合集", 
-                "基于模板【魔性比心摇摆舞】左右律动魔性变出爱心，聊天斗图炸场", 
-                "/outputs/0d042857/meme_result.gif", 
-                1,
-                [
-                    ("/outputs/0d042857/meme_result.gif", "比心心"),
-                    ("/outputs/2e17168a/meme_result.gif", "开心摇摆"),
-                    ("/outputs/39a8a984/meme_result.gif", "快乐起飞"),
                 ]
             ),
             (
@@ -256,10 +216,9 @@ def init_db():
                 "official", 
                 "✨ 自由创意 · 自定义动作合集", 
                 "使用【自定义动作模板】生成的专属个性创意动图", 
-                "/outputs/4f147210/meme_result.gif", 
+                "/outputs/5766edbd/thumb.jpg", 
                 1,
                 [
-                    ("/outputs/4f147210/meme_result.gif", "仰天大笑"),
                     ("/outputs/5766edbd/meme_result.gif", "委屈抹泪"),
                     ("/outputs/7ab23202/meme_result.gif", "疯狂比赞"),
                 ]
@@ -277,13 +236,12 @@ def init_db():
                     is_public=excluded.is_public
             ''', (col_id, openid, title, desc, cover, is_pub))
 
-            cursor.execute("SELECT COUNT(*) FROM collection_items WHERE collection_id = ?", (col_id,))
-            if cursor.fetchone()[0] == 0:
-                for idx, (gif_url, item_title) in enumerate(items, 1):
-                    cursor.execute('''
-                        INSERT INTO collection_items (collection_id, gif_url, title, sort_order)
-                        VALUES (?, ?, ?, ?)
-                    ''', (col_id, gif_url, item_title, idx))
+            cursor.execute("DELETE FROM collection_items WHERE collection_id = ?", (col_id,))
+            for idx, (gif_url, item_title) in enumerate(items, 1):
+                cursor.execute('''
+                    INSERT INTO collection_items (collection_id, gif_url, title, sort_order)
+                    VALUES (?, ?, ?, ?)
+                ''', (col_id, gif_url, item_title, idx))
 
         conn.commit()
 
@@ -644,6 +602,24 @@ def add_item_to_collection(collection_id: str, gif_url: str, title: str = "") ->
         conn.commit()
     return {"id": item_id, "collection_id": collection_id, "gif_url": gif_url, "title": title}
 
+def get_fast_thumb_url(gif_url: str) -> str:
+    """获取表情或封面的极速轻量静态缩略图 (~7KB)，比 500KB 动图提速 50 倍以上"""
+    if not gif_url:
+        return ""
+    if "/outputs/" in gif_url:
+        try:
+            parts = gif_url.split("/outputs/")
+            if len(parts) > 1:
+                sub = parts[1].split("/")[0]
+                task_dir = settings.OUTPUT_DIR / sub
+                if (task_dir / "thumb.jpg").exists():
+                    return f"/outputs/{sub}/thumb.jpg"
+                if (task_dir / "frames" / "frame_01.png").exists():
+                    return f"/outputs/{sub}/frames/frame_01.png"
+        except Exception:
+            pass
+    return gif_url
+
 def get_collection_detail(collection_id: str) -> Optional[Dict[str, Any]]:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -659,8 +635,12 @@ def get_collection_detail(collection_id: str) -> Optional[Dict[str, Any]]:
 
         cursor.execute("SELECT id, gif_url, title, sort_order, created_at FROM collection_items WHERE collection_id = ? ORDER BY sort_order ASC, id ASC", (collection_id,))
         items = [dict(r) for r in cursor.fetchall()]
+        for it in items:
+            it["thumb_url"] = get_fast_thumb_url(it.get("gif_url") or "")
+
         col["items"] = items
         col["item_count"] = len(items)
+        col["cover_url"] = get_fast_thumb_url(col.get("cover_url") or "")
         return col
 
 def get_user_collections(openid: str) -> List[Dict[str, Any]]:
@@ -675,6 +655,8 @@ def get_user_collections(openid: str) -> List[Dict[str, Any]]:
             ORDER BY c.created_at ASC
         ''', (openid,))
         cols = [dict(r) for r in cursor.fetchall()]
+        for c in cols:
+            c["cover_url"] = get_fast_thumb_url(c.get("cover_url") or "")
 
         # 如果用户尚未拥有合集，自动创建默认专属合集并返回，无需手动点击新建
         if not cols and openid:
@@ -709,4 +691,7 @@ def get_public_collections(limit: int = 15) -> List[Dict[str, Any]]:
             ORDER BY c.view_count DESC, c.created_at DESC
             LIMIT ?
         ''', (limit,))
-        return [dict(r) for r in cursor.fetchall()]
+        cols = [dict(r) for r in cursor.fetchall()]
+        for c in cols:
+            c["cover_url"] = get_fast_thumb_url(c.get("cover_url") or "")
+        return cols

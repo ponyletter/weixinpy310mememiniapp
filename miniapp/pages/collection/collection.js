@@ -142,6 +142,13 @@ Page({
       return;
     }
 
+    // 预先缓存合集摘要信息，让用户点击后详情页秒开无等待
+    const all = [...(this.data.myCollections || []), ...(this.data.exploreCollections || [])];
+    const found = all.find(c => c.collection_id === id);
+    if (found) {
+      wx.setStorageSync('cached_col_' + id, found);
+    }
+
     wx.navigateTo({
       url: `/pages/collection/detail?id=${id}`
     });

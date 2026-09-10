@@ -630,17 +630,14 @@ Page({
               const gifPath = tInfo.data.gif_url;
               const fullGifUrl = `${app.globalData.baseURL}${gifPath}`;
 
-              // 一次性渲染完成状态，避免重复 setData 导致 GIF 反复重载
+              // 一次性渲染完成状态，进入图片加载阶段，待正常展示后再发提示通知
               this.setData({
                 isGenerating: false,
                 gifResultUrl: fullGifUrl,
                 gifLoaded: false,
                 progress: 100,
-                stageText: '制作成功已交付'
+                stageText: '动图渲染就绪，正在呈现...'
               });
-
-              // 单次提示，确保动图流畅播放
-              wx.showToast({ title: '制作成功！', icon: 'success', duration: 1800 });
               return;
             } else if (tInfo.status === 'failed') {
               this._isTaskFinalized = true;
@@ -699,10 +696,21 @@ Page({
 
   onGifLoaded() {
     this.setData({ gifLoaded: true });
+    // 动图已在前端界面正常显示，且随时可点击保存相册，此时发出完成提示
+    wx.showToast({ 
+      title: '制作完成，可保存相册！', 
+      icon: 'success', 
+      duration: 2500 
+    });
   },
 
   onGifLoadError() {
     this.setData({ gifLoaded: true });
+    wx.showToast({ 
+      title: '动图就绪，可直接保存相册', 
+      icon: 'none', 
+      duration: 2200 
+    });
   },
 
   // --- 保存相册 ---

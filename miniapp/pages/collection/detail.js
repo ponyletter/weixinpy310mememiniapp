@@ -9,8 +9,30 @@ Page({
 
   onLoad(options) {
     if (options && options.id) {
-      this.setData({ collectionId: options.id });
-      this.fetchDetail(options.id);
+      const colId = options.id;
+      this.setData({ collectionId: colId });
+
+      // 优先从缓存加载头部信息，实现 0 毫秒秒开，彻底告别白屏和长时间等待
+      const cached = wx.getStorageSync('cached_col_' + colId);
+      if (cached) {
+        const currentOpenid = app.globalData.openid || wx.getStorageSync('openid');
+        const isOwner = Boolean(
+          cached.openid && 
+          cached.openid === currentOpenid && 
+          cached.openid !== 'official' && 
+          cached.openid !== 'system' && 
+          !cached.is_public
+        );
+        this.setData({
+          collection: cached,
+          isOwner: isOwner
+        });
+        if (cached.title) {
+          wx.setNavigationBarTitle({ title: cached.title });
+        }
+      }
+
+      this.fetchDetail(colId);
     }
   },
 
@@ -23,12 +45,15 @@ Page({
   },
 
   fetchDetail(id, cb) {
-    wx.showLoading({ title: '加载合集中...' });
+    const hasCached = Boolean(this.data.collection && this.data.collection.title);
+    if (!hasCached) {
+      wx.showLoading({ title: '极速载入中...' });
+    }
     wx.request({
       url: `${app.globalData.baseURL}/api/collection/detail?collection_id=${id}`,
       method: 'GET',
       success: (res) => {
-        wx.hideLoading();
+        if (!hasCached) wx.hideLoading();
         if (res.data && res.data.data) {
           const col = res.data.data;
           const currentOpenid = app.globalData.openid || wx.getStorageSync('openid');
@@ -40,14 +65,22 @@ Page({
             !col.is_public
           );
 
-          // 处理条目图片绝对路径
+          // 处理条目图片绝对路径与极速缩略图 thumb_url
           if (col.items) {
             col.items = col.items.map(item => {
-              let fullUrl = item.gif_url;
+              let fullUrl = item.gif_url || '';
               if (fullUrl.startsWith('/')) {
                 fullUrl = `${app.globalData.baseURL}${fullUrl}`;
               }
-              return { ...item, full_url: fullUrl };
+              let thumbUrl = item.thumb_url || item.gif_url || '';
+              if (thumbUrl.startsWith('/')) {
+                thumbUrl = `${app.globalData.baseURL}${thumbUrl}`;
+              }
+              return { 
+                ...item, 
+                full_url: fullUrl, 
+                thumb_url: thumbUrl 
+              };
             });
           }
           this.setData({ 
@@ -59,7 +92,7 @@ Page({
         if (cb) cb();
       },
       fail: () => {
-        wx.hideLoading();
+        if (!hasCached) wx.hideLoading();
         wx.showToast({ title: '加载失败', icon: 'none' });
       }
     });

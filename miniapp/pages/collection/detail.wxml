@@ -29,7 +29,7 @@
       wx:key="id" 
       class="meme-item card checkerboard-bg"
     >
-      <image class="meme-img" src="{{item.full_url || item.gif_url}}" mode="aspectFit" bindtap="previewOrSave" data-url="{{item.gif_url}}"></image>
+      <image class="meme-img" src="{{item.thumb_url || item.full_url || item.gif_url}}" mode="aspectFit" bindtap="previewOrSave" data-url="{{item.full_url || item.gif_url}}" lazy-load="true"></image>
       <view class="meme-title text-ellipsis">{{item.title || 'GIF动图'}}</view>
       <view class="meme-card-actions">
         <button class="btn-xs-meme btn-save-action" catchtap="saveMemeDirect" data-url="{{item.full_url || item.gif_url}}">💾 保存相册</button>

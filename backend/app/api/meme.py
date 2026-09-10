@@ -451,17 +451,22 @@ async def run_generate_pipeline(
                 pass
 
             # 触发微信服务完成通知（一次性订阅消息）
+            # 延时 3 秒发送，确保前端动图已下载渲染完毕并可保存相册
             try:
                 caption_text = (custom_caption or "").strip() or "定制GIF动图"
-                asyncio.create_task(
-                    WeChatService.send_subscribe_message(
-                        openid=openid,
-                        order_no=task_id,
-                        service_type="动图表情包制作",
-                        service_item=caption_text[:18],
-                        page="pages/index/index"
-                    )
-                )
+                async def _delayed_send_sub_msg():
+                    await asyncio.sleep(3)
+                    try:
+                        await WeChatService.send_subscribe_message(
+                            openid=openid,
+                            order_no=task_id,
+                            service_type="动图表情包制作",
+                            service_item=caption_text[:18],
+                            page="pages/index/index"
+                        )
+                    except Exception:
+                        pass
+                asyncio.create_task(_delayed_send_sub_msg())
             except Exception:
                 pass
 
