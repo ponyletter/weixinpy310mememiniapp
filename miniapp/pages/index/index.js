@@ -313,6 +313,9 @@ Page({
 
   // --- 全屏涂鸦画板 ---
   openFullScreenSketch() {
+    try {
+      wx.hideTabBar({ animation: true });
+    } catch (e) {}
     this.setData({ showFullScreenSketch: true });
     setTimeout(() => {
       this.initFullScreenCanvas();
@@ -320,6 +323,9 @@ Page({
   },
 
   closeFullScreenSketch() {
+    try {
+      wx.showTabBar({ animation: true });
+    } catch (e) {}
     this.setData({ showFullScreenSketch: false });
   },
 
@@ -393,6 +399,9 @@ Page({
   },
 
   saveAndSyncFullScreenSketch() {
+    try {
+      wx.showTabBar({ animation: true });
+    } catch (e) {}
     if (!this.fsCanvas) {
       this.closeFullScreenSketch();
       return;

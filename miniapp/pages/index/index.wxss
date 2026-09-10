@@ -642,13 +642,21 @@
 }
 
 .fullscreen-sketch-header {
-  height: 100rpx;
-  padding: 0 28rpx;
+  height: 96rpx;
+  padding: 0 24rpx;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1rpx solid #f1f5f9;
   background: #ffffff;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.fs-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
   flex-shrink: 0;
 }
 
@@ -657,20 +665,59 @@
   font-weight: 800;
   color: #1e293b;
   white-space: nowrap;
-  flex-shrink: 0;
+}
+
+.fs-badge {
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+  line-height: 1.2;
 }
 
 .fs-header-actions {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 14rpx;
   flex-shrink: 0;
 }
 
-.btn-fs-close {
-  background: #fee2e2 !important;
-  color: #dc2626 !important;
-  border: 1rpx solid #fecaca !important;
+.fs-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 56rpx;
+  padding: 0 22rpx;
+  border-radius: 28rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.fs-btn-icon {
+  margin-right: 6rpx;
+  font-size: 24rpx;
+  line-height: 1;
+}
+
+.fs-btn-clear {
+  background: #f8fafc;
+  color: #475569;
+  border: 1rpx solid #e2e8f0;
+}
+
+.fs-btn-close {
+  background: #fef2f2;
+  color: #ef4444;
+  border: 1rpx solid #fecaca;
+}
+
+.fs-btn-hover {
+  opacity: 0.8;
+  transform: scale(0.96);
 }
 
 .fullscreen-canvas-container {
@@ -691,47 +738,66 @@
 }
 
 .fullscreen-sketch-footer {
-  padding: 20rpx 28rpx 36rpx 28rpx;
+  padding: 20rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)) 28rpx;
   background: #f8fafc;
   border-top: 1rpx solid #e2e8f0;
   display: flex;
   flex-direction: column;
   gap: 20rpx;
+  box-sizing: border-box;
 }
 
 .palette-row {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  justify-content: space-between;
+  padding: 0 4rpx;
+}
+
+.palette-colors {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
 }
 
 .color-item {
   width: 48rpx;
   height: 48rpx;
   border-radius: 50%;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.12);
   border: 4rpx solid #ffffff;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .color-item.active {
-  transform: scale(1.18);
+  transform: scale(1.22);
   border-color: #4f46e5;
+  box-shadow: 0 0 0 2rpx #818cf8;
 }
 
 .stroke-divider {
   width: 2rpx;
-  height: 40rpx;
+  height: 36rpx;
   background: #cbd5e1;
-  margin: 0 8rpx;
+  margin: 0 6rpx;
+}
+
+.palette-strokes {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
 }
 
 .stroke-item {
   font-size: 22rpx;
-  padding: 8rpx 18rpx;
+  padding: 6rpx 18rpx;
   background: #ffffff;
   border: 1rpx solid #cbd5e1;
-  border-radius: 12rpx;
+  border-radius: 20rpx;
   color: #475569;
+  font-weight: 500;
+  transition: all 0.15s ease;
 }
 
 .stroke-item.active {
@@ -739,12 +805,21 @@
   color: #ffffff;
   border-color: #4f46e5;
   font-weight: 700;
+  box-shadow: 0 2rpx 8rpx rgba(79, 70, 229, 0.25);
 }
 
 .btn-fs-save {
   width: 100% !important;
+  height: 84rpx;
+  line-height: 84rpx;
   font-size: 28rpx;
-  padding: 22rpx 0;
+  font-weight: 700;
+  border-radius: 42rpx;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 6rpx 20rpx rgba(79, 70, 229, 0.3) !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* ========== 存入表情合集弹窗样式 ========== */

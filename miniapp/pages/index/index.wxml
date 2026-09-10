@@ -236,10 +236,19 @@
   <!-- 全屏沉浸式草图绘制画板 -->
   <view wx:if="{{showFullScreenSketch}}" class="fullscreen-sketch-mask" catchtouchmove="preventTouchMove">
     <view class="fullscreen-sketch-header">
-      <text class="fs-title">✏️ 全屏手绘画板</text>
+      <view class="fs-header-left">
+        <text class="fs-title">✏️ 全屏手绘画板</text>
+        <text class="fs-badge">自由涂鸦</text>
+      </view>
       <view class="fs-header-actions">
-        <button class="btn-xs" bindtap="clearFullScreenSketch">清空</button>
-        <button class="btn-xs btn-fs-close" bindtap="closeFullScreenSketch">✕ 关闭</button>
+        <view class="fs-action-btn fs-btn-clear" hover-class="fs-btn-hover" bindtap="clearFullScreenSketch">
+          <text class="fs-btn-icon">🗑️</text>
+          <text>清空</text>
+        </view>
+        <view class="fs-action-btn fs-btn-close" hover-class="fs-btn-hover" bindtap="closeFullScreenSketch">
+          <text class="fs-btn-icon">✕</text>
+          <text>关闭</text>
+        </view>
       </view>
     </view>
     <view class="fullscreen-canvas-container" catchtouchmove="preventTouchMove">
@@ -254,15 +263,19 @@
     </view>
     <view class="fullscreen-sketch-footer" catchtouchmove="preventTouchMove">
       <view class="palette-row">
-        <view class="color-item {{fsColor === '#1e293b' ? 'active' : ''}}" style="background: #1e293b;" bindtap="setFSColor" data-color="#1e293b"></view>
-        <view class="color-item {{fsColor === '#ef4444' ? 'active' : ''}}" style="background: #ef4444;" bindtap="setFSColor" data-color="#ef4444"></view>
-        <view class="color-item {{fsColor === '#3b82f6' ? 'active' : ''}}" style="background: #3b82f6;" bindtap="setFSColor" data-color="#3b82f6"></view>
-        <view class="color-item {{fsColor === '#f59e0b' ? 'active' : ''}}" style="background: #f59e0b;" bindtap="setFSColor" data-color="#f59e0b"></view>
-        <view class="color-item {{fsColor === '#10b981' ? 'active' : ''}}" style="background: #10b981;" bindtap="setFSColor" data-color="#10b981"></view>
+        <view class="palette-colors">
+          <view class="color-item {{fsColor === '#1e293b' ? 'active' : ''}}" style="background: #1e293b;" bindtap="setFSColor" data-color="#1e293b"></view>
+          <view class="color-item {{fsColor === '#ef4444' ? 'active' : ''}}" style="background: #ef4444;" bindtap="setFSColor" data-color="#ef4444"></view>
+          <view class="color-item {{fsColor === '#3b82f6' ? 'active' : ''}}" style="background: #3b82f6;" bindtap="setFSColor" data-color="#3b82f6"></view>
+          <view class="color-item {{fsColor === '#f59e0b' ? 'active' : ''}}" style="background: #f59e0b;" bindtap="setFSColor" data-color="#f59e0b"></view>
+          <view class="color-item {{fsColor === '#10b981' ? 'active' : ''}}" style="background: #10b981;" bindtap="setFSColor" data-color="#10b981"></view>
+        </view>
         <view class="stroke-divider"></view>
-        <view class="stroke-item {{fsLineWidth === 3 ? 'active' : ''}}" bindtap="setFSLineWidth" data-w="{{3}}">细</view>
-        <view class="stroke-item {{fsLineWidth === 6 ? 'active' : ''}}" bindtap="setFSLineWidth" data-w="{{6}}">中</view>
-        <view class="stroke-item {{fsLineWidth === 12 ? 'active' : ''}}" bindtap="setFSLineWidth" data-w="{{12}}">粗</view>
+        <view class="palette-strokes">
+          <view class="stroke-item {{fsLineWidth === 3 ? 'active' : ''}}" bindtap="setFSLineWidth" data-w="{{3}}">细</view>
+          <view class="stroke-item {{fsLineWidth === 6 ? 'active' : ''}}" bindtap="setFSLineWidth" data-w="{{6}}">中</view>
+          <view class="stroke-item {{fsLineWidth === 12 ? 'active' : ''}}" bindtap="setFSLineWidth" data-w="{{12}}">粗</view>
+        </view>
       </view>
       <button class="btn-primary btn-fs-save" bindtap="saveAndSyncFullScreenSketch">✅ 完成手绘并应用</button>
     </view>
