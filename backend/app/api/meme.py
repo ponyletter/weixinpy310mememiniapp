@@ -35,19 +35,18 @@ def build_prompt(
     character_desc: str = Form(""),
     action_type: str = Form("kiss"),
     custom_caption: str = Form(""),
+    has_image: bool = Form(False),
 ):
     """根据动作与角色描述，动态生成让 ChatGPT 原生绘制动态跳跃汉字的专用 Prompt"""
     template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
-    
-    caption_text = custom_caption.strip() if custom_caption.strip() else template["default_caption"]
-    final_prompt = template["prompt_builder"](character_desc.strip(), caption_text)
+    final_prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image)
 
     return {
         "code": 0,
         "data": {
             "template_id": template["id"],
             "action": template["action"],
-            "caption": caption_text,
+            "caption": custom_caption.strip(),
             "generated_prompt": final_prompt
         }
     }
@@ -58,37 +57,34 @@ async def process_sprite_sheet(
     sample_id: Optional[str] = Form(None),
     fps: int = Form(8),
     make_transparent: bool = Form(True),
-    padding_percent: float = Form(0.03)
+    padding_percent: float = Form(2.5),
 ):
-    """
-    核心接口：接收 4x4 精灵大图，执行切片、智能外围去白底、GIF合成与ZIP导出
-    （完整保留 ChatGPT 原画中随动作弹跳的原生动态艺术字！）
-    """
+    """处理已有的 4x4 雪碧图：多尺度间隙切割 + 泛洪去白底 + 微信合规动图合成"""
     task_id = str(uuid.uuid4())[:8]
     task_dir = settings.OUTPUT_DIR / task_id
     task_dir.mkdir(parents=True, exist_ok=True)
 
-    input_img_path = task_dir / "input_sprite.png"
+    input_path = task_dir / "input_sprite.png"
 
+    # 获取输入图像
     if file and file.filename:
-        with open(input_img_path, "wb") as buffer:
+        with open(input_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        source_image = Image.open(input_path).convert("RGB")
     elif sample_id:
         sample_path = settings.SAMPLES_DIR / f"{sample_id}.png"
         if not sample_path.exists():
-            raise HTTPException(status_code=404, detail="测试样本图片不存在")
-        shutil.copy(sample_path, input_img_path)
+            png_list = list(settings.SAMPLES_DIR.glob("*.png"))
+            if not png_list:
+                raise HTTPException(status_code=404, detail="样本文件不存在")
+            sample_path = png_list[0]
+        shutil.copy(sample_path, input_path)
+        source_image = Image.open(input_path).convert("RGB")
     else:
-        raise HTTPException(status_code=400, detail="请上传 4x4 精灵大图或选择示例")
+        raise HTTPException(status_code=400, detail="请上传文件或选择有效样本")
 
-    try:
-        source_image = Image.open(input_img_path)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"无法解析图片: {str(e)}")
-
-    # 1. 切分为 16 帧 (紧凑包络裁剪，杜绝多余留白)
+    # 1. 执行多尺度主间隙网格切割与紧致裁剪
     frames = SpriteProcessor.slice_grid(source_image, rows=4, cols=4, padding_percent=padding_percent)
-
 
     # 2. 生成透明动图 GIF (完美保留原画原生字幕)
     gif_path = task_dir / "meme_result.gif"
@@ -132,9 +128,10 @@ async def process_sprite_sheet(
 
 @router.post("/generate-and-process")
 async def generate_and_process(
+    ref_image: Optional[UploadFile] = File(None),
     action_type: str = Form("kiss"),
     custom_caption: str = Form(""),
-    character_desc: str = Form("一只萌萌的可爱白色折耳猫"),
+    character_desc: str = Form(""),
     fps: int = Form(8),
     make_transparent: bool = Form(True),
     padding_percent: float = Form(2.5),
@@ -145,34 +142,56 @@ async def generate_and_process(
     import httpx
 
     # 1. 组装提示词
+    has_image = ref_image is not None and getattr(ref_image, "filename", None) not in [None, ""]
     template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
-    caption_text = custom_caption.strip() if custom_caption.strip() else template["default_caption"]
-    prompt = template["prompt_builder"](character_desc.strip(), caption_text)
+    prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image)
 
     # 2. 调用 CLIProxyAPI (ChatGPT Plus 出海中转网关)
     headers = {
-        "Authorization": f"Bearer {settings.CPA_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": settings.CPA_IMAGE_MODEL,
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024"
+        "Authorization": f"Bearer {settings.CPA_API_KEY}"
     }
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                f"{settings.CPA_API_BASE}/images/generations",
-                headers=headers,
-                json=payload
-            )
+        async with httpx.AsyncClient(timeout=150.0) as client:
+            if has_image:
+                ref_bytes = await ref_image.read()
+                ref_img_pil = Image.open(io.BytesIO(ref_bytes)).convert("RGBA")
+                buf = io.BytesIO()
+                ref_img_pil.save(buf, format="PNG")
+                buf.seek(0)
+                files = {
+                    "image": ("character.png", buf.getvalue(), "image/png")
+                }
+                data = {
+                    "model": settings.CPA_IMAGE_MODEL,
+                    "prompt": prompt,
+                    "n": "1",
+                    "size": "1024x1024"
+                }
+                resp = await client.post(
+                    f"{settings.CPA_API_BASE}/images/edits",
+                    headers=headers,
+                    data=data,
+                    files=files
+                )
+            else:
+                payload = {
+                    "model": settings.CPA_IMAGE_MODEL,
+                    "prompt": prompt,
+                    "n": 1,
+                    "size": "1024x1024"
+                }
+                resp = await client.post(
+                    f"{settings.CPA_API_BASE}/images/generations",
+                    headers={**headers, "Content-Type": "application/json"},
+                    json=payload
+                )
+
             if resp.status_code != 200:
                 raise HTTPException(status_code=502, detail=f"AI 出图服务异常 ({resp.status_code}): {resp.text}")
             resp_data = resp.json()
     except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="AI 生成图片超时 (超过120秒)，请稍后重试")
+        raise HTTPException(status_code=504, detail="AI 生成图片超时 (超过150秒)，请稍后重试")
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e

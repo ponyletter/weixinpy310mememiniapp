@@ -20,127 +20,264 @@
       <div class="status-badge" id="serviceStatus">● 引擎极速运行中</div>
     </header>
 
-    <!-- 工作流步骤指示 -->
-    <div class="workflow-steps">
-      <div class="step-item active" data-step="1">
-        <span class="step-num">1</span>
-        <span class="step-text">选动作与字幕提示词</span>
-      </div>
-      <div class="step-line"></div>
-      <div class="step-item" data-step="2">
-        <span class="step-num">2</span>
-        <span class="step-text">上传/选择精灵大图</span>
-      </div>
-      <div class="step-line"></div>
-      <div class="step-item" data-step="3">
-        <span class="step-num">3</span>
-        <span class="step-text">动图合成与微信导出</span>
-      </div>
+    <!-- 工作模式切换 Tabs -->
+    <div class="mode-tabs">
+      <button type="button" class="mode-tab active" id="tabModeAI">
+        <span class="tab-icon">✨</span>
+        <div class="tab-info">
+          <span class="tab-title">AI 智能生图模式 (全自动)</span>
+          <span class="tab-sub">上传参考人设 ➔ ChatGPT 原生出图 ➔ 自动切帧合成</span>
+        </div>
+      </button>
+      <button type="button" class="mode-tab" id="tabModeSlicer">
+        <span class="tab-icon">📁</span>
+        <div class="tab-info">
+          <span class="tab-title">已有 4×4 精灵图切片</span>
+          <span class="tab-sub">导入本地 16 宫格大图 ➔ 2秒极速去底合成</span>
+        </div>
+      </button>
     </div>
 
-    <!-- 模块一：提示词生成器与动作预设 -->
-    <section class="card section-prompt">
-      <div class="card-header">
-        <span class="badge">步骤 1</span>
-        <h2>挑选动作模板 ➔ 生成 ChatGPT 原生动态字体提示词</h2>
-      </div>
-      <p class="desc">选择连贯动作，输入想要包含的字幕，ChatGPT 将在画画时**直接把文字画成随动作律动跳跃的艺术字**：</p>
-
-      <!-- 动作卡片选择 -->
-      <div class="template-grid" id="templateGrid">
-        <!-- JS 动态渲染模板卡片 -->
-      </div>
-
-      <!-- 角色补充与文字 -->
-      <div class="input-row">
-        <div class="input-group">
-          <label for="charDesc">角色外貌描述 (可选)：</label>
-          <input type="text" id="charDesc" placeholder="例：戴红色蝴蝶结的小白猫 / 短发戴眼镜的女孩">
+    <!-- 模式 1：AI 智能生图面板 -->
+    <div id="panelAI" class="mode-panel active">
+      <!-- 模块 A：角色形象设定 (图片与文本描述) -->
+      <section class="card">
+        <div class="card-header">
+          <span class="badge badge-purple">设定 1</span>
+          <h2>角色形象设定 (人设参考图 + 补充描述)</h2>
         </div>
-        <div class="input-group">
-          <label for="captionInput">让 GPT 绘制的动态字幕：</label>
-          <input type="text" id="captionInput" placeholder="例：爱你哦 / 吃我一拳 / 收到 / 疯狂摸鱼中">
-        </div>
-      </div>
+        <p class="desc">你可以上传自己喜欢的角色图片（自拍/头像/二次元立绘），AI 将严格还原其五官、发型与服饰特征：</p>
 
-      <!-- 生成的提示词框 -->
-      <div class="prompt-box">
-        <div class="prompt-header">
-          <span>📋 发给 ChatGPT Plus 的专用提示词：</span>
-          <button class="btn btn-secondary btn-sm" id="btnCopyPrompt">一键复制提示词</button>
-        </div>
-        <textarea id="promptOutput" readonly rows="5"></textarea>
-        <p class="tip">✨ <strong>原生动感字幕</strong>：无需任何外置字体覆盖！ChatGPT 会直接在 16 帧画面中绘制与画风完全融合、随动作弹跳的艺术字。</p>
+        <div class="char-setup-grid">
+          <!-- 参考图片上传框 (可选) -->
+          <div class="ref-upload-box">
+            <label class="input-label">
+              <span>📷 参考角色图片</span>
+              <span class="badge-tag">可选 · 强烈推荐</span>
+            </label>
+            <div class="ref-drop-zone" id="refDropZone">
+              <input type="file" id="refImageInput" accept="image/*" class="file-hidden">
+              <div id="refPlaceholder" class="ref-placeholder">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <p>点击或拖拽上传人设图</p>
+                <span class="subtext">支持 JPG / PNG / 微信自拍头像</span>
+              </div>
+              <div id="refPreviewContainer" class="ref-preview-container" style="display: none;">
+                <img id="refPreviewImg" src="" alt="参考角色预览">
+                <button type="button" id="btnRemoveRef" class="btn-remove-ref" title="移除图片">✕</button>
+              </div>
+            </div>
+          </div>
 
-        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(255,255,255,0.15);">
-          <button class="btn btn-primary btn-lg" id="btnAIGenerate" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: 100%;">
-            ✨ Plus 账号原生驱动：一键 AI 出图并生成透明 GIF
+          <!-- 角色外貌补充描述 -->
+          <div class="char-desc-box">
+            <label class="input-label" for="charDesc">
+              <span>✍️ 角色补充描述</span>
+              <span class="badge-tag tag-gray">可选</span>
+            </label>
+            <textarea id="charDesc" class="form-textarea" rows="4" placeholder="例：一只呆萌的白色折耳猫，戴着鲜艳的红色围巾，圆圆的眼睛，Line 贴纸可爱风格... (若未上传图片，AI 将完全依据此描述生成)"></textarea>
+            <p class="field-hint">💡 提示：上传了参考图时，补充描述可强调重点（如“保留发型，但变成Q版三头身”）。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模块 B：动作挑选与动态字幕 -->
+      <section class="card">
+        <div class="card-header">
+          <span class="badge badge-purple">设定 2</span>
+          <h2>选择 16 帧动作连贯模版 & 动态字幕</h2>
+        </div>
+        <p class="desc">选择连贯动作，输入想要包含的字幕，ChatGPT 将在画画时<strong>直接把文字画成随动作律动跳跃的艺术字</strong>：</p>
+
+        <!-- 动作卡片选择 -->
+        <div class="template-grid" id="templateGrid">
+          <!-- 动态渲染 -->
+        </div>
+
+        <div class="caption-input-box">
+          <label class="input-label" for="captionInput">
+            <span>💬 画面原生动态汉字字幕</span>
+            <span class="badge-tag">可选 · 默认已填</span>
+          </label>
+          <div class="caption-input-wrap">
+            <input type="text" id="captionInput" class="form-input" placeholder="留空则生成纯动作表情，输入文字则由 AI 原生绘制跳跃动态字">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnClearCaption">清空字幕</button>
+          </div>
+          <p class="field-hint">✨ <strong>原生跳跃字体</strong>：字形会随角色的挥手、跳跃同频震颤，浑然一体！留空则生成纯动作无字表情。</p>
+        </div>
+      </section>
+
+      <!-- 模块 C：高级参数与提示词预览 -->
+      <section class="card">
+        <div class="card-header-toggle" id="toggleAdvParams">
+          <div class="card-header-title">
+            <span class="badge badge-purple">设定 3</span>
+            <h2>参数控制与提示词预览</h2>
+          </div>
+          <span class="toggle-arrow" id="advArrow">▼</span>
+        </div>
+
+        <div id="advParamsContent" class="adv-content">
+          <div class="params-panel">
+            <div class="param-item">
+              <label for="padSelectAI">画面紧凑留白：</label>
+              <select id="padSelectAI" class="form-select">
+                <option value="0.02" selected>超紧凑饱满 (留白约 2% - 微信大图推荐⭐)</option>
+                <option value="0.06">适中呼吸 (留白约 6%)</option>
+                <option value="0.12">较多留白 (留白约 12%)</option>
+              </select>
+            </div>
+            <div class="param-item">
+              <label for="fpsRangeAI">播放速率 (<span id="fpsValAI">8</span> 帧/秒):</label>
+              <input type="range" id="fpsRangeAI" min="4" max="16" value="8" step="1">
+            </div>
+            <div class="param-item toggle-item">
+              <label for="chkTransparentAI">智能去外围白底 (Alpha 透明):</label>
+              <input type="checkbox" id="chkTransparentAI" checked>
+            </div>
+          </div>
+
+          <div class="prompt-box">
+            <div class="prompt-header">
+              <span>📋 组装好的 ChatGPT Plus 提示词预览：</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnCopyPrompt">一键复制提示词</button>
+            </div>
+            <textarea id="promptOutput" readonly rows="4"></textarea>
+          </div>
+        </div>
+
+        <!-- 启动大按钮 -->
+        <div class="action-bar-hero">
+          <button type="button" class="btn btn-hero" id="btnAIGenerate">
+            <span class="btn-hero-icon">🚀</span>
+            <div class="btn-hero-text">
+              <strong>启动 AI 生图并合成表情包</strong>
+              <small>ChatGPT Plus (Images 2.5) 原生驱动 · 自动切片去底</small>
+            </div>
           </button>
-          <div id="aiLoadingStatus" style="display: none; margin-top: 10px; color: #34d399; text-align: center; font-size: 14px;">
-            ⏳ 正在通过海外网关调用 ChatGPT Plus 绘制 16 宫格雪碧图 (预计 25~35 秒)，请稍候...
+        </div>
+      </section>
+    </div>
+
+    <!-- 模式 2：已有 4×4 精灵图切片面板 -->
+    <div id="panelSlicer" class="mode-panel" style="display: none;">
+      <section class="card">
+        <div class="card-header">
+          <span class="badge badge-blue">工具模式</span>
+          <h2>上传本地 4×4 精灵大图 (1024×1024)</h2>
+        </div>
+        <p class="desc">如果你已经在 ChatGPT 网页端生成了 16 宫格图片，直接拖拽到此处快速切片与合成：</p>
+
+        <div class="upload-options">
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-content">
+              <svg class="icon-upload" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <p>点击选择或拖放 <strong>4×4 精灵大图 (1024×1024)</strong> 到此处</p>
+              <span class="file-name" id="fileNameDisplay">未选择文件</span>
+            </div>
+            <input type="file" id="fileInput" accept="image/*" class="file-hidden">
+          </div>
+
+          <div class="quick-test-bar">
+            <span>不想开 ChatGPT？直接体验效果：</span>
+            <button type="button" class="btn btn-outline" id="btnUseSample">🚀 载入【飞吻16帧】测试样本</button>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- 模块二：上传与后处理设置 -->
-    <section class="card section-upload">
+        <div class="params-panel">
+          <div class="param-item">
+            <label for="padSelectSlicer">画面紧凑留白：</label>
+            <select id="padSelectSlicer" class="form-select">
+              <option value="0.02" selected>超紧凑饱满 (留白约 2% - 微信大图推荐⭐)</option>
+              <option value="0.06">适中呼吸 (留白约 6%)</option>
+              <option value="0.12">较多留白 (留白约 12%)</option>
+            </select>
+          </div>
+          <div class="param-item">
+            <label for="fpsRangeSlicer">播放速率 (<span id="fpsValSlicer">8</span> 帧/秒):</label>
+            <input type="range" id="fpsRangeSlicer" min="4" max="16" value="8" step="1">
+          </div>
+          <div class="param-item toggle-item">
+            <label for="chkTransparentSlicer">智能去外围白底 (Alpha 透明):</label>
+            <input type="checkbox" id="chkTransparentSlicer" checked>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <button type="button" class="btn btn-primary btn-lg" id="btnProcess">⚡ 开始 4×4 切帧与极速合成 GIF</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- 等待中交互容器：tqdm 进度条 + 贪吃蛇小游戏 (Snake Game) -->
+    <section class="card waiting-card" id="waitingCard" style="display: none;">
       <div class="card-header">
-        <span class="badge">步骤 2</span>
-        <h2>上传 4×4 精灵大图 (或使用内置高保真测试样本)</h2>
+        <span class="badge badge-green">AI 制作进行中</span>
+        <h2>正在通过海外 Plus 账号为您精心制作</h2>
       </div>
 
-      <div class="upload-options">
-        <div class="drop-zone" id="dropZone">
-          <div class="drop-content">
-            <svg class="icon-upload" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <p>点击选择或将 <strong>4×4 精灵大图 (1024×1024)</strong> 拖放到此处</p>
-            <span class="file-name" id="fileNameDisplay">未选择文件</span>
+      <!-- tqdm 风格进度条 -->
+      <div class="tqdm-container">
+        <div class="tqdm-header">
+          <span class="tqdm-stage" id="tqdmStageText">阶段 2/4: ChatGPT Plus (Images 2.5) 正在逐帧绘制 16 宫格雪碧图...</span>
+          <span class="tqdm-percent" id="tqdmPercentText">15%</span>
+        </div>
+        <div class="tqdm-bar-track">
+          <div class="tqdm-bar-fill" id="tqdmBarFill" style="width: 15%;"></div>
+        </div>
+        <div class="tqdm-meta">
+          <span id="tqdmTime">耗时: 5s / 预计 32s</span>
+          <span class="tqdm-rate">8.2 it/s</span>
+          <span class="tqdm-tip">✨ 耗时大约 25~35 秒，下方小游戏让等待不再无聊！</span>
+        </div>
+      </div>
+
+      <!-- 贪吃蛇小游戏容器 -->
+      <div class="snake-game-container">
+        <div class="snake-header">
+          <div class="snake-title">
+            <span class="snake-icon">🐍</span>
+            <strong>贪吃蛇小挑战 (生图不无聊)</strong>
           </div>
-          <input type="file" id="fileInput" accept="image/*" class="file-hidden">
+          <div class="snake-scores">
+            <span>当前得分: <strong id="snakeCurrentScore">0</strong></span>
+            <span>最高记录: <strong id="snakeHighScore">0</strong></span>
+          </div>
         </div>
 
-        <!-- 快速测试按钮 -->
-        <div class="quick-test-bar">
-          <span>不想开 ChatGPT？直接体验效果：</span>
-          <button class="btn btn-outline" id="btnUseSample">🚀 载入【飞吻16帧】样本测试</button>
+        <div class="canvas-wrapper">
+          <canvas id="snakeCanvas" width="320" height="220"></canvas>
+          <div id="snakeOverlay" class="snake-overlay">
+            <button type="button" id="btnStartSnake" class="btn btn-primary btn-sm">▶ 点击开始贪吃蛇游戏</button>
+            <p class="snake-hint">支持键盘 ↑ ↓ ← → / WASD，手机端可用下方十字键</p>
+          </div>
         </div>
-      </div>
 
-      <!-- 参数调节 -->
-      <div class="params-panel">
-        <div class="param-item">
-          <label for="padSelect">画面紧凑留白：</label>
-          <select id="padSelect" class="form-select" style="width: auto; padding: 6px 10px; font-size: 13px;">
-            <option value="0.02" selected>超紧凑饱满 (留白约 2% - 微信大图推荐⭐)</option>
-            <option value="0.06">适中呼吸 (留白约 6%)</option>
-            <option value="0.12">较多留白 (留白约 12%)</option>
-          </select>
+        <!-- 手机触屏虚拟十字键 -->
+        <div class="virtual-dpad">
+          <button type="button" class="dpad-btn dpad-up" data-dir="up">▲</button>
+          <div class="dpad-middle">
+            <button type="button" class="dpad-btn dpad-left" data-dir="left">◄</button>
+            <div class="dpad-center">●</div>
+            <button type="button" class="dpad-btn dpad-right" data-dir="right">►</button>
+          </div>
+          <button type="button" class="dpad-btn dpad-down" data-dir="down">▼</button>
         </div>
-        <div class="param-item">
-          <label for="fpsRange">播放速率 (<span id="fpsVal">8</span> 帧/秒):</label>
-          <input type="range" id="fpsRange" min="4" max="16" value="8" step="1">
-        </div>
-        <div class="param-item toggle-item">
-          <label for="chkTransparent">智能去外围白底 (Alpha 透明):</label>
-          <input type="checkbox" id="chkTransparent" checked>
-        </div>
-      </div>
-
-
-      <div class="action-bar">
-        <button class="btn btn-primary btn-lg" id="btnProcess">⚡ 开始 4×4 切帧与极速合成 GIF</button>
       </div>
     </section>
 
-    <!-- 模块三：结果预览与导出 -->
+    <!-- 结果预览与导出区 -->
     <section class="card section-result" id="resultCard" style="display: none;">
       <div class="card-header">
-        <span class="badge">步骤 3</span>
+        <span class="badge badge-green">制作完成</span>
         <h2>动图生成完成 (GIF 实时预览)</h2>
       </div>
 
@@ -161,7 +298,7 @@
               <li><strong>总帧数：</strong><span id="statFrames">16 帧</span></li>
               <li><strong>文件体积：</strong><span id="statSize" class="text-success">-- KB</span> (< 1000KB 微信免压缩)</li>
               <li><strong>单帧间隔：</strong><span id="statDuration">125 ms</span></li>
-              <li><strong>背景透明：</strong><span id="statAlpha">真透明通道 (无残影 Disposal: 2)</span></li>
+              <li><strong>背景透明：</strong><span id="statAlpha">真透明通道 (Disposal: 2 无残影)</span></li>
             </ul>
           </div>
 

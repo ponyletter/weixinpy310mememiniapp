@@ -567,3 +567,504 @@ textarea {
   color: var(--text-muted);
   margin-top: 40px;
 }
+
+/* ========================================================
+   新增：双模式切换 Tabs
+======================================================== */
+.mode-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.mode-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: left;
+}
+
+.mode-tab:hover {
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.mode-tab.active {
+  border-color: #6366f1;
+  background: #eef2ff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+.tab-icon {
+  font-size: 24px;
+}
+
+.tab-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.mode-tab.active .tab-title {
+  color: #4338ca;
+}
+
+.tab-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* ========================================================
+   设定 1：角色设定网格 (参考图 + 文本描述)
+======================================================== */
+.char-setup-grid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .char-setup-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.input-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.badge-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #fdf2f8;
+  color: #db2777;
+  font-weight: 500;
+}
+
+.badge-tag.tag-gray {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.ref-drop-zone {
+  position: relative;
+  height: 140px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.ref-drop-zone:hover {
+  border-color: #818cf8;
+  background: #f5f3ff;
+}
+
+.ref-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: #64748b;
+  padding: 10px;
+}
+
+.ref-placeholder p {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 6px;
+  color: #475569;
+}
+
+.ref-placeholder .subtext {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.ref-preview-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.ref-preview-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.btn-remove-ref {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.7);
+  color: #ffffff;
+  border: none;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-remove-ref:hover {
+  background: #ef4444;
+}
+
+.char-desc-box .form-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+.char-desc-box .form-textarea:focus {
+  border-color: #6366f1;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+/* 动态字幕输入包装 */
+.caption-input-box {
+  margin-top: 14px;
+}
+
+.caption-input-wrap {
+  display: flex;
+  gap: 8px;
+}
+
+.caption-input-wrap .form-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.caption-input-wrap .form-input:focus {
+  border-color: #6366f1;
+}
+
+/* 折叠面板 */
+.card-header-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-arrow {
+  font-size: 12px;
+  color: #64748b;
+  transition: transform 0.2s;
+}
+
+.toggle-arrow.open {
+  transform: rotate(180deg);
+}
+
+.adv-content {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* 超大 Hero 按钮 */
+.action-bar-hero {
+  margin-top: 20px;
+}
+
+.btn-hero {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4);
+  transition: all 0.25s ease;
+}
+
+.btn-hero:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 24px -5px rgba(16, 185, 129, 0.5);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.btn-hero-icon {
+  font-size: 24px;
+}
+
+.btn-hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.btn-hero-text strong {
+  font-size: 17px;
+  letter-spacing: 0.5px;
+}
+
+.btn-hero-text small {
+  font-size: 11px;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+
+/* ========================================================
+   tqdm 风格全流程进度条
+======================================================== */
+.waiting-card {
+  border: 2px solid #34d399;
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+}
+
+.tqdm-container {
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: #f8fafc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin-top: 14px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.tqdm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.tqdm-stage {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.tqdm-percent {
+  color: #4ade80;
+  font-weight: bold;
+}
+
+.tqdm-bar-track {
+  width: 100%;
+  height: 12px;
+  background: #1e293b;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.tqdm-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+  border-radius: 6px;
+  transition: width 0.4s ease;
+  position: relative;
+}
+
+.tqdm-bar-fill::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+  animation: barShine 1.5s infinite;
+}
+
+@keyframes barShine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.tqdm-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 8px;
+}
+
+.tqdm-tip {
+  color: #fbbf24;
+}
+
+/* ========================================================
+   贪吃蛇小游戏 (Retro Snake Game)
+======================================================== */
+.snake-game-container {
+  margin-top: 20px;
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 16px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.snake-header {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.snake-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.snake-scores {
+  color: #38bdf8;
+  font-size: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.snake-scores strong {
+  color: #4ade80;
+}
+
+.canvas-wrapper {
+  position: relative;
+  width: 320px;
+  height: 220px;
+  background: #090d16;
+  border-radius: 8px;
+  border: 2px solid #334155;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+  overflow: hidden;
+}
+
+#snakeCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.snake-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(15, 23, 42, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 5;
+}
+
+.snake-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* 手机触屏虚拟十字方向键 */
+.virtual-dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 12px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.dpad-middle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.dpad-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #334155;
+  color: #ffffff;
+  border: 1px solid #475569;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.1s;
+}
+
+.dpad-btn:active {
+  background: #6366f1;
+  transform: scale(0.92);
+}
+
+.dpad-center {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 10px;
+}
+
