@@ -4,6 +4,7 @@
     "pages/remix/remix",
     "pages/collection/collection",
     "pages/collection/detail",
+    "pages/editor/editor",
     "pages/order/order",
     "pages/user/user"
   ],

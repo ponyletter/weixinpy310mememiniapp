@@ -43,6 +43,12 @@ Page({
   onShow() {
     this.updateQuotaInfo();
     this.checkResumeActiveTask();
+    if (app.globalData.tempEditedImage) {
+      this.setData({
+        refImagePath: app.globalData.tempEditedImage
+      });
+      app.globalData.tempEditedImage = null;
+    }
   },
 
   checkResumeActiveTask() {
@@ -167,6 +173,13 @@ Page({
     } else {
       wx.showToast({ title: '当前微信版本不支持内置裁剪', icon: 'none' });
     }
+  },
+
+  openImageEditor() {
+    const src = this.data.refImagePath ? encodeURIComponent(this.data.refImagePath) : '';
+    wx.navigateTo({
+      url: `/pages/editor/editor?src=${src}`
+    });
   },
 
   removeImage() {

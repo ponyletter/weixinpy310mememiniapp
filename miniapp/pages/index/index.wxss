@@ -207,12 +207,28 @@
   padding: 8rpx 0;
 }
 
+.action-edit {
+  color: #059669;
+}
+
 .action-crop {
   color: #4f46e5;
 }
 
 .action-remove {
   color: #ef4444;
+}
+
+.quick-editor-pill {
+  margin-top: 20rpx;
+  background: #ffffff;
+  border: 1rpx solid #c7d2fe;
+  color: #4f46e5;
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 8rpx 22rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(79, 70, 229, 0.08);
 }
 
 /* 草图画布 */

@@ -50,3 +50,33 @@ def order_center_page():
         "app_id": settings.WX_APPID,
         "orders": []
     }
+
+from pydantic import BaseModel
+from typing import Optional
+from app.core.wechat_service import WeChatService
+
+class SendSubscribeMsgRequest(BaseModel):
+    openid: str
+    template_id: Optional[str] = None
+    order_no: Optional[str] = None
+    service_type: Optional[str] = "动图表情包制作"
+    finish_time: Optional[str] = None
+    service_item: Optional[str] = "定制GIF表情"
+    page: Optional[str] = "pages/index/index"
+    miniprogram_state: Optional[str] = None
+
+@router.post("/api/send-subscribe-msg")
+async def send_subscribe_msg_endpoint(req: SendSubscribeMsgRequest):
+    """主动发送微信小程序订阅消息 (服务完成通知)"""
+    res = await WeChatService.send_subscribe_message(
+        openid=req.openid,
+        template_id=req.template_id,
+        order_no=req.order_no,
+        service_type=req.service_type or "动图表情包制作",
+        finish_time=req.finish_time,
+        service_item=req.service_item or "定制GIF表情",
+        page=req.page or "pages/index/index",
+        miniprogram_state=req.miniprogram_state
+    )
+    return res
+

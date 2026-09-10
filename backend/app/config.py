@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     # 微信消息推送配置
     WX_MSG_TOKEN: str = "memeTokenSecret2026"
     WX_MSG_AES_KEY: str = "PobB5dp4ypgFOSz0IYlLSLWwgoJjTt3K5U3MBPFbtZx"
+    WX_SUBSCRIBE_TEMPLATE_ID: str = "jsfKx2x1YrKdX600S01pzCcxWe_UjMi_Tx5OtWWfvcs"
 
     # CLIProxyAPI 反代配置 (ChatGPT Plus 出海中转)
     CPA_API_BASE: str = "http://127.0.0.1:8317/v1"

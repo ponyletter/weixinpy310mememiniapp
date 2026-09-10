@@ -1,0 +1,259 @@
+<view class="editor-container">
+  <!-- 顶部操作导航条 -->
+  <view class="editor-nav-bar">
+    <view class="nav-left" bindtap="goBack">
+      <text class="nav-icon">‹</text>
+      <text class="nav-text">取消</text>
+    </view>
+    <view class="nav-center">
+      <text class="editor-title">贴纸与修图工坊</text>
+    </view>
+    <view class="nav-right">
+      <view class="action-btn-sm" bindtap="undo">↩ 撤销</view>
+      <view class="action-btn-sm btn-clear" bindtap="clearAll">清空</view>
+      <button class="btn-save-apply" bindtap="finishAndApply">完成应用</button>
+    </view>
+  </view>
+
+  <!-- 中间画布工作区 (1:1 沉浸式画布) -->
+  <view class="canvas-workspace">
+    <view class="canvas-card" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;">
+      <canvas
+        type="2d"
+        id="editorCanvas"
+        class="editor-canvas"
+        style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"
+        bindtouchstart="onTouchStart"
+        bindtouchmove="onTouchMove"
+        bindtouchend="onTouchEnd"
+      ></canvas>
+    </view>
+    <view class="canvas-tip">
+      <text wx:if="{{!isBrushActive}}">💡 点击贴纸可拖动、右下角缩放、右上角红点删除</text>
+      <text wx:else style="color: #ef4444; font-weight: 600;">🖌️ 涂鸦模式已开启：在画布上任意手绘涂鸦</text>
+    </view>
+  </view>
+
+  <!-- 选中元素微调浮条 (缩放 & 旋转) -->
+  <view wx:if="{{selectedElementId && !isBrushActive}}" class="transform-bar">
+    <view class="transform-item">
+      <text class="transform-label">大小:</text>
+      <slider
+        class="transform-slider"
+        min="0.4"
+        max="3.0"
+        step="0.1"
+        value="{{selectedScale}}"
+        bindchanging="onScaleChange"
+        bindchange="onScaleChange"
+        block-size="16"
+        activeColor="#4f46e5"
+      />
+    </view>
+    <view class="transform-item">
+      <text class="transform-label">旋转:</text>
+      <slider
+        class="transform-slider"
+        min="-180"
+        max="180"
+        step="5"
+        value="{{selectedRotate}}"
+        bindchanging="onRotateChange"
+        bindchange="onRotateChange"
+        block-size="16"
+        activeColor="#4f46e5"
+      />
+    </view>
+    <button class="btn-del-el" bindtap="deleteSelectedElement">✕ 删除</button>
+  </view>
+
+  <!-- 底部功能区面板 -->
+  <view class="editor-bottom-panel">
+    <!-- 功能分类 Tab 栏 -->
+    <view class="feature-tabs">
+      <view class="f-tab {{activeTab === 'sticker' ? 'active' : ''}}" bindtap="switchTab" data-tab="sticker">
+        😀 贴纸
+      </view>
+      <view class="f-tab {{activeTab === 'text' ? 'active' : ''}}" bindtap="switchTab" data-tab="text">
+        🔤 文字
+      </view>
+      <view class="f-tab {{activeTab === 'shape' ? 'active' : ''}}" bindtap="switchTab" data-tab="shape">
+        💬 形状/气泡
+      </view>
+      <view class="f-tab {{activeTab === 'brush' ? 'active' : ''}}" bindtap="switchTab" data-tab="brush">
+        🖌️ 涂鸦
+      </view>
+    </view>
+
+    <!-- Tab 内容 1: 贴纸面板 -->
+    <view wx:if="{{activeTab === 'sticker'}}" class="panel-content">
+      <view class="sub-category-bar">
+        <view class="sub-tab {{stickerCategory === 'emoji' ? 'active' : ''}}" bindtap="switchStickerCategory" data-cat="emoji">
+          常用表情
+        </view>
+        <view class="sub-tab {{stickerCategory === 'badge' ? 'active' : ''}}" bindtap="switchStickerCategory" data-cat="badge">
+          爆笑梗图徽章
+        </view>
+      </view>
+
+      <!-- Emoji 表情贴纸列表 -->
+      <scroll-view wx:if="{{stickerCategory === 'emoji'}}" scroll-y class="sticker-scroll">
+        <view class="emoji-grid">
+          <view
+            wx:for="{{emojiList}}"
+            wx:key="*this"
+            class="emoji-item"
+            bindtap="addSticker"
+            data-emoji="{{item}}"
+          >
+            <text class="emoji-char">{{item}}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 梗图徽章贴纸列表 -->
+      <scroll-view wx:if="{{stickerCategory === 'badge'}}" scroll-y class="sticker-scroll">
+        <view class="badge-grid">
+          <view
+            wx:for="{{badgeList}}"
+            wx:key="*this"
+            class="badge-item"
+            bindtap="addBadge"
+            data-text="{{item}}"
+          >
+            <text class="badge-text">{{item}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- Tab 内容 2: 文字面板 -->
+    <view wx:if="{{activeTab === 'text'}}" class="panel-content">
+      <view class="text-panel-header">
+        <button class="btn-primary btn-add-text" bindtap="openTextModal">＋ 输入自定义表情台词</button>
+      </view>
+      <view class="quick-text-title">快速插入经典金句：</view>
+      <scroll-view scroll-x class="quick-text-scroll">
+        <view class="quick-text-list">
+          <view class="quick-text-chip" bindtap="addBadge" data-text="破防了家人">破防了家人</view>
+          <view class="quick-text-chip" bindtap="addBadge" data-text="下班倒计时">下班倒计时</view>
+          <view class="quick-text-chip" bindtap="addBadge" data-text="这很难评">这很难评</view>
+          <view class="quick-text-chip" bindtap="addBadge" data-text="听我狡辩">听我狡辩</view>
+          <view class="quick-text-chip" bindtap="addBadge" data-text="人在工位心在马尔代夫">人在工位心在马尔代夫</view>
+          <view class="quick-text-chip" bindtap="addBadge" data-text="尊嘟假嘟">尊嘟假嘟</view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- Tab 内容 3: 形状与气泡面板 -->
+    <view wx:if="{{activeTab === 'shape'}}" class="panel-content">
+      <view class="shape-grid">
+        <view class="shape-card" bindtap="addShape" data-shape="bubble">
+          <text class="shape-icon">💬</text>
+          <text class="shape-name">漫画对话框</text>
+        </view>
+        <view class="shape-card" bindtap="addShape" data-shape="arrow">
+          <text class="shape-icon">↗️</text>
+          <text class="shape-name">醒目红箭头</text>
+        </view>
+        <view class="shape-card" bindtap="addShape" data-shape="rect">
+          <text class="shape-icon">🔲</text>
+          <text class="shape-name">重点线框</text>
+        </view>
+        <view class="shape-card" bindtap="addShape" data-shape="circle">
+          <text class="shape-icon">⭕</text>
+          <text class="shape-name">重点圆环</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Tab 内容 4: 涂鸦画笔面板 -->
+    <view wx:if="{{activeTab === 'brush'}}" class="panel-content">
+      <view class="brush-toggle-row">
+        <button class="btn-brush-state {{isBrushActive ? 'active' : ''}}" bindtap="toggleBrushMode">
+          {{isBrushActive ? '🖌️ 涂鸦中 (点击退出)' : '✏️ 点击开启手绘涂鸦'}}
+        </button>
+        <button class="btn-xs" bindtap="clearBrush">清空涂鸦</button>
+      </view>
+      <view class="brush-settings">
+        <!-- 颜色选择器 -->
+        <view class="brush-colors">
+          <view
+            wx:for="{{availableColors}}"
+            wx:key="*this"
+            class="color-dot {{brushColor === item ? 'active' : ''}}"
+            style="background: {{item}};"
+            bindtap="selectBrushColor"
+            data-color="{{item}}"
+          ></view>
+        </view>
+        <!-- 画笔粗细 -->
+        <view class="brush-widths">
+          <view class="width-item {{brushWidth === 2 ? 'active' : ''}}" bindtap="selectBrushWidth" data-w="2">细</view>
+          <view class="width-item {{brushWidth === 5 ? 'active' : ''}}" bindtap="selectBrushWidth" data-w="5">中</view>
+          <view class="width-item {{brushWidth === 10 ? 'active' : ''}}" bindtap="selectBrushWidth" data-w="10">粗</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 文字添加弹窗 Modal -->
+  <view wx:if="{{showTextModal}}" class="modal-mask" bindtap="closeTextModal">
+    <view class="modal-card text-modal-card" catchtap="true">
+      <view class="modal-header">
+        <text class="modal-title">添加表情包字幕</text>
+        <text class="btn-close-icon" bindtap="closeTextModal">✕</text>
+      </view>
+
+      <view class="text-input-wrap">
+        <input
+          class="form-input text-modal-input"
+          placeholder="如: 笑死、安排、老板听我解释"
+          value="{{textInputVal}}"
+          bindinput="onTextInput"
+          maxlength="20"
+          focus="{{showTextModal}}"
+        />
+      </view>
+
+      <!-- 样式选择：字号与描边 -->
+      <view class="text-option-row">
+        <text class="opt-label">字号:</text>
+        <view class="size-group">
+          <view class="size-chip {{textSize === 22 ? 'active' : ''}}" bindtap="setTextSize" data-size="22">小</view>
+          <view class="size-chip {{textSize === 28 ? 'active' : ''}}" bindtap="setTextSize" data-size="28">中</view>
+          <view class="size-chip {{textSize === 36 ? 'active' : ''}}" bindtap="setTextSize" data-size="36">大</view>
+          <view class="size-chip {{textSize === 46 ? 'active' : ''}}" bindtap="setTextSize" data-size="46">特大</view>
+        </view>
+      </view>
+
+      <view class="text-option-row">
+        <text class="opt-label">效果:</text>
+        <view class="size-chip {{textHasOutline ? 'active' : ''}}" bindtap="toggleTextOutline">
+          {{textHasOutline ? '✅ 经典黑描边 (清晰)' : '无描边'}}
+        </view>
+      </view>
+
+      <!-- 字体颜色选择器 -->
+      <view class="text-option-row">
+        <text class="opt-label">颜色:</text>
+        <view class="brush-colors">
+          <view
+            wx:for="{{availableColors}}"
+            wx:key="*this"
+            class="color-dot {{textColor === item ? 'active' : ''}}"
+            style="background: {{item}};"
+            bindtap="selectTextColor"
+            data-color="{{item}}"
+          ></view>
+        </view>
+      </view>
+
+      <!-- 按钮操作区 -->
+      <view class="modal-actions" style="margin-top: 24rpx;">
+        <button class="btn-secondary" style="flex: 1;" bindtap="closeTextModal">取消</button>
+        <button class="btn-primary" style="flex: 1;" bindtap="confirmAddText">添加到画布</button>
+      </view>
+    </view>
+  </view>
+</view>

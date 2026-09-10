@@ -7,8 +7,8 @@ App({
     quota: 0,
     isVip: false,
     inviterCode: '',
-    // 微信小程序订阅消息模板ID (开通后填入此处即可触发微信服务通知)
-    subscribeTemplateId: ''
+    // 微信小程序订阅消息模板ID (服务完成通知)
+    subscribeTemplateId: 'jsfKx2x1YrKdX600S01pzCcxWe_UjMi_Tx5OtWWfvcs'
   },
 
   getGifConfig() {

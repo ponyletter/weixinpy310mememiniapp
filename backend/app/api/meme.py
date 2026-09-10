@@ -9,6 +9,7 @@ from PIL import Image
 from app.config import settings
 from app.core.sprite_processor import SpriteProcessor
 from app.core.prompt_templates import PROMPT_TEMPLATES
+from app.core.wechat_service import WeChatService
 from app.database import check_and_deduct_quota, refund_quota, get_db, delete_meme_task
 from pydantic import BaseModel
 
@@ -434,6 +435,21 @@ async def run_generate_pipeline(
                         VALUES (?, ?, ?, ?, ?, ?, 'completed', 100, ?, ?)
                     ''', (task_id, openid, prompt, action_type, custom_caption, fps, f"/outputs/{task_id}/meme_result.gif", f"/outputs/{task_id}/input_sprite.png"))
                     conn.commit()
+            except Exception:
+                pass
+
+            # 触发微信服务完成通知（一次性订阅消息）
+            try:
+                caption_text = (custom_caption or "").strip() or "定制GIF动图"
+                asyncio.create_task(
+                    WeChatService.send_subscribe_message(
+                        openid=openid,
+                        order_no=task_id,
+                        service_type="动图表情包制作",
+                        service_item=caption_text[:18],
+                        page="pages/index/index"
+                    )
+                )
             except Exception:
                 pass
 

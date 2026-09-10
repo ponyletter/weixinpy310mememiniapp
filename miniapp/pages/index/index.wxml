@@ -48,10 +48,14 @@
         <text class="upload-icon-lg">＋</text>
         <text class="upload-hint">点击上传人物、宠物或真人头像</text>
         <text class="upload-sub-hint">支持相册照片或现场拍摄</text>
+        <view class="quick-editor-pill" catchtap="openImageEditor">
+          <text>🎨 贴纸与涂鸦工坊</text>
+        </view>
       </view>
       <view wx:else class="image-preview-wrap">
         <image class="ref-preview" src="{{refImagePath}}" mode="aspectFit"></image>
         <view class="preview-actions-row">
+          <text class="preview-action-btn action-edit" bindtap="openImageEditor">🎨 贴纸/修图</text>
           <text class="preview-action-btn action-crop" bindtap="cropCurrentImage">✂️ 裁剪</text>
           <text class="preview-action-btn action-remove" bindtap="removeImage">✕ 重新上传</text>
         </view>
