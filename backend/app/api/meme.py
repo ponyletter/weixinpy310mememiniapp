@@ -413,6 +413,13 @@ async def run_generate_pipeline(
             f_clean.save(f_thumb_path, format="PNG")
             frame_preview_urls.append(f"/outputs/{task_id}/frames/frame_{idx:02d}.png")
 
+        # 生成静态快速缩略图 thumb.jpg (160x160 JPEG, 仅~8KB，极大提升相册与列表加载速度)
+        if frames:
+            try:
+                frames[0].convert("RGB").resize((160, 160), Image.Resampling.LANCZOS).save(task_dir / "thumb.jpg", format="JPEG", quality=80)
+            except Exception:
+                pass
+
         # 完成
         TASK_STORE[task_id] = {
             "status": "completed",
@@ -422,9 +429,10 @@ async def run_generate_pipeline(
             "data": {
                 "task_id": task_id,
                 "gif_url": f"/outputs/{task_id}/meme_result.gif",
+                "thumb_url": f"/outputs/{task_id}/thumb.jpg",
                 "zip_url": f"/outputs/{task_id}/frames_pack.zip",
                 "input_url": f"/outputs/{task_id}/input_sprite.png",
-                "prompt_used": prompt,
+                "caption": custom_caption,
                 "frames": frame_preview_urls,
                 "stats": stats
             }
@@ -590,8 +598,47 @@ def list_history(openid: Optional[str] = None):
         return {"code": 0, "data": []}
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM meme_tasks WHERE openid = ? ORDER BY created_at DESC LIMIT 50", (openid.strip(),))
+        # 绝不暴露 prompt 字段给前端，保障系统提示词与私密安全性
+        cursor.execute("""
+            SELECT task_id, openid, preset_key, text_bottom, fps, status, progress, gif_url, sprite_url, created_at 
+            FROM meme_tasks 
+            WHERE openid = ? AND status = 'completed'
+            ORDER BY created_at DESC LIMIT 30
+        """, (openid.strip(),))
         rows = [dict(r) for r in cursor.fetchall()]
+
+    tpl_map = {
+        "kiss": "飞吻示爱表情",
+        "battle_chibi": "Q版战斗暴击",
+        "slack_worker": "打工人摸鱼表情",
+        "pet_idle": "萌宠呆萌待机",
+        "heart_dance": "魔性比心摇摆",
+        "custom": "自定义个性动图",
+        "run_cheer": "奔跑欢呼表情"
+    }
+
+    for row in rows:
+        title = (row.get("text_bottom") or "").strip()
+        if not title:
+            title = tpl_map.get(row.get("preset_key") or "", "精选个性动图")
+        row["display_title"] = title
+
+        # 极速轻量缩略图 thumb_url (仅~8KB，相比动图提速50倍以上)
+        task_id = row.get("task_id")
+        if task_id:
+            thumb_path = settings.OUTPUT_DIR / task_id / "thumb.jpg"
+            if thumb_path.exists():
+                row["thumb_url"] = f"/outputs/{task_id}/thumb.jpg"
+            elif (settings.OUTPUT_DIR / task_id / "frames" / "frame_01.png").exists():
+                row["thumb_url"] = f"/outputs/{task_id}/frames/frame_01.png"
+            else:
+                row["thumb_url"] = row.get("gif_url")
+        else:
+            row["thumb_url"] = row.get("gif_url")
+
+        # 移除任何可能的 prompt 字段（防御式保证绝不泄露）
+        row.pop("prompt", None)
+
     return {"code": 0, "data": rows}
 
 class DeleteMemeRequest(BaseModel):

@@ -55,7 +55,9 @@ Page({
 
   onShow() {
     this.setData({ config: app.getGifConfig() });
-    this.fetchData();
+    this.fetchData(() => {
+      this.fetchHistorySilently();
+    });
   },
 
   onPullDownRefresh() {
@@ -221,7 +223,11 @@ Page({
 
   // ---------------- 历史创作记录 / 我的相册 ----------------
   openHistoryModal() {
-    this.setData({ showHistoryModal: true, historyLoading: true });
+    const hasData = this.data.historyList && this.data.historyList.length > 0;
+    this.setData({
+      showHistoryModal: true,
+      historyLoading: !hasData
+    });
     this.fetchHistory();
   },
 
@@ -229,8 +235,18 @@ Page({
     this.setData({ showHistoryModal: false });
   },
 
+  fetchHistorySilently() {
+    const openid = this.data.user.openid || app.globalData.openid || '';
+    if (!openid) return;
+    this.fetchHistory();
+  },
+
   fetchHistory() {
     const openid = this.data.user.openid || app.globalData.openid || '';
+    if (!openid) {
+      this.setData({ historyLoading: false });
+      return;
+    }
     wx.request({
       url: `${app.globalData.baseURL}/api/meme/history`,
       method: 'GET',
@@ -245,9 +261,15 @@ Page({
               if (fullUrl && !fullUrl.startsWith('http')) {
                 fullUrl = `${app.globalData.baseURL}${fullUrl}`;
               }
+              let thumbUrl = item.thumb_url || item.gif_url;
+              if (thumbUrl && !thumbUrl.startsWith('http')) {
+                thumbUrl = `${app.globalData.baseURL}${thumbUrl}`;
+              }
               return {
                 ...item,
                 full_gif_url: fullUrl,
+                thumb_url: thumbUrl,
+                display_title: item.display_title || item.text_bottom || '精选动图',
                 created_at: item.created_at ? item.created_at.slice(0, 16) : '近期'
               };
             });
@@ -380,7 +402,7 @@ Page({
       data: {
         collection_id: colId,
         gif_url: item.full_gif_url,
-        title: item.text_bottom || item.prompt || '表情动图'
+        title: item.display_title || item.text_bottom || '精选动图'
       },
       success: (res) => {
         wx.hideLoading();

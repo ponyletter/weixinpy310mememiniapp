@@ -27,6 +27,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 静态资源强缓存中间件：为生成的动图和缩略图添加 Cache-Control，避免微信客户端重复加载
+@app.middleware("http")
+async def add_cache_control_header(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith(("/outputs/", "/samples/", "/static/")):
+        response.headers["Cache-Control"] = "public, max-age=604800, immutable"
+    return response
+
 # 挂载 API
 app.include_router(meme_router)
 app.include_router(wechat_router)

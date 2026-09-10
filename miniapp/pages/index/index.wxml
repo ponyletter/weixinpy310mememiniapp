@@ -148,7 +148,21 @@
 
     <!-- 状态 2: 制作成功 -->
     <view wx:if="{{gifResultUrl && !isGenerating}}" class="result-wrap">
-      <image class="result-gif" src="{{gifResultUrl}}" mode="aspectFit"></image>
+      <view class="result-gif-box">
+        <!-- 骨架屏载入遮罩：动图网络传输解码期间展示，杜绝长时间留白 -->
+        <view wx:if="{{!gifLoaded}}" class="result-gif-skeleton">
+          <view class="skeleton-ring-spinner"></view>
+          <text class="skeleton-text">✨ 动图极速渲染载入中...</text>
+          <text class="skeleton-sub">已就绪 16 帧高清动画序列</text>
+        </view>
+        <image 
+          class="result-gif {{gifLoaded ? 'loaded' : 'loading'}}" 
+          src="{{gifResultUrl}}" 
+          mode="aspectFit"
+          bindload="onGifLoaded"
+          binderror="onGifLoadError"
+        ></image>
+      </view>
       <view class="result-actions grid-2">
         <button class="btn-secondary action-btn" bindtap="saveGifToAlbum">💾 保存到手机相册</button>
         <button class="btn-primary action-btn" bindtap="openAddToCollection">📁 存入表情合集</button>

@@ -403,14 +403,14 @@
             <view class="history-thumb-wrap" bindtap="previewHistoryGif" data-url="{{item.full_gif_url}}">
               <image 
                 class="history-thumb" 
-                src="{{item.full_gif_url}}" 
+                src="{{item.thumb_url || item.full_gif_url}}" 
                 mode="aspectFit" 
                 lazy-load="true"
               ></image>
               <view class="history-play-tag">GIF</view>
             </view>
             <view class="history-meta">
-              <view class="history-caption text-ellipsis">{{item.text_bottom || item.prompt || '精选动图'}}</view>
+              <view class="history-caption text-ellipsis">{{item.display_title || item.text_bottom || '精选动图'}}</view>
               <view class="history-date">{{item.created_at}}</view>
             </view>
             <view class="history-btns">

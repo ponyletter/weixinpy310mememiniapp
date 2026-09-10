@@ -18,6 +18,7 @@ Page({
     progress: 0,
     stageText: '',
     gifResultUrl: '',
+    gifLoaded: false,
     taskId: '',
     showFullScreenSketch: false,
     fsColor: '#1e293b',
@@ -464,7 +465,8 @@ Page({
       isGenerating: true,
       progress: 5,
       stageText: '正在启动极速渲染引擎...',
-      gifResultUrl: ''
+      gifResultUrl: '',
+      gifLoaded: false
     });
 
     const gifConfig = app.getGifConfig();
@@ -632,6 +634,7 @@ Page({
               this.setData({
                 isGenerating: false,
                 gifResultUrl: fullGifUrl,
+                gifLoaded: false,
                 progress: 100,
                 stageText: '制作成功已交付'
               });
@@ -692,6 +695,14 @@ Page({
       showCancel: false
     });
     this.updateQuotaInfo();
+  },
+
+  onGifLoaded() {
+    this.setData({ gifLoaded: true });
+  },
+
+  onGifLoadError() {
+    this.setData({ gifLoaded: true });
   },
 
   // --- 保存相册 ---
