@@ -555,6 +555,26 @@ def get_user_orders(openid: str) -> List[Dict[str, Any]]:
         ''', (openid,))
         return [dict(r) for r in cursor.fetchall()]
 
+def get_order_by_id(order_id: str) -> Optional[Dict[str, Any]]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+def cancel_order_record(order_id: str, openid: str) -> bool:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM orders WHERE order_id = ? AND openid = ?", (order_id, openid))
+        order = cursor.fetchone()
+        if not order:
+            return False
+        if order['status'] != 'PENDING':
+            return False
+        cursor.execute("UPDATE orders SET status = 'CANCELLED' WHERE order_id = ?", (order_id,))
+        conn.commit()
+        return True
+
 # --- 表情包合集管理 (Collections) ---
 
 def create_collection(openid: str, title: str, description: str = "", cover_url: str = "") -> Dict[str, Any]:

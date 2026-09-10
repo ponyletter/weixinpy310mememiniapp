@@ -150,6 +150,12 @@ input {
   border: 1rpx solid #c7d2fe;
 }
 
+.badge-gray {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1rpx solid #e2e8f0;
+}
+
 /* 浅色棋盘格背景 (用于透明动图背景预览，清晰不刺眼) */
 .checkerboard-bg {
   background-color: #ffffff;

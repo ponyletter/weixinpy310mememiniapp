@@ -119,6 +119,52 @@ App({
     });
   },
 
+  // 微信虚拟支付 2.0 实际拉起收银台核心方法
+  executeVirtualPayment(orderInfo, onSuccess, onFail) {
+    const that = this;
+    const { order_id, payment_params, is_sandbox } = orderInfo;
+
+    if (wx.requestVirtualPayment && !is_sandbox) {
+      wx.requestVirtualPayment({
+        signData: payment_params.signData,
+        paySig: payment_params.paySig,
+        signature: payment_params.signature,
+        mode: payment_params.mode,
+        success: () => {
+          wx.showToast({ title: '支付成功！', icon: 'success' });
+          that.fetchUserProfile();
+          if (onSuccess) onSuccess();
+        },
+        fail: (err) => {
+          console.error('wx.requestVirtualPayment 失败详情:', err);
+          const errMsg = (err && (err.errMsg || err.message)) || '';
+          if (errMsg.includes('cancel') || errMsg.includes('取消')) {
+            wx.showToast({ title: '已取消支付', icon: 'none' });
+          } else {
+            wx.showToast({ title: errMsg || '支付未完成', icon: 'none' });
+          }
+          if (onFail) onFail(err);
+        }
+      });
+    } else {
+      // 沙箱测试模拟
+      wx.request({
+        url: `${that.globalData.baseURL}/api/pay/mock-pay`,
+        method: 'POST',
+        data: { order_id: order_id },
+        success: () => {
+          wx.showModal({
+            title: '购买成功！',
+            content: '制作额度已充入您的账户！',
+            showCancel: false
+          });
+          that.fetchUserProfile();
+          if (onSuccess) onSuccess();
+        }
+      });
+    }
+  },
+
   // 微信虚拟支付 2.0 统一下单与收银台调用 (对齐 weixinpy310sphinx_knowledge 成功模式)
   invokeVirtualPayment(packageId, onSuccess, onFail) {
     const that = this;
@@ -143,50 +189,78 @@ App({
       success: (res) => {
         wx.hideLoading();
         if (res.data && res.data.success) {
-          const orderInfo = res.data.data;
-          const { order_id, payment_params, is_sandbox } = orderInfo;
-
-          if (wx.requestVirtualPayment && !is_sandbox) {
-            wx.requestVirtualPayment({
-              signData: payment_params.signData,
-              paySig: payment_params.paySig,
-              signature: payment_params.signature,
-              mode: payment_params.mode,
-              success: () => {
-                wx.showToast({ title: '支付成功！', icon: 'success' });
-                that.fetchUserProfile();
-                if (onSuccess) onSuccess();
-              },
-              fail: (err) => {
-                console.error('wx.requestVirtualPayment 失败详情:', err);
-                const errMsg = (err && (err.errMsg || err.message)) || '';
-                if (errMsg.includes('cancel') || errMsg.includes('取消')) {
-                  wx.showToast({ title: '已取消支付', icon: 'none' });
-                } else {
-                  wx.showToast({ title: errMsg || '支付未完成', icon: 'none' });
-                }
-                if (onFail) onFail(err);
-              }
-            });
-          } else {
-            // 沙箱测试模拟
-            wx.request({
-              url: `${that.globalData.baseURL}/api/pay/mock-pay`,
-              method: 'POST',
-              data: { order_id: order_id },
-              success: () => {
-                wx.showModal({
-                  title: '购买成功！',
-                  content: '制作额度已充入您的账户！',
-                  showCancel: false
-                });
-                that.fetchUserProfile();
-                if (onSuccess) onSuccess();
-              }
-            });
-          }
+          that.executeVirtualPayment(res.data.data, onSuccess, onFail);
         } else {
           wx.showToast({ title: (res.data && res.data.detail) || '创建订单失败', icon: 'none' });
+        }
+      },
+      fail: (err) => {
+        wx.hideLoading();
+        wx.showToast({ title: (err && err.errMsg) || '网络请求失败', icon: 'none' });
+        if (onFail) onFail(err);
+      }
+    });
+  },
+
+  // 继续支付已有未付款订单 (支持类似电商的继续付款)
+  resumeVirtualPayment(orderId, onSuccess, onFail) {
+    const that = this;
+    const openid = that.globalData.openid || wx.getStorageSync('openid');
+    if (!openid) {
+      wx.showToast({ title: '请先登录', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '唤起收银台...' });
+    wx.request({
+      url: `${that.globalData.baseURL}/api/pay/repay-order`,
+      method: 'POST',
+      data: {
+        openid: openid,
+        order_id: orderId
+      },
+      success: (res) => {
+        wx.hideLoading();
+        if (res.data && res.data.success) {
+          that.executeVirtualPayment(res.data.data, onSuccess, onFail);
+        } else {
+          wx.showToast({ title: (res.data && res.data.detail) || '无法继续支付', icon: 'none' });
+          if (onFail) onFail(res.data);
+        }
+      },
+      fail: (err) => {
+        wx.hideLoading();
+        wx.showToast({ title: (err && err.errMsg) || '网络请求失败', icon: 'none' });
+        if (onFail) onFail(err);
+      }
+    });
+  },
+
+  // 取消订单
+  cancelVirtualPayment(orderId, onSuccess, onFail) {
+    const that = this;
+    const openid = that.globalData.openid || wx.getStorageSync('openid');
+    if (!openid) {
+      wx.showToast({ title: '请先登录', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '正在取消...' });
+    wx.request({
+      url: `${that.globalData.baseURL}/api/pay/cancel-order`,
+      method: 'POST',
+      data: {
+        openid: openid,
+        order_id: orderId
+      },
+      success: (res) => {
+        wx.hideLoading();
+        if (res.data && res.data.success) {
+          wx.showToast({ title: '订单已取消', icon: 'success' });
+          if (onSuccess) onSuccess();
+        } else {
+          wx.showToast({ title: (res.data && res.data.detail) || '取消失败', icon: 'none' });
+          if (onFail) onFail(res.data);
         }
       },
       fail: (err) => {

@@ -77,6 +77,47 @@
   font-weight: 600;
 }
 
+.pending-hint {
+  font-size: 24rpx;
+  color: #d97706;
+  font-weight: 500;
+}
+
+.cancel-hint {
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
+.order-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20rpx;
+  margin-top: 20rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx dashed #f1f5f9;
+}
+
+.btn-order-action {
+  margin: 0 !important;
+  font-size: 24rpx !important;
+  padding: 8rpx 28rpx !important;
+  border-radius: 30rpx !important;
+  line-height: 1.6 !important;
+  font-weight: 600 !important;
+}
+
+.btn-cancel {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  border: 1rpx solid #e2e8f0 !important;
+}
+
+.btn-pay {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.25) !important;
+}
+
 .amount-wrap {
   color: #d97706;
 }

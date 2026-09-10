@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional
 from app.config import settings
 from app.database import (
     get_package_by_id,
+    get_order_by_id,
     create_order_record,
     mark_order_paid,
     get_user_session_key,
@@ -62,6 +63,53 @@ def create_xpay_order(openid: str, package_id: str) -> Dict[str, Any]:
     return {
         "order_id": order_id,
         "title": pkg['title'],
+        "amount": amount,
+        "quota": quota,
+        "payment_params": {
+            "signData": sign_data_str,
+            "paySig": pay_sig,
+            "signature": signature,
+            "mode": "short_series_goods"
+        },
+        "is_sandbox": (settings.XPAY_ENV == 1)
+    }
+
+def resume_xpay_order(openid: str, order_id: str) -> Dict[str, Any]:
+    """为待付款状态 (PENDING) 的已有订单重新计算签名并返回拉起收银台参数"""
+    order = get_order_by_id(order_id)
+    if not order:
+        raise ValueError("订单不存在")
+    if order['openid'] != openid:
+        raise ValueError("无权操作此订单")
+    if order['status'] != 'PENDING':
+        raise ValueError(f"订单当前状态为【{order['status']}】，无法继续支付")
+
+    package_id = order['package_id']
+    pkg = get_package_by_id(package_id)
+    title = pkg['title'] if pkg else "动图制作额度充值"
+    amount = order['amount']
+    quota = order['quota_reward']
+
+    sign_data_dict = {
+        "offerId": settings.XPAY_OFFER_ID,
+        "buyQuantity": 1,
+        "env": settings.XPAY_ENV,
+        "currencyType": "CNY",
+        "productId": package_id,
+        "goodsPrice": amount,
+        "outTradeNo": order_id,
+        "attach": json.dumps({"openid": openid, "pkg_id": package_id, "quota": quota}, separators=(',', ':'))
+    }
+
+    sign_data_str = json.dumps(sign_data_dict, separators=(',', ':'))
+    active_app_key = settings.XPAY_APP_KEY_LIVE if settings.XPAY_ENV == 0 else (settings.XPAY_APP_KEY_SANDBOX or settings.XPAY_APP_KEY)
+    pay_sig = calc_pay_sig("requestVirtualPayment", sign_data_str, active_app_key)
+    session_key = get_user_session_key(openid) or active_app_key
+    signature = calc_signature(sign_data_str, session_key)
+
+    return {
+        "order_id": order_id,
+        "title": title,
         "amount": amount,
         "quota": quota,
         "payment_params": {

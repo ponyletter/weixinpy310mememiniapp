@@ -2,14 +2,28 @@ from fastapi import APIRouter, HTTPException, Query, Body, Request
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from app.config import settings
-from app.database import get_packages, get_package_by_id, get_user_orders, mark_order_paid
-from app.payment import create_xpay_order, handle_payment_notify
+from app.database import (
+    get_packages,
+    get_package_by_id,
+    get_user_orders,
+    mark_order_paid,
+    cancel_order_record
+)
+from app.payment import create_xpay_order, resume_xpay_order, handle_payment_notify
 
 router = APIRouter(prefix="/api/pay", tags=["virtual_payment"])
 
 class CreateOrderRequest(BaseModel):
     openid: str
     package_id: str
+
+class RepayOrderRequest(BaseModel):
+    openid: str
+    order_id: str
+
+class CancelOrderRequest(BaseModel):
+    openid: str
+    order_id: str
 
 class MockPayRequest(BaseModel):
     order_id: str
@@ -35,6 +49,25 @@ def create_payment_order(req: CreateOrderRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"生成支付订单失败: {str(e)}")
+
+@router.post("/repay-order")
+def repay_order_endpoint(req: RepayOrderRequest):
+    """为待付款订单重新计算并返回拉起微信虚拟支付收银台所需参数"""
+    try:
+        data = resume_xpay_order(req.openid, req.order_id)
+        return {"success": True, "data": data}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"恢复支付失败: {str(e)}")
+
+@router.post("/cancel-order")
+def cancel_order_endpoint(req: CancelOrderRequest):
+    """取消未支付的待付款订单"""
+    success = cancel_order_record(req.order_id, req.openid)
+    if not success:
+        raise HTTPException(status_code=400, detail="订单不存在或当前状态不可取消")
+    return {"success": True, "message": "订单已成功取消"}
 
 @router.post("/mock-pay")
 def mock_pay_success(req: MockPayRequest):
