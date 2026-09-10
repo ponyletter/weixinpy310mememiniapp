@@ -181,6 +181,13 @@
   align-items: center;
 }
 
+.sketch-canvas-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 .sketch-canvas {
   width: 320px;
   height: 220px;
@@ -189,17 +196,32 @@
   border-radius: 16rpx;
 }
 
+.sketch-zoom-badge {
+  position: absolute;
+  top: 14rpx;
+  right: 24rpx;
+  background: rgba(15, 23, 42, 0.7);
+  color: #ffffff;
+  font-size: 20rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  backdrop-filter: blur(4px);
+}
+
 .sketch-toolbar {
   width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 
-.sketch-hint {
-  font-size: 22rpx;
-  color: #94a3b8;
+.btn-fullscreen-launch {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  border: 1rpx solid #c7d2fe !important;
+  font-weight: 600;
+  padding: 10rpx 20rpx;
 }
 
 /* 表单输入卡片 */
@@ -222,16 +244,21 @@
   font-size: 26rpx;
   font-weight: 600;
   color: #334155;
+  flex-shrink: 0;
 }
 
 .form-input {
   flex: 1;
+  height: 80rpx;
+  min-height: 80rpx;
+  line-height: 80rpx;
   background: #f8fafc;
   border: 1rpx solid #e2e8f0;
   border-radius: 14rpx;
-  padding: 16rpx 20rpx;
+  padding: 0 24rpx;
   color: #1e293b;
-  font-size: 26rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
 }
 
 .btn-suggest {
@@ -239,16 +266,30 @@
   background: #eef2ff;
   color: #4338ca;
   border: 1rpx solid #c7d2fe;
+  height: 80rpx;
+  line-height: 80rpx;
+  padding: 0 24rpx;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-radius: 14rpx;
+  font-size: 24rpx;
 }
 
 /* 动图生成主按钮 */
 .btn-generate {
+  width: 100% !important;
   margin-top: 24rpx;
+  font-size: 28rpx;
+  white-space: nowrap;
+  letter-spacing: 1rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0;
 }
 
 /* 动图结果与预览区 */
 .preview-card {
-  min-height: 380rpx;
+  min-height: 420rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -339,20 +380,129 @@
 }
 
 .result-gif {
-  width: 320rpx;
-  height: 320rpx;
-  border-radius: 16rpx;
+  width: 380rpx;
+  height: 380rpx;
+  border-radius: 20rpx;
   background: #ffffff;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.08);
 }
 
 .result-actions {
   width: 100%;
-  margin-top: 24rpx;
+  margin-top: 28rpx;
 }
 
 .action-btn {
-  padding: 20rpx 0;
+  padding: 22rpx 0;
   font-size: 26rpx;
   border-radius: 16rpx;
+  white-space: nowrap;
 }
+
+/* 全屏涂鸦画板模态层 */
+.fullscreen-sketch-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreen-sketch-header {
+  height: 100rpx;
+  padding: 0 28rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1rpx solid #f1f5f9;
+  background: #ffffff;
+}
+
+.fs-title {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.fs-header-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.btn-fs-close {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border: 1rpx solid #fecaca !important;
+}
+
+.fullscreen-canvas-container {
+  flex: 1;
+  width: 100%;
+  background: #ffffff;
+  position: relative;
+}
+
+.fullscreen-canvas {
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+.fullscreen-sketch-footer {
+  padding: 20rpx 28rpx 36rpx 28rpx;
+  background: #f8fafc;
+  border-top: 1rpx solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.color-item {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+  border: 4rpx solid #ffffff;
+}
+
+.color-item.active {
+  transform: scale(1.18);
+  border-color: #4f46e5;
+}
+
+.stroke-divider {
+  width: 2rpx;
+  height: 40rpx;
+  background: #cbd5e1;
+  margin: 0 8rpx;
+}
+
+.stroke-item {
+  font-size: 22rpx;
+  padding: 8rpx 18rpx;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 12rpx;
+  color: #475569;
+}
+
+.stroke-item.active {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+  font-weight: 700;
+}
+
+.btn-fs-save {
+  width: 100% !important;
+  font-size: 28rpx;
+  padding: 22rpx 0;
+}
+

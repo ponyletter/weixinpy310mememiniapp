@@ -60,6 +60,7 @@ view, text, image, input, button, scroll-view {
   justify-content: center;
   box-shadow: 0 6rpx 20rpx rgba(79, 70, 229, 0.25);
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .btn-primary:active {
@@ -78,6 +79,7 @@ view, text, image, input, button, scroll-view {
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .btn-secondary:active {
@@ -96,6 +98,12 @@ view, text, image, input, button, scroll-view {
   align-items: center;
   justify-content: center;
   line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* 全局输入框默认高度，防止文字被竖向截断 */
+input {
+  box-sizing: border-box;
 }
 
 /* 通用标题风格 */

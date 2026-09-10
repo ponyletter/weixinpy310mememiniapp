@@ -78,11 +78,26 @@ async def wechat_login(req: LoginRequest):
     }
 
 @router.get("/profile")
-def get_profile(openid: str = Query(...)):
+def get_profile(openid: str = Query("")):
     """获取用户个人资料与剩余额度"""
-    user = get_user(openid)
+    clean_openid = openid.strip() if openid else ""
+    if not clean_openid:
+        return {
+            "success": True,
+            "user": {
+                "openid": "",
+                "nickname": "新创作者",
+                "avatar_url": "",
+                "free_quota": 3,
+                "purchased_quota": 0,
+                "total_quota": 3,
+                "is_vip": 0
+            }
+        }
+    user = get_user(clean_openid)
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        # 用户可能刚刷新页面或未完成登录创建，自动创建兜底
+        user = get_or_create_user(clean_openid)
     user_copy = dict(user)
     user_copy.pop("session_key", None)
     total_quota = user_copy.get("free_quota", 0) + user_copy.get("purchased_quota", 0)

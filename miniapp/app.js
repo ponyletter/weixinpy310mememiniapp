@@ -89,8 +89,16 @@ App({
 
   fetchUserProfile(openid, callback) {
     const that = this;
+    const targetOpenid = openid || that.globalData.openid || wx.getStorageSync('openid');
+    if (!targetOpenid) {
+      // 缓存被清理或未登录，先静默换取 openid 后再获取 profile
+      that.silentLogin((user) => {
+        if (callback) callback(user);
+      });
+      return;
+    }
     wx.request({
-      url: `${that.globalData.baseURL}/api/user/profile?openid=${openid || that.globalData.openid}`,
+      url: `${that.globalData.baseURL}/api/user/profile?openid=${targetOpenid}`,
       method: 'GET',
       success: (res) => {
         if (res.data && res.data.success) {
@@ -99,7 +107,12 @@ App({
           that.globalData.quota = user.total_quota || 0;
           that.globalData.isVip = user.is_vip === 1;
           if (callback) callback(user);
+        } else if (callback) {
+          callback(null);
         }
+      },
+      fail: () => {
+        if (callback) callback(null);
       }
     });
   },

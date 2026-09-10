@@ -298,12 +298,12 @@ async def run_generate_pipeline(
         template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
         prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch)
 
-        # 阶段 2：请求 ChatGPT Plus (Images 2.5) 出图
+        # 阶段 2：请求画质渲染引擎出图
         TASK_STORE[task_id] = {
             "status": "processing",
             "progress": 25,
             "stage": "drawing",
-            "stage_text": "阶段 2/4: ChatGPT Plus (Images 2.5) 正在逐帧绘制 16 宫格雪碧图..."
+            "stage_text": "阶段 2/4: 智能画质渲染引擎正在逐帧绘制 16 宫格动图..."
         }
 
         headers = {

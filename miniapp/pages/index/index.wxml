@@ -59,17 +59,22 @@
 
     <!-- 在线手绘草图模式 -->
     <view wx:if="{{mode === 'sketch'}}" class="sketch-area">
-      <canvas 
-        type="2d"
-        id="sketchCanvas"
-        class="sketch-canvas"
-        bindtouchstart="onSketchStart"
-        bindtouchmove="onSketchMove"
-        bindtouchend="onSketchEnd"
-      ></canvas>
+      <view class="sketch-canvas-wrap">
+        <canvas 
+          type="2d"
+          id="sketchCanvas"
+          class="sketch-canvas"
+          bindtouchstart="onSketchStart"
+          bindtouchmove="onSketchMove"
+          bindtouchend="onSketchEnd"
+        ></canvas>
+        <view class="sketch-zoom-badge" bindtap="openFullScreenSketch">
+          <text>🔍 点击全屏涂鸦</text>
+        </view>
+      </view>
       <view class="sketch-toolbar">
         <button class="btn-xs" bindtap="clearSketch">清空画布</button>
-        <text class="sketch-hint">在白板上勾勒角色造型轮廓</text>
+        <button class="btn-xs btn-fullscreen-launch" bindtap="openFullScreenSketch">🎨 全屏大画布自由涂鸦</button>
       </view>
     </view>
   </view>
@@ -130,6 +135,39 @@
         <button class="btn-secondary action-btn" bindtap="saveGifToAlbum">💾 保存到手机相册</button>
         <button class="btn-primary action-btn" bindtap="openAddToCollection">📁 存入表情合集</button>
       </view>
+    </view>
+  <!-- 全屏沉浸式草图绘制画板 -->
+  <view wx:if="{{showFullScreenSketch}}" class="fullscreen-sketch-mask">
+    <view class="fullscreen-sketch-header">
+      <text class="fs-title">✏️ 全屏沉浸涂鸦画板</text>
+      <view class="fs-header-actions">
+        <button class="btn-xs" bindtap="clearFullScreenSketch">清空</button>
+        <button class="btn-xs btn-fs-close" bindtap="closeFullScreenSketch">✕ 关闭</button>
+      </view>
+    </view>
+    <view class="fullscreen-canvas-container">
+      <canvas 
+        type="2d"
+        id="fullScreenCanvas"
+        class="fullscreen-canvas"
+        bindtouchstart="onFSSketchStart"
+        bindtouchmove="onFSSketchMove"
+        bindtouchend="onFSSketchEnd"
+      ></canvas>
+    </view>
+    <view class="fullscreen-sketch-footer">
+      <view class="palette-row">
+        <view class="color-item {{fsColor === '#1e293b' ? 'active' : ''}}" style="background: #1e293b;" bindtap="setFSColor" data-color="#1e293b"></view>
+        <view class="color-item {{fsColor === '#ef4444' ? 'active' : ''}}" style="background: #ef4444;" bindtap="setFSColor" data-color="#ef4444"></view>
+        <view class="color-item {{fsColor === '#3b82f6' ? 'active' : ''}}" style="background: #3b82f6;" bindtap="setFSColor" data-color="#3b82f6"></view>
+        <view class="color-item {{fsColor === '#f59e0b' ? 'active' : ''}}" style="background: #f59e0b;" bindtap="setFSColor" data-color="#f59e0b"></view>
+        <view class="color-item {{fsColor === '#10b981' ? 'active' : ''}}" style="background: #10b981;" bindtap="setFSColor" data-color="#10b981"></view>
+        <view class="stroke-divider"></view>
+        <view class="stroke-item {{fsLineWidth === 3 ? 'active' : ''}}" bindtap="setFSLineWidth" data-w="{{3}}">细</view>
+        <view class="stroke-item {{fsLineWidth === 6 ? 'active' : ''}}" bindtap="setFSLineWidth" data-w="{{6}}">中</view>
+        <view class="stroke-item {{fsLineWidth === 12 ? 'active' : ''}}" bindtap="setFSLineWidth" data-w="{{12}}">粗</view>
+      </view>
+      <button class="btn-primary btn-fs-save" bindtap="saveAndSyncFullScreenSketch">✅ 完成手绘并应用</button>
     </view>
   </view>
 </view>

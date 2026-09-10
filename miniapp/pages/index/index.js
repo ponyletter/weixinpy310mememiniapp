@@ -15,7 +15,11 @@ Page({
     progress: 0,
     stageText: '',
     gifResultUrl: '',
-    taskId: ''
+    taskId: '',
+    showFullScreenSketch: false,
+    fsColor: '#1e293b',
+    fsLineWidth: 6,
+    sketchTempPath: ''
   },
 
   onLoad() {
@@ -174,6 +178,116 @@ Page({
   clearSketch() {
     if (!this.sketchCanvas || !this.sketchCtx) return;
     this.sketchCtx.clearRect(0, 0, this.sketchCanvas.width, this.sketchCanvas.height);
+    this.setData({ sketchTempPath: '' });
+  },
+
+  // --- 全屏涂鸦画板 ---
+  openFullScreenSketch() {
+    this.setData({ showFullScreenSketch: true });
+    setTimeout(() => {
+      this.initFullScreenCanvas();
+    }, 200);
+  },
+
+  closeFullScreenSketch() {
+    this.setData({ showFullScreenSketch: false });
+  },
+
+  initFullScreenCanvas() {
+    const query = wx.createSelectorQuery();
+    query.select('#fullScreenCanvas')
+      .fields({ node: true, size: true })
+      .exec((res) => {
+        if (!res[0] || !res[0].node) return;
+        const canvas = res[0].node;
+        const ctx = canvas.getContext('2d');
+        const dpr = wx.getSystemInfoSync().pixelRatio;
+        canvas.width = res[0].width * dpr;
+        canvas.height = res[0].height * dpr;
+        ctx.scale(dpr, dpr);
+        ctx.strokeStyle = this.data.fsColor || '#1e293b';
+        ctx.lineWidth = this.data.fsLineWidth || 6;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        this.fsCanvas = canvas;
+        this.fsCtx = ctx;
+
+        // 若之前有临时画作，加载并绘制到底布
+        if (this.data.sketchTempPath) {
+          const img = canvas.createImage();
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0, res[0].width, res[0].height);
+          };
+          img.src = this.data.sketchTempPath;
+        }
+      });
+  },
+
+  onFSSketchStart(e) {
+    if (!this.fsCtx) return;
+    const touch = e.touches[0];
+    this.fsCtx.beginPath();
+    this.fsCtx.strokeStyle = this.data.fsColor;
+    this.fsCtx.lineWidth = this.data.fsLineWidth;
+    this.fsCtx.moveTo(touch.x, touch.y);
+  },
+
+  onFSSketchMove(e) {
+    if (!this.fsCtx) return;
+    const touch = e.touches[0];
+    this.fsCtx.lineTo(touch.x, touch.y);
+    this.fsCtx.stroke();
+  },
+
+  onFSSketchEnd() {
+    if (!this.fsCtx) return;
+    this.fsCtx.closePath();
+  },
+
+  setFSColor(e) {
+    const color = e.currentTarget.dataset.color;
+    this.setData({ fsColor: color });
+    if (this.fsCtx) this.fsCtx.strokeStyle = color;
+  },
+
+  setFSLineWidth(e) {
+    const w = Number(e.currentTarget.dataset.w);
+    this.setData({ fsLineWidth: w });
+    if (this.fsCtx) this.fsCtx.lineWidth = w;
+  },
+
+  clearFullScreenSketch() {
+    if (!this.fsCanvas || !this.fsCtx) return;
+    this.fsCtx.clearRect(0, 0, this.fsCanvas.width, this.fsCanvas.height);
+    this.setData({ sketchTempPath: '' });
+  },
+
+  saveAndSyncFullScreenSketch() {
+    if (!this.fsCanvas) {
+      this.closeFullScreenSketch();
+      return;
+    }
+    wx.canvasToTempFilePath({
+      canvas: this.fsCanvas,
+      success: (res) => {
+        this.setData({
+          sketchTempPath: res.tempFilePath,
+          showFullScreenSketch: false
+        });
+        if (this.sketchCanvas && this.sketchCtx) {
+          const img = this.sketchCanvas.createImage();
+          img.onload = () => {
+            this.sketchCtx.clearRect(0, 0, this.sketchCanvas.width, this.sketchCanvas.height);
+            this.sketchCtx.drawImage(img, 0, 0, 320, 220);
+          };
+          img.src = res.tempFilePath;
+        }
+        wx.showToast({ title: '全屏手绘已保存', icon: 'success' });
+      },
+      fail: () => {
+        this.closeFullScreenSketch();
+      }
+    });
   },
 
   // --- 提交生成 ---
@@ -232,27 +346,45 @@ Page({
           this.handleGenerateError("网络传输超时，请重试");
         }
       });
-    } else if (this.data.mode === 'sketch' && this.sketchCanvas) {
-      wx.canvasToTempFilePath({
-        canvas: this.sketchCanvas,
-        success: (cRes) => {
-          wx.uploadFile({
-            url: uploadUrl,
-            filePath: cRes.tempFilePath,
-            name: 'ref_image',
-            formData: formData,
-            success: (res) => {
-              this.handleTaskResponse(res.data);
-            },
-            fail: () => {
-              this.handleGenerateError("草图传输失败");
-            }
-          });
-        },
-        fail: () => {
-          this.postFormGenerate(uploadUrl, formData);
-        }
-      });
+    } else if (this.data.mode === 'sketch') {
+      const sketchFile = this.data.sketchTempPath;
+      if (sketchFile) {
+        wx.uploadFile({
+          url: uploadUrl,
+          filePath: sketchFile,
+          name: 'ref_image',
+          formData: formData,
+          success: (res) => {
+            this.handleTaskResponse(res.data);
+          },
+          fail: () => {
+            this.handleGenerateError("草图传输超时");
+          }
+        });
+      } else if (this.sketchCanvas) {
+        wx.canvasToTempFilePath({
+          canvas: this.sketchCanvas,
+          success: (cRes) => {
+            wx.uploadFile({
+              url: uploadUrl,
+              filePath: cRes.tempFilePath,
+              name: 'ref_image',
+              formData: formData,
+              success: (res) => {
+                this.handleTaskResponse(res.data);
+              },
+              fail: () => {
+                this.handleGenerateError("草图传输超时");
+              }
+            });
+          },
+          fail: () => {
+            this.postFormGenerate(uploadUrl, formData);
+          }
+        });
+      } else {
+        this.postFormGenerate(uploadUrl, formData);
+      }
     } else {
       this.postFormGenerate(uploadUrl, formData);
     }

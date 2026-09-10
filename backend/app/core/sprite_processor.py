@@ -102,8 +102,9 @@ class SpriteProcessor:
         max_w = max(c.width for c in raw_crops)
         max_h = max(c.height for c in raw_crops)
 
-        # 最小安全边距
-        pad = max(4, int(max(max_w, max_h) * padding_percent))
+        # 最小安全边距 (智能自适应：支持 2.5(%) 或 0.025 等输入，杜绝把角色缩小为小不点的 Bug)
+        pad_ratio = padding_percent / 100.0 if padding_percent > 1.0 else padding_percent
+        pad = max(4, int(max(max_w, max_h) * pad_ratio))
         target_size = max(max_w, max_h) + pad * 2
 
         uniform_frames = []
