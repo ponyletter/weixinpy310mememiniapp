@@ -560,6 +560,7 @@ def list_samples():
     return {"code": 0, "data": samples}
 
 @router.get("/history")
+@router.get("/meme/history")
 def list_history(openid: Optional[str] = None):
     """获取用户生成表情包历史或全局作品展示"""
     with get_db() as conn:

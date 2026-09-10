@@ -235,12 +235,34 @@
   margin-bottom: 20rpx;
 }
 
+.form-item-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12rpx;
+}
+
+.form-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.form-tip {
+  font-size: 22rpx;
+  color: #94a3b8;
+}
+
+.form-input-full {
+  width: 100% !important;
+}
+
 .form-item:last-child {
   margin-bottom: 0;
 }
 
 .form-label {
-  width: 150rpx;
   font-size: 26rpx;
   font-weight: 600;
   color: #334155;
@@ -505,4 +527,79 @@
   font-size: 28rpx;
   padding: 22rpx 0;
 }
+
+/* 存入表情合集弹窗样式 */
+.col-modal-card {
+  width: 90%;
+  max-height: 80vh;
+  padding: 36rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+  box-shadow: 0 20rpx 50rpx rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.col-tip {
+  font-size: 24rpx;
+  color: #64748b;
+  margin-bottom: 20rpx;
+  line-height: 1.5;
+}
+
+.col-list-scroll {
+  max-height: 40vh;
+  margin-bottom: 20rpx;
+}
+
+.col-option-item {
+  padding: 20rpx 24rpx;
+  background: #f8fafc;
+  border: 2rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  margin-bottom: 14rpx;
+  transition: all 0.2s ease;
+}
+
+.col-option-item.active {
+  background: #eef2ff;
+  border-color: #4f46e5;
+}
+
+.col-opt-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.col-opt-desc {
+  font-size: 22rpx;
+  color: #64748b;
+  margin-top: 6rpx;
+}
+
+.col-create-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.new-col-input {
+  flex: 1;
+  height: 72rpx;
+  min-height: 72rpx;
+  line-height: 72rpx;
+  font-size: 24rpx;
+}
+
+.btn-new-col {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  border: 1rpx solid #c7d2fe !important;
+  padding: 14rpx 24rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  white-space: nowrap;
+}
+
 

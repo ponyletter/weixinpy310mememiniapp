@@ -480,3 +480,342 @@
   text-align: justify;
 }
 
+
+/* UID 与个人资料增强 */
+.avatar-wrap {
+  position: relative;
+}
+
+.avatar-edit-badge {
+  position: absolute;
+  right: -4rpx;
+  bottom: -4rpx;
+  width: 32rpx;
+  height: 32rpx;
+  background: #4f46e5;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid #ffffff;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.15);
+}
+
+.uid-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 6rpx;
+}
+
+.uid-val {
+  font-size: 20rpx;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.uid-copy-tag {
+  font-size: 18rpx;
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+}
+
+.user-bio-text {
+  font-size: 22rpx;
+  color: #64748b;
+  margin-top: 6rpx;
+  line-height: 1.3;
+}
+
+.hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  margin-left: auto;
+}
+
+.btn-edit-profile {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 20rpx;
+  font-size: 20rpx;
+  padding: 6rpx 16rpx;
+}
+
+/* 个人资料编辑弹窗 */
+.edit-profile-card {
+  width: 88%;
+  max-height: 85vh;
+  padding: 36rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+}
+
+.edit-avatar-section {
+  display: flex;
+  justify-content: center;
+  margin: 20rpx 0 30rpx;
+}
+
+.avatar-choose-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: normal;
+}
+
+.avatar-choose-btn::after {
+  display: none;
+}
+
+.edit-avatar-preview {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 50%;
+  border: 4rpx solid #e0e7ff;
+  box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.15);
+}
+
+.avatar-choose-hint {
+  font-size: 22rpx;
+  color: #4f46e5;
+  margin-top: 10rpx;
+  font-weight: 500;
+}
+
+.edit-form-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+
+.edit-form-item-col {
+  padding: 18rpx 0 0;
+}
+
+.form-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #334155;
+}
+
+.picker-display {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 26rpx;
+  color: #475569;
+  background: #f8fafc;
+  padding: 8rpx 18rpx;
+  border-radius: 10rpx;
+  border: 1rpx solid #e2e8f0;
+}
+
+.picker-arrow {
+  color: #94a3b8;
+  font-size: 20rpx;
+}
+
+.form-textarea {
+  width: 100%;
+  height: 120rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 14rpx;
+  padding: 14rpx;
+  font-size: 24rpx;
+  box-sizing: border-box;
+  margin-top: 10rpx;
+}
+
+.char-count {
+  text-align: right;
+  font-size: 20rpx;
+  color: #94a3b8;
+  margin-top: 6rpx;
+}
+
+/* 历史创作相册弹窗 */
+.history-modal-card {
+  width: 92%;
+  max-height: 82vh;
+  padding: 32rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-title-box {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.history-count-badge {
+  font-size: 20rpx;
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+  font-weight: 600;
+}
+
+.history-scroll {
+  max-height: 60vh;
+  margin-top: 18rpx;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
+
+.history-card {
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-thumb-wrap {
+  position: relative;
+  width: 100%;
+  height: 240rpx;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.history-play-tag {
+  position: absolute;
+  top: 10rpx;
+  right: 10rpx;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 18rpx;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  font-weight: 700;
+}
+
+.history-meta {
+  padding: 12rpx 14rpx 6rpx;
+}
+
+.history-caption {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.history-date {
+  font-size: 18rpx;
+  color: #94a3b8;
+  margin-top: 4rpx;
+}
+
+.history-btns {
+  display: flex;
+  gap: 8rpx;
+  padding: 10rpx 12rpx 14rpx;
+}
+
+.btn-xs-history {
+  flex: 1;
+  font-size: 20rpx;
+  padding: 8rpx 0;
+  border-radius: 10rpx;
+  line-height: normal;
+  text-align: center;
+}
+
+.btn-save-album {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1rpx solid #cbd5e1;
+}
+
+.btn-add-col {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+/* 历史存入合集弹窗 */
+.col-select-card {
+  width: 86%;
+  padding: 32rpx;
+  border-radius: 28rpx;
+}
+
+.modal-tip {
+  font-size: 24rpx;
+  color: #64748b;
+  margin: 14rpx 0;
+}
+
+.col-list-scroll {
+  max-height: 40vh;
+}
+
+.col-item-choice {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 14rpx;
+  margin-bottom: 12rpx;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+}
+
+.col-item-choice.selected {
+  border-color: #4f46e5;
+  background: #eef2ff;
+}
+
+.col-choice-icon {
+  font-size: 32rpx;
+}
+
+.col-choice-info {
+  flex: 1;
+}
+
+.col-choice-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.col-choice-meta {
+  font-size: 20rpx;
+  color: #94a3b8;
+  margin-top: 4rpx;
+}
+
+.col-choice-check {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #4f46e5;
+}

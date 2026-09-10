@@ -9,7 +9,7 @@ Page({
     selectedTemplateTitle: '飞吻',
     mode: 'upload', // 'upload' | 'sketch'
     refImagePath: '',
-    characterDesc: '可爱的白色柴犬',
+    characterDesc: '',
     caption: '么么哒',
     isGenerating: false,
     progress: 0,
@@ -19,17 +19,45 @@ Page({
     showFullScreenSketch: false,
     fsColor: '#1e293b',
     fsLineWidth: 6,
-    sketchTempPath: ''
+    sketchTempPath: '',
+    showCollectionModal: false,
+    userCollections: [],
+    selectedColId: '',
+    newColTitle: ''
   },
 
   onLoad() {
     this.fetchTemplates();
     this.updateQuotaInfo();
     this.initSketchCanvas();
+    this.checkResumeActiveTask();
   },
 
   onShow() {
     this.updateQuotaInfo();
+    this.checkResumeActiveTask();
+  },
+
+  checkResumeActiveTask() {
+    const activeTask = wx.getStorageSync('active_meme_task');
+    if (!activeTask || !activeTask.taskId) return;
+    
+    // 如果任务超过 5 分钟，视为已过期或结束
+    const now = Date.now();
+    if (now - (activeTask.timestamp || 0) > 5 * 60 * 1000) {
+      wx.removeStorageSync('active_meme_task');
+      return;
+    }
+
+    if (!this.data.isGenerating && !this.data.gifResultUrl) {
+      this.setData({
+        isGenerating: true,
+        taskId: activeTask.taskId,
+        progress: 30,
+        stageText: '正在恢复后台任务进度...'
+      });
+      this.pollTaskStatus(activeTask.taskId);
+    }
   },
 
   onPullDownRefresh() {
@@ -414,6 +442,10 @@ Page({
     if (data && data.data && data.data.task_id) {
       const taskId = data.data.task_id;
       this.setData({ taskId });
+      wx.setStorageSync('active_meme_task', {
+        taskId: taskId,
+        timestamp: Date.now()
+      });
       this.pollTaskStatus(taskId);
       this.updateQuotaInfo();
     } else {
@@ -422,6 +454,7 @@ Page({
   },
 
   pollTaskStatus(taskId) {
+    if (this.pollTimer) clearInterval(this.pollTimer);
     this.pollTimer = setInterval(() => {
       wx.request({
         url: `${app.globalData.baseURL}/api/task-status/${taskId}`,
@@ -436,6 +469,7 @@ Page({
 
             if (tInfo.status === 'completed') {
               clearInterval(this.pollTimer);
+              wx.removeStorageSync('active_meme_task');
               const gifPath = tInfo.data.gif_url;
               this.setData({
                 isGenerating: false,
@@ -445,16 +479,21 @@ Page({
               wx.showToast({ title: '制作成功！', icon: 'success' });
             } else if (tInfo.status === 'failed') {
               clearInterval(this.pollTimer);
+              wx.removeStorageSync('active_meme_task');
               this.handleGenerateError(tInfo.error || "生成异常");
             }
           }
+        },
+        fail: () => {
+          // 网络抖动不打断轮询
         }
       });
     }, 1500);
   },
 
   handleGenerateError(msg) {
-    clearInterval(this.pollTimer);
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    wx.removeStorageSync('active_meme_task');
     this.setData({ isGenerating: false });
     wx.showModal({
       title: '制作提示',
@@ -491,17 +530,145 @@ Page({
     });
   },
 
+  // --- 存入表情合集 (支持自动建合集与抽屉管理) ---
   openAddToCollection() {
-    wx.showModal({
-      title: '存入合集',
-      content: '是否将此表情包归类到我的表情抽屉中？',
-      confirmText: '立即归类',
+    if (!this.data.gifResultUrl) return;
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+    if (!openid) {
+      wx.showToast({ title: '请先登录', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '获取合集中...' });
+    wx.request({
+      url: `${app.globalData.baseURL}/api/collection/my?openid=${openid}`,
+      method: 'GET',
       success: (res) => {
-        if (res.confirm) {
-          wx.navigateTo({
-            url: `/pages/collection/collection?add_gif=${encodeURIComponent(this.data.gifResultUrl)}`
+        wx.hideLoading();
+        let cols = (res.data && res.data.data) || [];
+        if (cols.length === 0) {
+          // 首次使用自动为用户创建“我的精选表情集”
+          wx.request({
+            url: `${app.globalData.baseURL}/api/collection/create`,
+            method: 'POST',
+            data: {
+              openid: openid,
+              title: '我的精选表情集',
+              description: '默认表情包收纳抽屉'
+            },
+            success: (cRes) => {
+              if (cRes.data && cRes.data.data) {
+                const defaultCol = cRes.data.data;
+                this.setData({
+                  userCollections: [defaultCol],
+                  selectedColId: defaultCol.collection_id,
+                  showCollectionModal: true
+                });
+              }
+            }
+          });
+        } else {
+          this.setData({
+            userCollections: cols,
+            selectedColId: cols[0].collection_id,
+            showCollectionModal: true
           });
         }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络连接异常', icon: 'none' });
+      }
+    });
+  },
+
+  selectCollection(e) {
+    const id = e.currentTarget.dataset.id;
+    this.setData({ selectedColId: id });
+  },
+
+  closeCollectionModal() {
+    this.setData({ showCollectionModal: false });
+  },
+
+  onInputNewColTitle(e) {
+    this.setData({ newColTitle: e.detail.value });
+  },
+
+  createNewColAndSelect() {
+    const title = (this.data.newColTitle || '').trim();
+    if (!title) {
+      wx.showToast({ title: '请输入合集名称', icon: 'none' });
+      return;
+    }
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+    wx.showLoading({ title: '正在创建...' });
+    wx.request({
+      url: `${app.globalData.baseURL}/api/collection/create`,
+      method: 'POST',
+      data: {
+        openid: openid,
+        title: title,
+        description: '自建表情合集'
+      },
+      success: (res) => {
+        wx.hideLoading();
+        if (res.data && res.data.data) {
+          const newCol = res.data.data;
+          const list = [newCol, ...this.data.userCollections];
+          this.setData({
+            userCollections: list,
+            selectedColId: newCol.collection_id,
+            newColTitle: ''
+          });
+          wx.showToast({ title: '新建成功并已选中', icon: 'success' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+      }
+    });
+  },
+
+  confirmSaveToCollection() {
+    const colId = this.data.selectedColId;
+    if (!colId) {
+      wx.showToast({ title: '请选择或新建一个合集', icon: 'none' });
+      return;
+    }
+    wx.showLoading({ title: '正在存入...' });
+    wx.request({
+      url: `${app.globalData.baseURL}/api/collection/add-item`,
+      method: 'POST',
+      data: {
+        collection_id: colId,
+        gif_url: this.data.gifResultUrl,
+        title: this.data.caption || '动图表情'
+      },
+      success: (res) => {
+        wx.hideLoading();
+        if (res.data && res.data.success) {
+          this.setData({ showCollectionModal: false });
+          const targetCol = this.data.userCollections.find(c => c.collection_id === colId);
+          const colName = targetCol ? targetCol.title : '合集';
+          wx.showModal({
+            title: '存入成功 🎉',
+            content: `已成功收入【${colName}】！可在底栏【表情合集】中查看或分享给微信好友。`,
+            confirmText: '前往查看',
+            cancelText: '留在本页',
+            success: (mRes) => {
+              if (mRes.confirm) {
+                wx.switchTab({ url: '/pages/collection/collection' });
+              }
+            }
+          });
+        } else {
+          wx.showToast({ title: (res.data && res.data.detail) || '存入失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络异常', icon: 'none' });
       }
     });
   },

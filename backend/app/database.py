@@ -31,10 +31,20 @@ def init_db():
                 invited_by TEXT DEFAULT '',
                 last_checkin_date TEXT DEFAULT '',
                 is_vip INTEGER DEFAULT 0,
+                bio TEXT DEFAULT '',
+                gender TEXT DEFAULT '保密',
+                birthday TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
+        # 动态补齐字段
+        for col, col_def in [("bio", "TEXT DEFAULT ''"), ("gender", "TEXT DEFAULT '保密'"), ("birthday", "TEXT DEFAULT ''")]:
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {col_def};")
+            except Exception:
+                pass
 
         # 2. 道具/充值档位包表
         cursor.execute('''
@@ -224,10 +234,18 @@ def get_user_session_key(openid: str) -> str:
         row = cursor.fetchone()
         return row[0] if row and row[0] else ""
 
-def update_user_profile(openid: str, nickname: str, avatar_url: str) -> bool:
+def update_user_profile(openid: str, nickname: str = "", avatar_url: str = "", bio: str = "", gender: str = "保密", birthday: str = "") -> bool:
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE users SET nickname = ?, avatar_url = ? WHERE openid = ?", (nickname, avatar_url, openid))
+        cursor.execute("""
+            UPDATE users 
+            SET nickname = CASE WHEN ? != '' THEN ? ELSE nickname END,
+                avatar_url = CASE WHEN ? != '' THEN ? ELSE avatar_url END,
+                bio = ?,
+                gender = ?,
+                birthday = ?
+            WHERE openid = ?
+        """, (nickname, nickname, avatar_url, avatar_url, bio, gender, birthday, openid))
         conn.commit()
         return cursor.rowcount > 0
 

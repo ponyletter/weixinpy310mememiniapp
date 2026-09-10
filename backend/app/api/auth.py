@@ -1,5 +1,8 @@
+import os
+import shutil
+import uuid
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Body, Header
+from fastapi import APIRouter, HTTPException, Query, Body, Header, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional
 from app.config import settings
@@ -20,8 +23,11 @@ class LoginRequest(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     openid: str
-    nickname: str
-    avatar_url: str
+    nickname: Optional[str] = ""
+    avatar_url: Optional[str] = ""
+    bio: Optional[str] = ""
+    gender: Optional[str] = "保密"
+    birthday: Optional[str] = ""
 
 class RedeemRequest(BaseModel):
     openid: str
@@ -106,9 +112,34 @@ def get_profile(openid: str = Query("")):
 
 @router.post("/update-profile")
 def update_profile(req: UpdateProfileRequest):
-    """更新用户昵称与头像"""
-    success = update_user_profile(req.openid, req.nickname, req.avatar_url)
-    return {"success": success}
+    """更新用户昵称、头像、个性签名、性别与生日"""
+    success = update_user_profile(
+        req.openid, 
+        req.nickname or "", 
+        req.avatar_url or "", 
+        req.bio or "", 
+        req.gender or "保密", 
+        req.birthday or ""
+    )
+    user = get_user(req.openid)
+    user_copy = dict(user) if user else {}
+    user_copy.pop("session_key", None)
+    return {"success": success, "user": user_copy}
+
+@router.post("/upload-avatar")
+async def upload_avatar(file: UploadFile = File(...)):
+    """上传自定义用户头像"""
+    ext = os.path.splitext(file.filename or "")[1] or ".png"
+    if ext.lower() not in [".png", ".jpg", ".jpeg", ".webp"]:
+        ext = ".png"
+    avatar_dir = settings.STATIC_DIR / "avatars"
+    avatar_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex[:12]}{ext}"
+    target_path = avatar_dir / filename
+    with open(target_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    url = f"/static/avatars/{filename}"
+    return {"success": True, "avatar_url": url}
 
 @router.post("/checkin")
 def daily_checkin(openid: str = Body(..., embed=True)):

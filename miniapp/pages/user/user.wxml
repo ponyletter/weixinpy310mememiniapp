@@ -1,19 +1,24 @@
 <view class="container">
   <!-- 个人头像与昵称 -->
-  <view class="user-hero card">
+  <view class="user-hero card" bindtap="openEditModal">
     <view class="avatar-wrap">
       <image class="avatar-img" src="{{user.avatar_url || '/images/default_avatar.png'}}"></image>
+      <view class="avatar-edit-badge">✎</view>
     </view>
     <view class="user-meta">
       <view class="user-name">
         <text>{{user.nickname || '微信用户'}}</text>
         <text wx:if="{{user.is_vip}}" class="badge badge-gold" style="margin-left: 12rpx;">尊享会员</text>
       </view>
-      <view class="user-id">创作者中心 · 正常服务中</view>
+      <view class="uid-line" catchtap="copyUid">
+        <text class="uid-val">UID: {{user.openid ? user.openid : '游客模式'}}</text>
+        <text class="uid-copy-tag">复制</text>
+      </view>
+      <view class="user-bio-text">{{user.bio || '点击设置个性签名与资料 ✎'}}</view>
     </view>
-    <view class="hero-actions">
-      <button class="btn-xs btn-config-top" bindtap="openConfigModal">⚙️ 专属配置</button>
-      <button class="btn-xs btn-refresh-user" bindtap="refreshProfile">刷新</button>
+    <view class="hero-actions" catchtap="stopBubble">
+      <button class="btn-xs btn-edit-profile" bindtap="openEditModal">✎ 编辑</button>
+      <button class="btn-xs btn-config-top" bindtap="openConfigModal">⚙️ 配置</button>
     </view>
   </view>
 
@@ -26,11 +31,11 @@
       </view>
       <view class="quota-cell">
         <view class="q-val" style="color: #059669;">{{user.purchased_quota || 0}}</view>
-        <view class="q-label">开通永久额度</view>
+        <view class="q-label">已开通制作额度</view>
       </view>
-      <view class="quota-cell">
+      <view class="quota-cell" bindtap="openHistoryModal">
         <view class="q-val" style="color: #4f46e5;">{{user.total_generated || 0}}</view>
-        <view class="q-label">累计已制作</view>
+        <view class="q-label">累计已制作 (点此查看)</view>
       </view>
     </view>
     <button class="btn-primary" style="margin-top: 24rpx;" bindtap="handleDailyCheckin">
@@ -41,7 +46,7 @@
   <!-- 微信虚拟支付 2.0 充值专区 -->
   <view class="section-title">
     <text>⚡ 动图制作算力包</text>
-    <text class="section-sub">随充随用 · 永久有效 · 自动到账</text>
+    <text class="section-sub">按需使用 · 即时生效 · 自动到账</text>
   </view>
 
   <view class="package-list grid-3">
@@ -91,6 +96,14 @@
 
   <!-- 官方订单中心与服务菜单入口 -->
   <view class="card menu-card">
+    <view class="menu-item" bindtap="openHistoryModal">
+      <text class="menu-text">🎨 查看历史创作动图 (我的相册)</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="openEditModal">
+      <text class="menu-text">👤 编辑个人基础资料 (头像/昵称/签名)</text>
+      <text class="menu-arrow">›</text>
+    </view>
     <view class="menu-item" bindtap="goToOrderCenter">
       <text class="menu-text">🧾 查看充值与开通订单记录</text>
       <text class="menu-arrow">›</text>
@@ -134,7 +147,7 @@
         </view>
         <view class="faq-item">
           <view class="faq-q">Q4: 充值开通的算力包有使用期限吗？</view>
-          <view class="faq-a">没有任何有效期限制！所有开通的制作算力均为永久有效、随充随用，并且额度与您的微信身份永久绑定，支持多设备无缝同步。</view>
+          <view class="faq-a">按需开通使用！制作算力直接绑定至您的微信账号，随充随用，支持多设备无缝同步。</view>
         </view>
         <view class="faq-item">
           <view class="faq-q">Q5: 如果制作遇到异常会扣除我的额度吗？</view>
@@ -288,4 +301,160 @@
       </view>
     </view>
   </view>
+
+  <!-- 编辑个人基础资料弹窗 -->
+  <view wx:if="{{showEditModal}}" class="modal-mask" bindtap="closeEditModal">
+    <view class="modal-card card edit-profile-card" catchtap="stopBubble">
+      <view class="modal-header">
+        <text class="modal-title">👤 设置个人基础资料</text>
+        <text class="btn-close-icon" bindtap="closeEditModal">✕</text>
+      </view>
+
+      <!-- 微信头像选择 -->
+      <view class="edit-avatar-section">
+        <button class="avatar-choose-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          <image class="edit-avatar-preview" src="{{editForm.avatar_url || user.avatar_url || '/images/default_avatar.png'}}" mode="aspectFill"></image>
+          <view class="avatar-choose-hint">点击更换微信头像 📷</view>
+        </button>
+      </view>
+
+      <!-- 昵称 -->
+      <view class="edit-form-item">
+        <text class="form-label">用户昵称</text>
+        <input 
+          type="nickname" 
+          class="form-input" 
+          placeholder="请输入或选取微信昵称" 
+          value="{{editForm.nickname}}" 
+          bindblur="onNicknameBlur"
+          bindinput="onNicknameInput"
+        />
+      </view>
+
+      <!-- 性别 -->
+      <view class="edit-form-item">
+        <text class="form-label">性别</text>
+        <picker mode="selector" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGenderChange">
+          <view class="picker-display">
+            <text>{{genderOptions[genderIndex] || '保密'}}</text>
+            <text class="picker-arrow">▾</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 生日 -->
+      <view class="edit-form-item">
+        <text class="form-label">出生日期</text>
+        <picker mode="date" value="{{editForm.birthday || '2000-01-01'}}" start="1940-01-01" end="2030-12-31" bindchange="onBirthdayChange">
+          <view class="picker-display">
+            <text>{{editForm.birthday || '请选择生日 (选填)'}}</text>
+            <text class="picker-arrow">▾</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- 个性签名 -->
+      <view class="edit-form-item-col">
+        <text class="form-label">个性签名 / 创作宣言</text>
+        <textarea 
+          class="form-textarea" 
+          placeholder="写一句有趣的座右铭或表情包创作宣言..." 
+          value="{{editForm.bio}}" 
+          maxlength="80"
+          bindinput="onBioInput"
+        ></textarea>
+        <view class="char-count">{{(editForm.bio || '').length}}/80</view>
+      </view>
+
+      <view class="modal-actions" style="margin-top: 24rpx;">
+        <button class="btn-secondary" style="flex: 1;" bindtap="closeEditModal">取消</button>
+        <button class="btn-primary" style="flex: 1;" loading="{{savingProfile}}" bindtap="saveProfile">保存修改</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 历史创作记录弹窗 / 我的相册 -->
+  <view wx:if="{{showHistoryModal}}" class="modal-mask" bindtap="closeHistoryModal">
+    <view class="modal-card card history-modal-card" catchtap="stopBubble">
+      <view class="modal-header">
+        <view class="history-title-box">
+          <text class="modal-title">🎨 历史创作相册</text>
+          <text class="history-count-badge" wx:if="{{historyList.length > 0}}">{{historyList.length}} 个作品</text>
+        </view>
+        <text class="btn-close-icon" bindtap="closeHistoryModal">✕</text>
+      </view>
+
+      <scroll-view scroll-y class="history-scroll">
+        <view wx:if="{{historyLoading}}" class="empty-state">
+          <view class="empty-icon">⏳</view>
+          <view class="empty-text">正在加载创作记录...</view>
+        </view>
+        <view wx:elif="{{historyList.length === 0}}" class="empty-state">
+          <view class="empty-icon">📂</view>
+          <view class="empty-text">暂无历史创作动图</view>
+          <view class="empty-sub">在首页输入灵感台词，即可秒级生成独家动图！</view>
+        </view>
+        <view wx:else class="history-grid">
+          <view 
+            wx:for="{{historyList}}" 
+            wx:key="task_id" 
+            class="history-card"
+          >
+            <view class="history-thumb-wrap" bindtap="previewHistoryGif" data-url="{{item.full_gif_url}}">
+              <image 
+                class="history-thumb" 
+                src="{{item.full_gif_url}}" 
+                mode="aspectFit" 
+                lazy-load="true"
+              ></image>
+              <view class="history-play-tag">GIF</view>
+            </view>
+            <view class="history-meta">
+              <view class="history-caption text-ellipsis">{{item.text_bottom || item.prompt || '精选动图'}}</view>
+              <view class="history-date">{{item.created_at}}</view>
+            </view>
+            <view class="history-btns">
+              <button class="btn-xs-history btn-save-album" bindtap="saveHistoryToAlbum" data-url="{{item.full_gif_url}}">保存相册</button>
+              <button class="btn-xs-history btn-add-col" bindtap="openHistorySaveColModal" data-item="{{item}}">存入合集</button>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <button class="btn-primary" style="margin-top: 20rpx; width: 100%;" bindtap="closeHistoryModal">完成浏览</button>
+    </view>
+  </view>
+
+  <!-- 历史作品存入合集选择弹窗 -->
+  <view wx:if="{{showHistoryColModal}}" class="modal-mask" bindtap="closeHistoryColModal">
+    <view class="modal-card card col-select-card" catchtap="stopBubble">
+      <view class="modal-header">
+        <text class="modal-title">📁 存入表情合集</text>
+        <text class="btn-close-icon" bindtap="closeHistoryColModal">✕</text>
+      </view>
+      <view class="modal-tip">选择要收入的表情合集目录：</view>
+      <scroll-view scroll-y class="col-list-scroll">
+        <view 
+          wx:for="{{userCollections}}" 
+          wx:key="collection_id" 
+          class="col-item-choice {{targetColId === item.collection_id ? 'selected' : ''}}"
+          bindtap="selectTargetCol"
+          data-id="{{item.collection_id}}"
+        >
+          <view class="col-choice-icon">📁</view>
+          <view class="col-choice-info">
+            <view class="col-choice-name">{{item.title}}</view>
+            <view class="col-choice-meta">共 {{item.item_count || 0}} 个表情</view>
+          </view>
+          <view class="col-choice-check" wx:if="{{targetColId === item.collection_id}}">✓</view>
+        </view>
+      </scroll-view>
+
+      <view class="modal-actions" style="margin-top: 24rpx;">
+        <button class="btn-secondary" style="flex: 1;" bindtap="closeHistoryColModal">取消</button>
+        <button class="btn-primary" style="flex: 1;" bindtap="confirmSaveHistoryToCol">确定存入</button>
+      </view>
+    </view>
+  </view>
 </view>
+
