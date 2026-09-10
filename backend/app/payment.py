@@ -53,8 +53,10 @@ def create_xpay_order(openid: str, package_id: str) -> Dict[str, Any]:
     }
 
     sign_data_str = json.dumps(sign_data_dict, separators=(',', ':'))
-    pay_sig = calc_pay_sig("requestVirtualPayment", sign_data_str, settings.XPAY_APP_KEY)
-    session_key = get_user_session_key(openid) or settings.XPAY_APP_KEY
+    # 现网环境严格使用现网正式 AppKey 计算签名
+    active_app_key = settings.XPAY_APP_KEY_LIVE if settings.XPAY_ENV == 0 else (settings.XPAY_APP_KEY_SANDBOX or settings.XPAY_APP_KEY)
+    pay_sig = calc_pay_sig("requestVirtualPayment", sign_data_str, active_app_key)
+    session_key = get_user_session_key(openid) or active_app_key
     signature = calc_signature(sign_data_str, session_key)
 
     return {

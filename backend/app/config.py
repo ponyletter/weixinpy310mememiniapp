@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     WX_MCH_ID: str = "1750438891"
 
     # 客服微信号
-    WX_KEFU_ADMIN: str = "abc1202abc"
+    WX_KEFU_ADMIN: str = "Mykahr"
 
     # 微信消息推送配置
     WX_MSG_TOKEN: str = "memeTokenSecret2026"

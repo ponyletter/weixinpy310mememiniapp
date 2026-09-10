@@ -997,3 +997,112 @@
   font-weight: 700;
   color: #4f46e5;
 }
+
+/* --- 业务合作与开发者交流弹窗 (保留微信号 Mykahr) --- */
+.consult-modal-box {
+  background: #ffffff;
+  border-radius: 28rpx;
+  width: 90%;
+  max-width: 660rpx;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 36rpx 28rpx;
+  box-sizing: border-box;
+}
+
+.consult-modal-body {
+  margin-top: 20rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.wechat-contact-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4rpx 16rpx rgba(7, 193, 96, 0.08);
+  border: 2rpx solid #bbf7d0;
+}
+
+.wechat-left {
+  display: flex;
+  align-items: center;
+}
+
+.wechat-logo-wrap {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
+  background: #07c160;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+}
+
+.wechat-icon {
+  font-size: 44rpx;
+}
+
+.wechat-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.wechat-nickname {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6rpx;
+}
+
+.wechat-id-row {
+  font-size: 24rpx;
+  color: #64748b;
+}
+
+.wechat-id-text {
+  color: #07c160;
+  font-weight: 700;
+}
+
+.btn-copy-wechat {
+  background: #07c160 !important;
+  color: #ffffff !important;
+  font-size: 24rpx !important;
+  font-weight: 600 !important;
+  border-radius: 30rpx !important;
+  padding: 12rpx 28rpx !important;
+  margin: 0 !important;
+  line-height: normal !important;
+  border: none !important;
+  width: auto !important;
+}
+
+.consult-scope-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 8rpx;
+}
+
+.scope-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.scope-tag {
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 22rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid #e2e8f0;
+}
+

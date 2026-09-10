@@ -129,7 +129,7 @@
     </view>
 
     <!-- 业务合作与专属咨询 (保留微信号 Mykahr) -->
-    <view class="menu-item" bindtap="copyAuthorWechat">
+    <view class="menu-item" bindtap="openConsultModal">
       <view class="menu-item-left">
         <text class="menu-item-icon">💼</text>
         <text class="menu-text">业务合作与专属咨询</text>
@@ -511,6 +511,39 @@
       <view class="modal-actions" style="margin-top: 24rpx;">
         <button class="btn-secondary" style="flex: 1;" bindtap="closeHistoryColModal">取消</button>
         <button class="btn-primary" style="flex: 1;" bindtap="confirmSaveHistoryToCol">确定存入</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 业务合作与开发者交流弹窗 -->
+  <view class="modal-mask edit-modal-mask" wx:if="{{showConsultModal}}" bindtap="closeConsultModal">
+    <view class="consult-modal-box card" catchtap="stopBubble">
+      <view class="modal-header">
+        <text class="modal-title">💼 业务合作与开发者交流</text>
+        <text class="btn-close-icon" bindtap="closeConsultModal">✕</text>
+      </view>
+      <view class="consult-modal-body">
+        <view class="wechat-contact-card">
+          <view class="wechat-left">
+            <view class="wechat-logo-wrap">
+              <view class="wechat-icon">💬</view>
+            </view>
+            <view class="wechat-details">
+              <view class="wechat-nickname">{{contactWeChat.name}}</view>
+              <view class="wechat-id-row">微信号：<text class="wechat-id-text">{{contactWeChat.wechatId}}</text></view>
+            </view>
+          </view>
+          <button class="btn-copy-wechat" bindtap="copyWeChatId">一键复制</button>
+        </view>
+
+        <view class="consult-scope-title">专注交流与业务范围：</view>
+        <view class="scope-tags">
+          <text class="scope-tag">表情包商业化与技术答疑</text>
+          <text class="scope-tag">Python 软件开发定制</text>
+          <text class="scope-tag">AI Agent 智能体系统设计</text>
+          <text class="scope-tag">知识库系统搭建与部署</text>
+          <text class="scope-tag">微信小程序生态二次开发</text>
+        </view>
       </view>
     </view>
   </view>

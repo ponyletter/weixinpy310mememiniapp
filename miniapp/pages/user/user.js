@@ -21,6 +21,13 @@ Page({
       loopCount: 0
     },
 
+    // 商务与开发者交流弹窗
+    showConsultModal: false,
+    contactWeChat: {
+      name: '数创工坊 · 开发者微信',
+      wechatId: 'Mykahr'
+    },
+
     // 个人资料编辑
     showEditModal: false,
     savingProfile: false,
@@ -105,18 +112,31 @@ Page({
     });
   },
 
-  copyAuthorWechat() {
+  openConsultModal() {
+    this.setData({ showConsultModal: true });
+  },
+
+  closeConsultModal() {
+    this.setData({ showConsultModal: false });
+  },
+
+  copyWeChatId() {
+    const wid = (this.data.contactWeChat && this.data.contactWeChat.wechatId) || 'Mykahr';
     wx.setClipboardData({
-      data: 'Mykahr',
+      data: wid,
       success: () => {
         wx.showModal({
-          title: '复制成功',
-          content: '开发者微信号【Mykahr】已复制到剪贴板，请前往微信搜索添加好友！',
+          title: '复制成功 🎉',
+          content: `开发者微信号【${wid}】已复制到剪贴板，请前往微信搜索添加好友！`,
           showCancel: false,
           confirmText: '我知道了'
         });
       }
     });
+  },
+
+  copyAuthorWechat() {
+    this.openConsultModal();
   },
 
   // ---------------- 个人资料编辑 ----------------
