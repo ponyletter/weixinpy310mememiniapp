@@ -7,6 +7,8 @@ Page({
     templates: [],
     selectedTemplate: 'kiss',
     selectedTemplateTitle: '飞吻',
+    selectedTemplateDesc: '发送爱心，萌力爆表',
+    showTemplateDrawer: false,
     mode: 'upload', // 'upload' | 'sketch'
     refImagePath: '',
     characterDesc: '',
@@ -88,22 +90,39 @@ Page({
       success: (res) => {
         if (res.data && res.data.data) {
           const list = res.data.data;
+          const current = list.find(t => t.id === this.data.selectedTemplate) || list[0] || {};
           this.setData({
             templates: list,
-            selectedTemplateTitle: (list.find(t => t.id === this.data.selectedTemplate) || {}).title || '飞吻'
+            selectedTemplate: current.id || this.data.selectedTemplate,
+            selectedTemplateTitle: current.title || '飞吻',
+            selectedTemplateDesc: current.action || '发送爱心，萌力爆表'
           });
         }
       }
     });
   },
 
+  openTemplateDrawer() {
+    this.setData({ showTemplateDrawer: true });
+  },
+
+  closeTemplateDrawer() {
+    this.setData({ showTemplateDrawer: false });
+  },
+
   selectTemplate(e) {
-    const { id, title, caption } = e.currentTarget.dataset;
+    const { id, title, desc, caption } = e.currentTarget.dataset;
     this.setData({
       selectedTemplate: id,
       selectedTemplateTitle: title || id,
+      selectedTemplateDesc: desc || this.data.selectedTemplateDesc,
       caption: caption || this.data.caption
     });
+  },
+
+  selectTemplateFromDrawer(e) {
+    this.selectTemplate(e);
+    this.closeTemplateDrawer();
   },
 
   switchMode(e) {
@@ -114,7 +133,7 @@ Page({
     }
   },
 
-  // --- 图片上传 ---
+  // --- 图片上传与裁剪 ---
   chooseImage() {
     wx.chooseMedia({
       count: 1,
@@ -127,6 +146,27 @@ Page({
         }
       }
     });
+  },
+
+  cropCurrentImage() {
+    if (!this.data.refImagePath) return;
+    if (wx.cropImage) {
+      wx.cropImage({
+        current: this.data.refImagePath,
+        cropScale: '1:1',
+        success: (cRes) => {
+          if (cRes.tempFilePath) {
+            this.setData({ refImagePath: cRes.tempFilePath });
+            wx.showToast({ title: '裁剪已应用', icon: 'success' });
+          }
+        },
+        fail: (err) => {
+          console.log('裁剪取消或失败:', err);
+        }
+      });
+    } else {
+      wx.showToast({ title: '当前微信版本不支持内置裁剪', icon: 'none' });
+    }
   },
 
   removeImage() {
@@ -344,6 +384,21 @@ Page({
       return;
     }
 
+    // 微信订阅消息：如果已在后台配置模板ID，在点击时发起订阅
+    const tmplId = app.globalData.subscribeTemplateId;
+    if (tmplId && wx.requestSubscribeMessage) {
+      wx.requestSubscribeMessage({
+        tmplIds: [tmplId],
+        complete: () => {
+          this.executeGeneratePipeline();
+        }
+      });
+    } else {
+      this.executeGeneratePipeline();
+    }
+  },
+
+  executeGeneratePipeline() {
     this.setData({
       isGenerating: true,
       progress: 5,

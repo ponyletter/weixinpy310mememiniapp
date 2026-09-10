@@ -3,73 +3,65 @@
   <view wx:if="{{showFavoriteTip}}" class="favorite-guide-bar">
     <view class="fav-guide-content" bindtap="showFavoriteTutorial">
       <text class="fav-icon">⭐</text>
-      <text class="fav-text">点击右上角 <text class="fav-dots">···</text> 添加到「我的小程序」或「收藏」，下次使用更快捷！</text>
+      <text class="fav-text">点击右上角 <text class="fav-dots">···</text> 添加到「我的小程序」，下次更快捷！</text>
     </view>
     <text class="fav-close" bindtap="dismissFavoriteTip">✕</text>
   </view>
 
-  <!-- 顶部状态栏：剩余额度与极速签到 -->
-  <view class="top-bar card">
-    <view class="user-quota">
-      <text class="quota-label">制作额度:</text>
-      <text class="quota-num">{{quota}}</text>
-      <text class="quota-unit">次</text>
-      <text wx:if="{{isVip}}" class="badge badge-gold" style="margin-left: 12rpx;">尊享会员</text>
+  <!-- 顶部状态栏：紧凑单行 -->
+  <view class="top-bar-compact">
+    <view class="quota-row">
+      <text class="quota-tag">额度 <text class="quota-num-inline">{{quota}}</text> 次</text>
+      <text wx:if="{{isVip}}" class="badge-vip-sm">尊享</text>
     </view>
-    <view class="top-actions">
-      <button class="btn-sm btn-checkin" bindtap="handleCheckin">🎁 签到+3次</button>
-      <button class="btn-sm btn-recharge" bindtap="goToRecharge">⚡ 1元开通20次</button>
-    </view>
-  </view>
-
-  <!-- 步骤 1: 选择动作模版 (Grid 栅格整齐布局) -->
-  <view class="section-title">
-    <text>1. 选择动作模版</text>
-    <text class="section-sub">已选: {{selectedTemplateTitle}}</text>
-  </view>
-  <view class="template-grid grid-3">
-    <view 
-      wx:for="{{templates}}" 
-      wx:key="id" 
-      class="template-card {{selectedTemplate === item.id ? 'active' : ''}}"
-      bindtap="selectTemplate"
-      data-id="{{item.id}}"
-      data-title="{{item.title}}"
-      data-caption="{{item.default_caption}}"
-    >
-      <view class="template-name">{{item.title}}</view>
-      <view class="template-desc">{{item.action}}</view>
+    <view class="top-quick-actions">
+      <text class="action-link action-checkin" bindtap="handleCheckin">🎁签到+3</text>
+      <text class="action-divider">|</text>
+      <text class="action-link action-recharge" bindtap="goToRecharge">⚡开通</text>
     </view>
   </view>
 
-  <!-- 步骤 2: 形象设定 (照片参考 / 在线手绘) -->
-  <view class="section-title">2. 设定主角形象 (二选一)</view>
-  <view class="card mode-card">
+  <!-- 动作模版选择器：紧凑内联胶囊 -->
+  <view class="template-selector-bar" bindtap="openTemplateDrawer">
+    <view class="tpl-current">
+      <text class="tpl-current-icon">🎬</text>
+      <text class="tpl-current-name">{{selectedTemplateTitle}}</text>
+      <text class="tpl-current-desc">{{selectedTemplateDesc}}</text>
+    </view>
+    <text class="tpl-switch-btn">切换模版 ›</text>
+  </view>
+
+  <!-- ★ 核心区域：形象设定 (照片参考 / 在线手绘) -->
+  <view class="hero-card card">
     <view class="mode-tabs">
       <view class="mode-tab {{mode === 'upload' ? 'active' : ''}}" bindtap="switchMode" data-mode="upload">
         📷 上传参考图
       </view>
       <view class="mode-tab {{mode === 'sketch' ? 'active' : ''}}" bindtap="switchMode" data-mode="sketch">
-        ✏️ 在线手绘草图
+        ✏️ 在线手绘
       </view>
     </view>
 
     <!-- 上传图片模式 -->
     <view wx:if="{{mode === 'upload'}}" class="upload-area">
-      <view wx:if="{{!refImagePath}}" class="upload-placeholder" bindtap="chooseImage">
-        <text class="upload-icon">＋</text>
-        <text class="upload-text">点击上传人物、宠物或真人头像底图</text>
+      <view wx:if="{{!refImagePath}}" class="upload-placeholder-hero" bindtap="chooseImage">
+        <text class="upload-icon-lg">＋</text>
+        <text class="upload-hint">点击上传人物、宠物或真人头像</text>
+        <text class="upload-sub-hint">支持相册照片或现场拍摄</text>
       </view>
       <view wx:else class="image-preview-wrap">
         <image class="ref-preview" src="{{refImagePath}}" mode="aspectFit"></image>
-        <view class="remove-btn" bindtap="removeImage">✕ 重新上传</view>
+        <view class="preview-actions-row">
+          <text class="preview-action-btn action-crop" bindtap="cropCurrentImage">✂️ 裁剪</text>
+          <text class="preview-action-btn action-remove" bindtap="removeImage">✕ 重新上传</text>
+        </view>
       </view>
     </view>
 
     <!-- 在线手绘草图模式 -->
     <view wx:if="{{mode === 'sketch'}}" class="sketch-area">
       <view class="sketch-canvas-wrap">
-        <canvas 
+        <canvas
           type="2d"
           id="sketchCanvas"
           class="sketch-canvas"
@@ -78,41 +70,37 @@
           bindtouchend="onSketchEnd"
         ></canvas>
         <view class="sketch-zoom-badge" bindtap="openFullScreenSketch">
-          <text>🔍 点击全屏涂鸦</text>
+          <text>🔍 全屏涂鸦</text>
         </view>
       </view>
       <view class="sketch-toolbar">
         <button class="btn-xs" bindtap="clearSketch">清空画布</button>
-        <button class="btn-xs btn-fullscreen-launch" bindtap="openFullScreenSketch">🎨 全屏大画布自由涂鸦</button>
+        <button class="btn-xs btn-fullscreen-launch" bindtap="openFullScreenSketch">🎨 全屏大画布</button>
       </view>
     </view>
   </view>
 
-  <!-- 步骤 3: 角色描述与动图字幕 -->
-  <view class="section-title">3. 描述与台词</view>
-  <view class="card form-card">
-    <view class="form-item form-item-col">
+  <!-- 台词与角色描述：紧凑折叠 -->
+  <view class="form-compact card">
+    <view class="form-item-compact">
       <view class="form-label-row">
-        <text class="form-label">角色人设 (可选):</text>
-        <text class="form-tip">上传参考图可留空</text>
+        <text class="form-label-sm">弹幕台词</text>
+        <text class="btn-xs-inline" bindtap="getCaptionSuggestions">✨ 灵感</text>
       </view>
-      <input 
-        class="form-input form-input-full" 
-        placeholder="可选：如上传了参考图可留空，或补充服饰/细节" 
-        value="{{characterDesc}}" 
-        bindinput="onInputDesc" 
+      <input
+        class="form-input-compact"
+        placeholder="如: 收到、么么哒、干得漂亮"
+        value="{{caption}}"
+        bindinput="onInputCaption"
       />
     </view>
-    <view class="form-item form-item-col" style="margin-top: 18rpx;">
-      <view class="form-label-row">
-        <text class="form-label">弹幕台词:</text>
-        <button class="btn-xs btn-suggest" bindtap="getCaptionSuggestions">✨ 灵感推荐</button>
-      </view>
-      <input 
-        class="form-input form-input-full" 
-        placeholder="如: 收到、么么哒、干得漂亮、摸鱼中" 
-        value="{{caption}}" 
-        bindinput="onInputCaption" 
+    <view class="form-item-compact" style="margin-top: 14rpx;">
+      <text class="form-label-sm form-label-muted">角色人设 (可选，上传参考图可留空)</text>
+      <input
+        class="form-input-compact"
+        placeholder="可选：补充服饰或细节描述"
+        value="{{characterDesc}}"
+        bindinput="onInputDesc"
       />
     </view>
   </view>
@@ -122,13 +110,13 @@
     {{isGenerating ? '逐帧渲染动图中...' : '🚀 立即制作动图 (扣1次额度)'}}
   </button>
 
-  <!-- 动图预览与导出区 (清爽白底棋盘格，在制作中或完成时自动展开) -->
-  <view wx:if="{{isGenerating || gifResultUrl}}" class="section-title" style="margin-top: 36rpx;">
-    <text>4. 制作结果与导出</text>
+  <!-- 动图预览与导出区 -->
+  <view wx:if="{{isGenerating || gifResultUrl}}" class="section-title-sm" style="margin-top: 24rpx;">
+    <text>制作结果</text>
     <text class="section-sub">{{isGenerating ? '正在逐帧渲染中' : '制作成功已交付'}}</text>
   </view>
   <view wx:if="{{isGenerating || gifResultUrl}}" class="preview-card card checkerboard-bg">
-    <!-- 状态 1: 正在逐帧渲染中 (清爽动画进度条) -->
+    <!-- 状态 1: 正在逐帧渲染中 -->
     <view wx:if="{{isGenerating}}" class="generating-wrap">
       <view class="loading-spinner"></view>
       <view class="progress-box">
@@ -140,7 +128,7 @@
       </view>
     </view>
 
-    <!-- 状态 2: 制作成功 (展示 GIF 与导出操作) -->
+    <!-- 状态 2: 制作成功 -->
     <view wx:if="{{gifResultUrl && !isGenerating}}" class="result-wrap">
       <image class="result-gif" src="{{gifResultUrl}}" mode="aspectFit"></image>
       <view class="result-actions grid-2">
@@ -159,9 +147,9 @@
       </view>
       <view class="col-tip">选择要存放的表情合集，随时可在底栏【表情合集】查看与批量分享：</view>
       <scroll-view scroll-y class="col-list-scroll">
-        <view 
-          wx:for="{{userCollections}}" 
-          wx:key="collection_id" 
+        <view
+          wx:for="{{userCollections}}"
+          wx:key="collection_id"
           class="col-option-item {{selectedColId === item.collection_id ? 'active' : ''}}"
           bindtap="selectCollection"
           data-id="{{item.collection_id}}"
@@ -171,11 +159,11 @@
         </view>
       </scroll-view>
       <view class="col-create-row">
-        <input 
-          class="form-input new-col-input" 
-          placeholder="新建一个分类合集 (如: 日常斗图)" 
-          value="{{newColTitle}}" 
-          bindinput="onInputNewColTitle" 
+        <input
+          class="form-input new-col-input"
+          placeholder="新建一个分类合集 (如: 日常斗图)"
+          value="{{newColTitle}}"
+          bindinput="onInputNewColTitle"
         />
         <button class="btn-xs btn-new-col" bindtap="createNewColAndSelect">+ 新建</button>
       </view>
@@ -183,6 +171,33 @@
         <button class="btn-secondary" style="flex: 1;" bindtap="closeCollectionModal">取消</button>
         <button class="btn-primary" style="flex: 1;" bindtap="confirmSaveToCollection">确认存入</button>
       </view>
+    </view>
+  </view>
+
+  <!-- 模版切换抽屉 (底部弹出) -->
+  <view wx:if="{{showTemplateDrawer}}" class="drawer-mask" bindtap="closeTemplateDrawer">
+    <view class="drawer-panel" catchtap="stopBubble" style="animation: slideUp 0.25s ease-out;">
+      <view class="drawer-header">
+        <text class="drawer-title">选择动作模版</text>
+        <text class="drawer-close" bindtap="closeTemplateDrawer">✕ 关闭</text>
+      </view>
+      <scroll-view scroll-y class="drawer-scroll">
+        <view class="drawer-grid">
+          <view
+            wx:for="{{templates}}"
+            wx:key="id"
+            class="drawer-tpl-item {{selectedTemplate === item.id ? 'active' : ''}}"
+            bindtap="selectTemplateFromDrawer"
+            data-id="{{item.id}}"
+            data-title="{{item.title}}"
+            data-desc="{{item.action}}"
+            data-caption="{{item.default_caption}}"
+          >
+            <view class="drawer-tpl-name">{{item.title}}</view>
+            <view class="drawer-tpl-action">{{item.action}}</view>
+          </view>
+        </view>
+      </scroll-view>
     </view>
   </view>
 
@@ -196,7 +211,7 @@
       </view>
     </view>
     <view class="fullscreen-canvas-container">
-      <canvas 
+      <canvas
         type="2d"
         id="fullScreenCanvas"
         class="fullscreen-canvas"

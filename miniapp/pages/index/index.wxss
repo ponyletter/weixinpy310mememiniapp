@@ -1,102 +1,119 @@
-/* 顶部状态栏 */
-.top-bar {
+/* ========== 紧凑顶部状态栏 ========== */
+.top-bar-compact {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24rpx 28rpx;
+  padding: 14rpx 20rpx;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  border: 1rpx solid #e2e8f0;
 }
 
-.user-quota {
+.quota-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  gap: 10rpx;
 }
 
-.quota-label {
-  font-size: 26rpx;
-  color: #64748b;
+.quota-tag {
+  font-size: 24rpx;
+  color: #475569;
+  font-weight: 500;
 }
 
-.quota-num {
-  font-size: 42rpx;
+.quota-num-inline {
+  font-size: 32rpx;
   font-weight: 800;
   color: #4f46e5;
-  margin-left: 10rpx;
 }
 
-.quota-unit {
-  font-size: 24rpx;
-  color: #64748b;
-  margin-left: 6rpx;
+.badge-vip-sm {
+  font-size: 18rpx;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  font-weight: 600;
 }
 
-.top-actions {
+.top-quick-actions {
   display: flex;
-  gap: 12rpx;
+  align-items: center;
+  gap: 14rpx;
 }
 
-.btn-sm {
+.action-link {
   font-size: 24rpx;
-  font-weight: 500;
-  padding: 12rpx 22rpx;
-  border-radius: 14rpx;
-  border: none;
-  line-height: 1.4;
-  margin: 0;
+  font-weight: 600;
 }
 
-.btn-checkin {
-  background: #ecfdf5;
+.action-checkin {
   color: #059669;
-  border: 1rpx solid #a7f3d0;
 }
 
-.btn-recharge {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #ffffff;
-  box-shadow: 0 4rpx 14rpx rgba(245, 158, 11, 0.3);
+.action-recharge {
+  color: #d97706;
 }
 
-/* 模版 Grid 栅格布局 (Tkinter 风格对齐) */
-.template-grid {
-  margin-bottom: 24rpx;
+.action-divider {
+  font-size: 20rpx;
+  color: #cbd5e1;
 }
 
-.template-card {
+/* ========== 模版选择器胶囊栏 ========== */
+.template-selector-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18rpx 24rpx;
   background: #ffffff;
-  border: 2rpx solid #e2e8f0;
   border-radius: 18rpx;
-  padding: 22rpx 14rpx;
-  text-align: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 2rpx 10rpx rgba(15, 23, 42, 0.03);
+  border: 2rpx solid #e2e8f0;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 10rpx rgba(15, 23, 42, 0.04);
 }
 
-.template-card.active {
-  background: #eef2ff;
-  border-color: #4f46e5;
-  box-shadow: 0 4rpx 16rpx rgba(79, 70, 229, 0.18);
-  transform: translateY(-2rpx);
+.tpl-current {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  flex: 1;
+  overflow: hidden;
 }
 
-.template-name {
-  font-size: 26rpx;
+.tpl-current-icon {
+  font-size: 28rpx;
+  flex-shrink: 0;
+}
+
+.tpl-current-name {
+  font-size: 28rpx;
   font-weight: 700;
   color: #1e293b;
+  flex-shrink: 0;
 }
 
-.template-card.active .template-name {
-  color: #4338ca;
+.tpl-current-desc {
+  font-size: 22rpx;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.template-desc {
-  font-size: 20rpx;
-  color: #64748b;
-  margin-top: 6rpx;
+.tpl-switch-btn {
+  font-size: 24rpx;
+  color: #4f46e5;
+  font-weight: 600;
+  flex-shrink: 0;
+  padding-left: 16rpx;
 }
 
-/* 形象设定 Tab */
-.mode-card {
+/* ========== 核心卡片区 (Hero) ========== */
+.hero-card {
   padding: 24rpx;
+  margin-bottom: 16rpx;
 }
 
 .mode-tabs {
@@ -104,13 +121,13 @@
   background: #f1f5f9;
   border-radius: 16rpx;
   padding: 6rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 .mode-tab {
   flex: 1;
   text-align: center;
-  padding: 16rpx 0;
+  padding: 14rpx 0;
   font-size: 26rpx;
   color: #64748b;
   font-weight: 500;
@@ -125,53 +142,77 @@
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
+/* 上传区域 (Hero尺寸) */
 .upload-area {
   display: flex;
   justify-content: center;
 }
 
-.upload-placeholder {
+.upload-placeholder-hero {
   width: 100%;
-  height: 240rpx;
-  border: 2rpx dashed #cbd5e1;
-  border-radius: 20rpx;
-  background: #f8fafc;
+  height: 340rpx;
+  border: 3rpx dashed #a5b4fc;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.upload-icon {
-  font-size: 52rpx;
+.upload-icon-lg {
+  font-size: 72rpx;
+  color: #818cf8;
+  margin-bottom: 12rpx;
+  font-weight: 300;
+}
+
+.upload-hint {
+  font-size: 28rpx;
+  color: #475569;
+  font-weight: 600;
+}
+
+.upload-sub-hint {
+  font-size: 22rpx;
   color: #94a3b8;
-  margin-bottom: 8rpx;
-}
-
-.upload-text {
-  font-size: 24rpx;
-  color: #64748b;
+  margin-top: 6rpx;
 }
 
 .image-preview-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
 }
 
 .ref-preview {
-  width: 260rpx;
-  height: 260rpx;
-  border-radius: 16rpx;
+  width: 320rpx;
+  height: 320rpx;
+  border-radius: 20rpx;
   background: #f1f5f9;
   border: 1rpx solid #e2e8f0;
 }
 
-.remove-btn {
+.preview-actions-row {
+  display: flex;
+  gap: 32rpx;
+  margin-top: 16rpx;
+}
+
+.preview-action-btn {
   font-size: 24rpx;
+  font-weight: 600;
+  padding: 8rpx 0;
+}
+
+.action-crop {
+  color: #4f46e5;
+}
+
+.action-remove {
   color: #ef4444;
-  margin-top: 14rpx;
-  font-weight: 500;
 }
 
 /* 草图画布 */
@@ -190,7 +231,7 @@
 
 .sketch-canvas {
   width: 320px;
-  height: 220px;
+  height: 260px;
   background: #ffffff;
   border: 2rpx solid #cbd5e1;
   border-radius: 16rpx;
@@ -224,22 +265,16 @@
   padding: 10rpx 20rpx;
 }
 
-/* 表单输入卡片 */
-.form-card {
-  padding: 24rpx;
+/* ========== 紧凑表单区 ========== */
+.form-compact {
+  padding: 20rpx 24rpx;
+  margin-bottom: 4rpx;
 }
 
-.form-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20rpx;
-}
-
-.form-item-col {
+.form-item-compact {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 12rpx;
+  gap: 8rpx;
 }
 
 .form-label-row {
@@ -249,58 +284,44 @@
   width: 100%;
 }
 
-.form-tip {
-  font-size: 22rpx;
-  color: #94a3b8;
-}
-
-.form-input-full {
-  width: 100% !important;
-}
-
-.form-item:last-child {
-  margin-bottom: 0;
-}
-
-.form-label {
-  font-size: 26rpx;
+.form-label-sm {
+  font-size: 24rpx;
   font-weight: 600;
   color: #334155;
-  flex-shrink: 0;
 }
 
-.form-input {
-  flex: 1;
-  height: 80rpx;
-  min-height: 80rpx;
-  line-height: 80rpx;
+.form-label-muted {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.btn-xs-inline {
+  font-size: 22rpx;
+  color: #4338ca;
+  font-weight: 600;
+  padding: 4rpx 14rpx;
+  background: #eef2ff;
+  border-radius: 10rpx;
+}
+
+.form-input-compact {
+  width: 100%;
+  height: 72rpx;
+  min-height: 72rpx;
+  line-height: 72rpx;
   background: #f8fafc;
   border: 1rpx solid #e2e8f0;
   border-radius: 14rpx;
-  padding: 0 24rpx;
+  padding: 0 20rpx;
   color: #1e293b;
-  font-size: 28rpx;
+  font-size: 26rpx;
   box-sizing: border-box;
 }
 
-.btn-suggest {
-  margin-left: 14rpx;
-  background: #eef2ff;
-  color: #4338ca;
-  border: 1rpx solid #c7d2fe;
-  height: 80rpx;
-  line-height: 80rpx;
-  padding: 0 24rpx;
-  white-space: nowrap;
-  flex-shrink: 0;
-  border-radius: 14rpx;
-  font-size: 24rpx;
-}
-
-/* 动图生成主按钮 */
+/* ========== 动图生成主按钮 ========== */
 .btn-generate {
   width: 100% !important;
-  margin-top: 24rpx;
+  margin-top: 20rpx;
   font-size: 28rpx;
   white-space: nowrap;
   letter-spacing: 1rpx;
@@ -309,38 +330,31 @@
   padding: 0;
 }
 
-/* 动图结果与预览区 */
+/* ========== 结果区标题 ========== */
+.section-title-sm {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.section-sub {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+/* ========== 动图结果与预览区 ========== */
 .preview-card {
-  min-height: 420rpx;
+  min-height: 360rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 30rpx 20rpx;
-}
-
-.preview-idle {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40rpx 0;
-}
-
-.idle-icon {
-  font-size: 72rpx;
-  margin-bottom: 14rpx;
-}
-
-.idle-text {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #334155;
-}
-
-.idle-subtext {
-  font-size: 22rpx;
-  color: #94a3b8;
-  margin-top: 8rpx;
+  padding: 24rpx 20rpx;
 }
 
 /* 渲染进度状态 */
@@ -349,7 +363,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40rpx 20rpx;
+  padding: 30rpx 20rpx;
 }
 
 .loading-spinner {
@@ -359,7 +373,7 @@
   border-top-color: #4f46e5;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  margin-bottom: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 @keyframes spin {
@@ -372,7 +386,7 @@
   background: #f1f5f9;
   border-radius: 10rpx;
   overflow: hidden;
-  margin-bottom: 16rpx;
+  margin-bottom: 14rpx;
 }
 
 .progress-bar {
@@ -411,17 +425,103 @@
 
 .result-actions {
   width: 100%;
-  margin-top: 28rpx;
+  margin-top: 24rpx;
 }
 
 .action-btn {
-  padding: 22rpx 0;
+  padding: 20rpx 0;
   font-size: 26rpx;
   border-radius: 16rpx;
   white-space: nowrap;
 }
 
-/* 全屏涂鸦画板模态层 */
+/* ========== 模版抽屉 (底部弹出) ========== */
+.drawer-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+}
+
+.drawer-panel {
+  width: 100%;
+  max-height: 70vh;
+  background: #ffffff;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 28rpx 28rpx 40rpx 28rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.drawer-title {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.drawer-close {
+  font-size: 24rpx;
+  color: #94a3b8;
+  font-weight: 500;
+  padding: 8rpx 16rpx;
+}
+
+.drawer-scroll {
+  max-height: 50vh;
+}
+
+.drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+
+.drawer-tpl-item {
+  background: #f8fafc;
+  border: 2rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  padding: 20rpx 14rpx;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.drawer-tpl-item.active {
+  background: #eef2ff;
+  border-color: #4f46e5;
+  box-shadow: 0 4rpx 14rpx rgba(79, 70, 229, 0.15);
+}
+
+.drawer-tpl-name {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.drawer-tpl-item.active .drawer-tpl-name {
+  color: #4338ca;
+}
+
+.drawer-tpl-action {
+  font-size: 20rpx;
+  color: #64748b;
+  margin-top: 6rpx;
+}
+
+/* ========== 全屏涂鸦画板模态层 ========== */
 .fullscreen-sketch-mask {
   position: fixed;
   inset: 0;
@@ -528,7 +628,36 @@
   padding: 22rpx 0;
 }
 
-/* 存入表情合集弹窗样式 */
+/* ========== 存入表情合集弹窗样式 ========== */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 9980;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.modal-title {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.btn-close-icon {
+  font-size: 28rpx;
+  color: #94a3b8;
+  padding: 8rpx 12rpx;
+}
+
 .col-modal-card {
   width: 90%;
   max-height: 80vh;
@@ -592,6 +721,20 @@
   font-size: 24rpx;
 }
 
+.form-input {
+  flex: 1;
+  height: 80rpx;
+  min-height: 80rpx;
+  line-height: 80rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 14rpx;
+  padding: 0 24rpx;
+  color: #1e293b;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
 .btn-new-col {
   background: #eef2ff !important;
   color: #4338ca !important;
@@ -602,18 +745,16 @@
   white-space: nowrap;
 }
 
-
-
-/* 顶部收藏小程序快捷引导条 */
+/* ========== 顶部收藏小程序快捷引导条 ========== */
 .favorite-guide-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
   border: 1rpx solid #c7d2fe;
-  border-radius: 18rpx;
-  padding: 16rpx 22rpx;
-  margin-bottom: 20rpx;
+  border-radius: 16rpx;
+  padding: 12rpx 18rpx;
+  margin-bottom: 14rpx;
   box-shadow: 0 4rpx 14rpx rgba(79, 70, 229, 0.08);
 }
 
@@ -624,12 +765,12 @@
 }
 
 .fav-icon {
-  font-size: 28rpx;
-  margin-right: 12rpx;
+  font-size: 24rpx;
+  margin-right: 10rpx;
 }
 
 .fav-text {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #3730a3;
   line-height: 1.4;
 }
@@ -642,8 +783,19 @@
 }
 
 .fav-close {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #818cf8;
-  padding: 8rpx 14rpx;
-  cursor: pointer;
+  padding: 8rpx 12rpx;
+}
+
+/* ========== 通用按钮样式 (由 app.wxss 补充) ========== */
+.btn-xs {
+  font-size: 22rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 10rpx;
+  border: 1rpx solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  line-height: 1.4;
+  margin: 0;
 }
