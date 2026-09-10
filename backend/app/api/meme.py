@@ -261,6 +261,259 @@ async def generate_and_process(
         }
     }
 
+# 全局异步任务存储
+import asyncio
+TASK_STORE: dict[str, dict] = {}
+
+async def run_generate_pipeline(
+    task_id: str,
+    ref_image_bytes: Optional[bytes],
+    action_type: str,
+    custom_caption: str,
+    character_desc: str,
+    fps: int,
+    make_transparent: bool,
+    padding_percent: float,
+):
+    """后台异步执行完整的生图、切割与动图合成流水线"""
+    import io
+    import base64
+    import httpx
+
+    try:
+        # 阶段 1：组装提示词
+        TASK_STORE[task_id] = {
+            "status": "processing",
+            "progress": 10,
+            "stage": "prompt",
+            "stage_text": "阶段 1/4: 组装角色提示词与人设语义对齐..."
+        }
+
+        has_image = ref_image_bytes is not None and len(ref_image_bytes) > 0
+        template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
+        prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image)
+
+        # 阶段 2：请求 ChatGPT Plus (Images 2.5) 出图
+        TASK_STORE[task_id] = {
+            "status": "processing",
+            "progress": 25,
+            "stage": "drawing",
+            "stage_text": "阶段 2/4: ChatGPT Plus (Images 2.5) 正在逐帧绘制 16 宫格雪碧图..."
+        }
+
+        headers = {
+            "Authorization": f"Bearer {settings.CPA_API_KEY}"
+        }
+
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            if has_image:
+                ref_img_pil = Image.open(io.BytesIO(ref_image_bytes)).convert("RGBA")
+                buf = io.BytesIO()
+                ref_img_pil.save(buf, format="PNG")
+                buf.seek(0)
+                files = {
+                    "image": ("character.png", buf.getvalue(), "image/png")
+                }
+                data = {
+                    "model": settings.CPA_IMAGE_MODEL,
+                    "prompt": prompt,
+                    "n": "1",
+                    "size": "1024x1024"
+                }
+                resp = await client.post(
+                    f"{settings.CPA_API_BASE}/images/edits",
+                    headers=headers,
+                    data=data,
+                    files=files
+                )
+            else:
+                payload = {
+                    "model": settings.CPA_IMAGE_MODEL,
+                    "prompt": prompt,
+                    "n": 1,
+                    "size": "1024x1024"
+                }
+                resp = await client.post(
+                    f"{settings.CPA_API_BASE}/images/generations",
+                    headers={**headers, "Content-Type": "application/json"},
+                    json=payload
+                )
+
+            if resp.status_code != 200:
+                raise RuntimeError(f"AI 出图服务异常 ({resp.status_code}): {resp.text}")
+            resp_data = resp.json()
+
+        item = resp_data.get("data", [{}])[0]
+        if "b64_json" in item:
+            img_bytes = base64.b64decode(item["b64_json"])
+            source_image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        elif "url" in item:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                img_res = await client.get(item["url"])
+                source_image = Image.open(io.BytesIO(img_res.content)).convert("RGB")
+        else:
+            raise RuntimeError("未能从 AI 响应中解析出图片数据")
+
+        # 阶段 3：多尺度主间隙物理网格切割
+        TASK_STORE[task_id] = {
+            "status": "processing",
+            "progress": 75,
+            "stage": "slicing",
+            "stage_text": "阶段 3/4: 多尺度主间隙物理网格切割与角色紧致包络裁剪..."
+        }
+
+        task_dir = settings.OUTPUT_DIR / task_id
+        task_dir.mkdir(parents=True, exist_ok=True)
+
+        input_path = task_dir / "input_sprite.png"
+        source_image.save(input_path, format="PNG")
+
+        frames = SpriteProcessor.slice_grid(source_image, rows=4, cols=4, padding_percent=padding_percent)
+
+        # 阶段 4：固定色差泛洪去底与动图生成
+        TASK_STORE[task_id] = {
+            "status": "processing",
+            "progress": 90,
+            "stage": "assembling",
+            "stage_text": "阶段 4/4: 固定色差泛洪去底并封装微信 GIF 动图..."
+        }
+
+        gif_path = task_dir / "meme_result.gif"
+        stats = SpriteProcessor.assemble_gif(
+            frames=frames,
+            output_path=str(gif_path),
+            fps=fps,
+            make_transparent=make_transparent
+        )
+
+        zip_path = task_dir / "frames_pack.zip"
+        SpriteProcessor.package_zip(
+            frames=frames,
+            output_path=str(zip_path),
+            make_transparent=make_transparent
+        )
+
+        frame_preview_urls = []
+        frames_dir = task_dir / "frames"
+        frames_dir.mkdir(exist_ok=True)
+        for idx, f in enumerate(frames, 1):
+            f_thumb_path = frames_dir / f"frame_{idx:02d}.png"
+            f_clean = SpriteProcessor.remove_white_bg(f) if make_transparent else f
+            f_clean.save(f_thumb_path, format="PNG")
+            frame_preview_urls.append(f"/outputs/{task_id}/frames/frame_{idx:02d}.png")
+
+        # 完成
+        TASK_STORE[task_id] = {
+            "status": "completed",
+            "progress": 100,
+            "stage": "done",
+            "stage_text": "🎉 制作全部完成！正在导出动图预览...",
+            "data": {
+                "task_id": task_id,
+                "gif_url": f"/outputs/{task_id}/meme_result.gif",
+                "zip_url": f"/outputs/{task_id}/frames_pack.zip",
+                "input_url": f"/outputs/{task_id}/input_sprite.png",
+                "prompt_used": prompt,
+                "frames": frame_preview_urls,
+                "stats": stats
+            }
+        }
+
+    except Exception as e:
+        TASK_STORE[task_id] = {
+            "status": "failed",
+            "progress": 100,
+            "stage": "error",
+            "stage_text": "出图失败",
+            "error": str(e)
+        }
+
+@router.post("/generate-async")
+async def generate_async(
+    ref_image: Optional[UploadFile] = File(None),
+    action_type: str = Form("kiss"),
+    custom_caption: str = Form(""),
+    character_desc: str = Form(""),
+    fps: int = Form(8),
+    make_transparent: bool = Form(True),
+    padding_percent: float = Form(2.5),
+):
+    """【推荐】异步启动 AI 生图任务，前端通过轮询获取实时进度与结果，绝无 HTTP 超时问题"""
+    task_id = str(uuid.uuid4())[:8]
+
+    ref_image_bytes = None
+    if ref_image is not None and getattr(ref_image, "filename", None) not in [None, ""]:
+        ref_image_bytes = await ref_image.read()
+
+    TASK_STORE[task_id] = {
+        "status": "processing",
+        "progress": 5,
+        "stage": "init",
+        "stage_text": "正在初始化任务..."
+    }
+
+    # 启动后台协程
+    asyncio.create_task(run_generate_pipeline(
+        task_id=task_id,
+        ref_image_bytes=ref_image_bytes,
+        action_type=action_type,
+        custom_caption=custom_caption,
+        character_desc=character_desc,
+        fps=fps,
+        make_transparent=make_transparent,
+        padding_percent=padding_percent
+    ))
+
+    return {
+        "code": 0,
+        "message": "task_started",
+        "data": {
+            "task_id": task_id,
+            "status": "processing"
+        }
+    }
+
+@router.get("/task-status/{task_id}")
+def get_task_status(task_id: str):
+    """查询异步任务的实时执行状态与进度"""
+    # 先查内存
+    if task_id in TASK_STORE:
+        task_info = TASK_STORE[task_id]
+        return {
+            "code": 0,
+            "data": task_info
+        }
+
+    # 再查磁盘是否已有历史成果 (如 df4492bd 等)
+    task_dir = settings.OUTPUT_DIR / task_id
+    if (task_dir / "meme_result.gif").exists():
+        frames_dir = task_dir / "frames"
+        frame_urls = [f"/outputs/{task_id}/frames/{f.name}" for f in sorted(frames_dir.glob("*.png"))]
+        return {
+            "code": 0,
+            "data": {
+                "status": "completed",
+                "progress": 100,
+                "data": {
+                    "task_id": task_id,
+                    "gif_url": f"/outputs/{task_id}/meme_result.gif",
+                    "zip_url": f"/outputs/{task_id}/frames_pack.zip",
+                    "input_url": f"/outputs/{task_id}/input_sprite.png",
+                    "frames": frame_urls,
+                    "stats": {
+                        "frame_count": len(frame_urls),
+                        "file_size_kb": round((task_dir / "meme_result.gif").stat().st_size / 1024, 1),
+                        "duration_per_frame_ms": 125
+                    }
+                }
+            }
+        }
+
+    return {
+        "code": 404,
+        "message": "task_not_found"
+    }
+
 @router.get("/samples")
 def list_samples():
     """列出可用预置样本"""

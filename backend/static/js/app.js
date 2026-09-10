@@ -322,8 +322,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 5. 启动 AI 生图 + tqdm 进度条 + 贪吃蛇激活
+  // 5. 启动 AI 生图 + tqdm 进度条 + 贪吃蛇激活 (异步轮询模式，零超时)
   // ==========================================
+  let pollInterval = null;
+
   btnAIGenerate.addEventListener("click", async () => {
     btnAIGenerate.disabled = true;
 
@@ -332,10 +334,8 @@ document.addEventListener("DOMContentLoaded", () => {
     resultCard.style.display = "none";
     waitingCard.scrollIntoView({ behavior: "smooth" });
 
-    // 启动 tqdm 进度条模拟
+    // 初始化进度条与小游戏
     startTqdmProgress();
-
-    // 自动唤醒贪吃蛇小游戏
     startSnakeGame();
 
     const formData = new FormData();
@@ -350,28 +350,65 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("padding_percent", padSelectAI.value);
 
     try {
-      const resp = await fetch("/api/generate-and-process", {
+      // 1. 发起异步任务创建 (仅需 20ms)
+      const startResp = await fetch("/api/generate-async", {
         method: "POST",
         body: formData
       });
-      const json = await resp.json();
+      const startJson = await startResp.json();
 
-      if (json.code === 0 && json.data) {
-        finishTqdmProgress();
-        setTimeout(() => {
-          waitingCard.style.display = "none";
-          displayResults(json.data);
-        }, 1200);
-      } else {
-        clearInterval(progressInterval);
-        alert("AI 出图失败: " + (json.detail || json.message || "未知错误"));
-        waitingCard.style.display = "none";
+      if (startJson.code !== 0 || !startJson.data || !startJson.data.task_id) {
+        throw new Error(startJson.message || "创建生成任务失败");
       }
+
+      const taskId = startJson.data.task_id;
+      let startTime = Date.now();
+
+      // 2. 轮询任务状态 (每 1.5 秒一次，毫秒级轻量，绝无连接超时风险)
+      clearInterval(pollInterval);
+      pollInterval = setInterval(async () => {
+        try {
+          const statusResp = await fetch(`/api/task-status/${taskId}?t=${Date.now()}`);
+          if (!statusResp.ok) return;
+          const statusJson = await statusResp.json();
+          if (statusJson.code !== 0 || !statusJson.data) return;
+
+          const task = statusJson.data;
+          const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+          tqdmTime.textContent = `耗时: ${elapsedSec}s / 预计 32s`;
+
+          if (task.status === "processing") {
+            if (task.stage_text) tqdmStageText.textContent = task.stage_text;
+            if (task.progress) {
+              tqdmPercentText.textContent = `${task.progress}%`;
+              tqdmBarFill.style.width = `${task.progress}%`;
+            }
+          } else if (task.status === "completed") {
+            clearInterval(pollInterval);
+            clearInterval(progressInterval);
+            finishTqdmProgress();
+            setTimeout(() => {
+              waitingCard.style.display = "none";
+              displayResults(task.data);
+              btnAIGenerate.disabled = false;
+            }, 1000);
+          } else if (task.status === "failed") {
+            clearInterval(pollInterval);
+            clearInterval(progressInterval);
+            alert("AI 出图失败: " + (task.error || "未知异常"));
+            waitingCard.style.display = "none";
+            btnAIGenerate.disabled = false;
+          }
+        } catch (pollErr) {
+          console.warn("轮询状态中...", pollErr);
+        }
+      }, 1500);
+
     } catch (err) {
+      clearInterval(pollInterval);
       clearInterval(progressInterval);
-      alert("网络请求异常: " + err.message);
+      alert("启动生成任务异常: " + err.message);
       waitingCard.style.display = "none";
-    } finally {
       btnAIGenerate.disabled = false;
     }
   });
