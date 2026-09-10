@@ -48,11 +48,9 @@ class SpriteProcessor:
             candidate_gaps = [g for g in gaps if abs((g[0] + g[1]) / 2.0 - expected_pos) <= window_radius]
             if candidate_gaps:
                 # 关键判据：选择【缝隙宽度最宽】的缝隙作为行间真实分界线！
-                # 身体与字幕间隙通常仅 5~8px，而行间真正大留白通常为 25~50px，宽度优势明显！
                 best_gap = max(candidate_gaps, key=lambda g: (g[2], -abs((g[0] + g[1]) / 2.0 - expected_pos)))
                 cut_point = (best_gap[0] + best_gap[1]) // 2
             else:
-                # 兜底：投影波谷
                 start_search = max(first_c, int(expected_pos - window_radius))
                 end_search = min(last_c, int(expected_pos + window_radius))
                 cut_point = start_search + np.argmin(proj[start_search:end_search])
@@ -76,7 +74,8 @@ class SpriteProcessor:
 
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
         inv = 255 - gray
-        _, binary = cv2.threshold(inv, 25, 255, cv2.THRESH_BINARY)
+        # 使用更灵敏的前景阈值 (12)，防止文字浅色渐变或边缘发丝细节被误判为背景
+        _, binary = cv2.threshold(inv, 12, 255, cv2.THRESH_BINARY)
 
         proj_y = np.sum(binary > 0, axis=1)
         proj_x = np.sum(binary > 0, axis=0)
@@ -91,7 +90,7 @@ class SpriteProcessor:
             for c in range(cols):
                 cell = image.crop((x_cuts[c], y_cuts[r], x_cuts[c + 1], y_cuts[r + 1]))
                 arr = np.array(cell.convert("RGB"))
-                _, c_bin = cv2.threshold(255 - cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY), 25, 255, cv2.THRESH_BINARY)
+                _, c_bin = cv2.threshold(255 - cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY), 12, 255, cv2.THRESH_BINARY)
                 ys, xs = np.where(c_bin > 0)
                 if len(ys) > 0:
                     crop = cell.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
@@ -121,11 +120,14 @@ class SpriteProcessor:
         return uniform_frames
 
     @staticmethod
-    def remove_white_bg(frame: Image.Image, tolerance: int = 28) -> Image.Image:
+    def remove_white_bg(frame: Image.Image, tolerance: int = 15) -> Image.Image:
         """
-        超高速 C++ OpenCV 洪水填充去白底算法。
-        仅从 4 个边角向内扩散，剔除外围白色背景；
-        100% 完整保留角色主体、原画中随动作律动的艺术字及眼白等内部细节！
+        超高速 C++ OpenCV 洪水填充去白底算法 (定距基准模式 FLOODFILL_FIXED_RANGE)。
+        
+        关键优化：
+        1. 必须使用 cv2.FLOODFILL_FIXED_RANGE，比较基准严格锁定为边缘纯白种子点(255,255,255)；
+           彻底杜绝原先浮动范围模式下一阶一阶向字体内侵蚀渗透、把文字吃成空心或吃没的 Bug！
+        2. 宽容度精细控制为 15，既能彻底剥离纯白背景，又绝不伤及文字边缘微弱抗锯齿渐变！
         """
         rgba = np.array(frame.convert("RGBA"))
         h, w = rgba.shape[:2]
@@ -138,13 +140,16 @@ class SpriteProcessor:
         mask = np.zeros((h + 2, w + 2), np.uint8)
 
         tol = int(tolerance)
+        # 强制 FIXED_RANGE：只与 seed 颜色比较，不随扩散连续滑动漂移
+        flags = 4 | (255 << 8) | cv2.FLOODFILL_MASK_ONLY | cv2.FLOODFILL_FIXED_RANGE
+
         for seed in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]:
             if mask[seed[1] + 1, seed[0] + 1] == 0:
                 cv2.floodFill(
                     bgr, mask, seed, 0,
                     loDiff=(tol, tol, tol),
                     upDiff=(tol, tol, tol),
-                    flags=4 | (255 << 8) | cv2.FLOODFILL_MASK_ONLY
+                    flags=flags
                 )
 
         bg_mask = mask[1:h + 1, 1:w + 1] == 255
