@@ -37,6 +37,21 @@ Page({
   fetchData(cb) {
     const openid = app.globalData.openid || wx.getStorageSync('openid');
     
+    const formatCol = (item) => {
+      let cover = item.cover_url || '';
+      if (cover && cover.startsWith('/')) {
+        cover = `${app.globalData.baseURL}${cover}`;
+      }
+      let preview_items = (item.preview_items || []).map(p => {
+        let thumb = p.thumb_url || p.gif_url || '';
+        if (thumb && thumb.startsWith('/')) {
+          thumb = `${app.globalData.baseURL}${thumb}`;
+        }
+        return { ...p, thumb_url: thumb };
+      });
+      return { ...item, cover_url: cover, preview_items };
+    };
+
     // 获取我的合集
     if (openid) {
       wx.request({
@@ -44,13 +59,7 @@ Page({
         method: 'GET',
         success: (res) => {
           if (res.data && res.data.data) {
-            const list = res.data.data.map(item => {
-              let cover = item.cover_url || '';
-              if (cover && cover.startsWith('/')) {
-                cover = `${app.globalData.baseURL}${cover}`;
-              }
-              return { ...item, cover_url: cover };
-            });
+            const list = res.data.data.map(formatCol);
             this.setData({ myCollections: list });
           }
         }
@@ -63,13 +72,7 @@ Page({
       method: 'GET',
       success: (res) => {
         if (res.data && res.data.data) {
-          const list = res.data.data.map(item => {
-            let cover = item.cover_url || '';
-            if (cover && cover.startsWith('/')) {
-              cover = `${app.globalData.baseURL}${cover}`;
-            }
-            return { ...item, cover_url: cover };
-          });
+          const list = res.data.data.map(formatCol);
           this.setData({ exploreCollections: list });
         }
         if (cb) cb();

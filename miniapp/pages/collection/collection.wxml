@@ -33,22 +33,32 @@
       bindtap="goToDetail" 
       data-id="{{item.collection_id}}"
     >
-      <image class="col-cover" src="{{item.cover_url || '/images/default_cover.png'}}" mode="aspectFill"></image>
-      <view class="col-info">
-        <view class="col-title">{{item.title}}</view>
-        <view class="col-desc">{{item.description || '精选表情收纳合集'}}</view>
-        <view class="col-meta">
-          <text class="badge badge-blue">{{item.item_count}} 个表情</text>
-          <text class="view-num">👁️ {{item.view_count}} 浏览</text>
+      <view class="col-main-row">
+        <image class="col-cover" src="{{item.cover_url || '/images/default_cover.png'}}" mode="aspectFill"></image>
+        <view class="col-info">
+          <view class="col-title">{{item.title}}</view>
+          <view class="col-desc">{{item.description || '精选表情收纳合集'}}</view>
+          <view class="col-meta">
+            <text class="badge badge-blue">{{item.item_count}} 个表情</text>
+            <text class="view-num">👁️ {{item.view_count}} 浏览</text>
+          </view>
+        </view>
+        <view class="col-actions" catchtap="stopBubble">
+          <button class="btn-xs btn-share-col" open-type="share" catchtap="setShareTarget" data-item="{{item}}">
+            分享
+          </button>
+          <button wx:if="{{!item.is_public && item.openid !== 'official'}}" class="btn-xs btn-delete-col" catchtap="deleteCollection" data-id="{{item.collection_id}}" data-title="{{item.title}}">
+            删除
+          </button>
         </view>
       </view>
-      <view class="col-actions" catchtap="stopBubble">
-        <button class="btn-xs btn-share-col" open-type="share" catchtap="setShareTarget" data-item="{{item}}">
-          分享
-        </button>
-        <button wx:if="{{!item.is_public && item.openid !== 'official'}}" class="btn-xs btn-delete-col" catchtap="deleteCollection" data-id="{{item.collection_id}}" data-title="{{item.title}}">
-          删除
-        </button>
+
+      <!-- 表情包内容预览条 (直观展示合集内包含的表情条目) -->
+      <view class="col-preview-strip" wx:if="{{item.preview_items && item.preview_items.length > 0}}">
+        <view wx:for="{{item.preview_items}}" wx:for-item="p" wx:key="id" class="mini-thumb-pill">
+          <image class="mini-thumb-img" src="{{p.thumb_url || p.gif_url}}" mode="aspectFit" lazy-load="true"></image>
+          <text class="mini-thumb-label">{{p.title}}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -62,19 +72,29 @@
       bindtap="goToDetail" 
       data-id="{{item.collection_id}}"
     >
-      <image class="col-cover" src="{{item.cover_url || '/images/default_cover.png'}}" mode="aspectFill"></image>
-      <view class="col-info">
-        <view class="col-title">{{item.title}}</view>
-        <view class="col-desc">{{item.description || '热门推荐合集'}}</view>
-        <view class="col-meta">
-          <text class="badge badge-green">{{item.item_count}} 个表情</text>
-          <text class="view-num">🔥 推荐</text>
+      <view class="col-main-row">
+        <image class="col-cover" src="{{item.cover_url || '/images/default_cover.png'}}" mode="aspectFill"></image>
+        <view class="col-info">
+          <view class="col-title">{{item.title}}</view>
+          <view class="col-desc">{{item.description || '热门推荐合集'}}</view>
+          <view class="col-meta">
+            <text class="badge badge-green">{{item.item_count}} 个表情</text>
+            <text class="view-num">🔥 推荐</text>
+          </view>
+        </view>
+        <view class="col-actions" catchtap="stopBubble">
+          <button class="btn-xs btn-share-col" catchtap="goToDetail" data-id="{{item.collection_id}}">
+            查看
+          </button>
         </view>
       </view>
-      <view class="col-actions" catchtap="stopBubble">
-        <button class="btn-xs btn-share-col" catchtap="goToDetail" data-id="{{item.collection_id}}">
-          查看
-        </button>
+
+      <!-- 表情包内容预览条 (直观展示合集内包含的表情条目) -->
+      <view class="col-preview-strip" wx:if="{{item.preview_items && item.preview_items.length > 0}}">
+        <view wx:for="{{item.preview_items}}" wx:for-item="p" wx:key="id" class="mini-thumb-pill">
+          <image class="mini-thumb-img" src="{{p.thumb_url || p.gif_url}}" mode="aspectFit" lazy-load="true"></image>
+          <text class="mini-thumb-label">{{p.title}}</text>
+        </view>
       </view>
     </view>
   </view>

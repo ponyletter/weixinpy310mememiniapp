@@ -12,7 +12,7 @@ Page({
       const colId = options.id;
       this.setData({ collectionId: colId });
 
-      // 优先从缓存加载头部信息，实现 0 毫秒秒开，彻底告别白屏和长时间等待
+      // 优先从缓存加载头部信息与预览表情条目，实现 0 毫秒秒开，彻底告别白屏和长时间等待
       const cached = wx.getStorageSync('cached_col_' + colId);
       if (cached) {
         const currentOpenid = app.globalData.openid || wx.getStorageSync('openid');
@@ -23,6 +23,13 @@ Page({
           cached.openid !== 'system' && 
           !cached.is_public
         );
+        if (!cached.items && cached.preview_items && cached.preview_items.length > 0) {
+          cached.items = cached.preview_items.map(p => ({
+            ...p,
+            full_url: p.gif_url,
+            thumb_url: p.thumb_url || p.gif_url
+          }));
+        }
         this.setData({
           collection: cached,
           isOwner: isOwner

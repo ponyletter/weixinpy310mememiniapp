@@ -182,21 +182,20 @@ def init_db():
 
         # 清理旧版占位合集
         cursor.execute("DELETE FROM collections WHERE collection_id IN ('col_official_1', 'col_official_2', 'col_official_3')")
-        cursor.execute("DELETE FROM collection_items WHERE collection_id IN ('col_official_1', 'col_official_2', 'col_official_3', 'col_tpl_pet', 'col_tpl_worker', 'col_tpl_dance')")
-        cursor.execute("DELETE FROM collections WHERE collection_id IN ('col_tpl_pet', 'col_tpl_worker', 'col_tpl_dance')")
+        cursor.execute("DELETE FROM collection_items WHERE collection_id IN ('col_official_1', 'col_official_2', 'col_official_3')")
 
-        # 预置官方精选广场动作模板合集 (调用官方预设模板生成的高质量预览合集，普通用户无法删除)
+        # 预置官方精选广场动作模板合集 (共6大合集：5预设动作模板 + 1自定义动作模板，每合集至少2个真实表情动图)
         official_collections = [
             (
                 "col_tpl_kiss", 
                 "official", 
                 "💖 飞吻示爱 · 甜心萌动合集", 
                 "基于模板【飞吻示爱】专属动作拆解，超甜飞吻、爱心波波连贯动图", 
-                "/outputs/70b2b422/thumb.jpg", 
+                "/outputs/showcase_kiss_1/thumb.jpg", 
                 1,
                 [
-                    ("/outputs/70b2b422/meme_result.gif", "么么哒"),
-                    ("/outputs/711f2ca2/meme_result.gif", "想你了"),
+                    ("/outputs/showcase_kiss_1/meme_result.gif", "么么哒"),
+                    ("/outputs/showcase_kiss_2/meme_result.gif", "想你了"),
                 ]
             ),
             (
@@ -204,11 +203,47 @@ def init_db():
                 "official", 
                 "⚡ Q版暴击 · 连击热血合集", 
                 "基于模板【Q版战斗暴击】街机风动作拆解，蓄力重拳与打击感动图", 
-                "/outputs/4089e262/thumb.jpg", 
+                "/outputs/showcase_battle_1/thumb.jpg", 
                 1,
                 [
-                    ("/outputs/4089e262/meme_result.gif", "吃我一拳"),
-                    ("/outputs/44f1e9d9/meme_result.gif", "重拳出击"),
+                    ("/outputs/showcase_battle_1/meme_result.gif", "吃我一拳"),
+                    ("/outputs/showcase_battle_2/meme_result.gif", "重拳出击"),
+                ]
+            ),
+            (
+                "col_tpl_worker", 
+                "official", 
+                "💼 职场摸鱼 · 打工人神图合集", 
+                "基于模板【打工人摸鱼日常】职场共鸣动作拆解，疯狂敲键盘与偷闲神作", 
+                "/outputs/showcase_worker_1/thumb.jpg", 
+                1,
+                [
+                    ("/outputs/showcase_worker_1/meme_result.gif", "疯狂敲键盘"),
+                    ("/outputs/showcase_worker_2/meme_result.gif", "准点下班"),
+                ]
+            ),
+            (
+                "col_tpl_pet", 
+                "official", 
+                "🐾 治愈萌宠 · 呆萌待机合集", 
+                "基于模板【萌宠呆萌待机】无缝呼吸微动图，眨眼晃耳朵萌翻全场", 
+                "/outputs/showcase_pet_1/thumb.jpg", 
+                1,
+                [
+                    ("/outputs/showcase_pet_1/meme_result.gif", "乖巧等待"),
+                    ("/outputs/showcase_pet_2/meme_result.gif", "求抱抱"),
+                ]
+            ),
+            (
+                "col_tpl_dance", 
+                "official", 
+                "🕺 魔性摇摆 · 比心蹦迪合集", 
+                "基于模板【魔性比心摇摆舞】左右律动魔性变出爱心，聊天斗图炸场", 
+                "/outputs/showcase_dance_1/thumb.jpg", 
+                1,
+                [
+                    ("/outputs/showcase_dance_1/meme_result.gif", "魔性比心"),
+                    ("/outputs/showcase_dance_2/meme_result.gif", "快乐摇摆"),
                 ]
             ),
             (
@@ -216,11 +251,11 @@ def init_db():
                 "official", 
                 "✨ 自由创意 · 自定义动作合集", 
                 "使用【自定义动作模板】生成的专属个性创意动图", 
-                "/outputs/5766edbd/thumb.jpg", 
+                "/outputs/showcase_custom_1/thumb.jpg", 
                 1,
                 [
-                    ("/outputs/5766edbd/meme_result.gif", "委屈抹泪"),
-                    ("/outputs/7ab23202/meme_result.gif", "疯狂比赞"),
+                    ("/outputs/showcase_custom_1/meme_result.gif", "心如止水"),
+                    ("/outputs/showcase_custom_2/meme_result.gif", "疯狂比赞"),
                 ]
             ),
         ]
@@ -647,16 +682,26 @@ def get_user_collections(openid: str) -> List[Dict[str, Any]]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT c.*, COUNT(ci.id) as item_count
+            SELECT c.*
             FROM collections c
-            LEFT JOIN collection_items ci ON c.collection_id = ci.collection_id
             WHERE c.openid = ?
-            GROUP BY c.collection_id
             ORDER BY c.created_at ASC
         ''', (openid,))
         cols = [dict(r) for r in cursor.fetchall()]
         for c in cols:
             c["cover_url"] = get_fast_thumb_url(c.get("cover_url") or "")
+            cursor.execute('''
+                SELECT id, gif_url, title 
+                FROM collection_items 
+                WHERE collection_id = ? 
+                ORDER BY sort_order ASC, id ASC 
+                LIMIT 4
+            ''', (c["collection_id"],))
+            items = [dict(r) for r in cursor.fetchall()]
+            for it in items:
+                it["thumb_url"] = get_fast_thumb_url(it.get("gif_url") or "")
+            c["preview_items"] = items
+            c["item_count"] = len(items)
 
         # 如果用户尚未拥有合集，自动创建默认专属合集并返回，无需手动点击新建
         if not cols and openid:
@@ -674,24 +719,36 @@ def get_user_collections(openid: str) -> List[Dict[str, Any]]:
                 "cover_url": "/samples/sample_run.png",
                 "is_public": 0,
                 "item_count": 0,
-                "view_count": 0
+                "view_count": 0,
+                "preview_items": []
             }]
         return cols
 
 def get_public_collections(limit: int = 15) -> List[Dict[str, Any]]:
-    """广场探索只展示系统官方预设模板，绝不包含任何个人用户的私密作品"""
+    """广场探索只展示系统官方预设模板，严格以实际表情条目为准，绝不虚标数量"""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT c.*, COUNT(ci.id) as item_count
+            SELECT c.*
             FROM collections c
-            LEFT JOIN collection_items ci ON c.collection_id = ci.collection_id
             WHERE c.is_public = 1 AND (c.openid = 'official' OR c.openid = 'system')
-            GROUP BY c.collection_id
             ORDER BY c.view_count DESC, c.created_at DESC
             LIMIT ?
         ''', (limit,))
         cols = [dict(r) for r in cursor.fetchall()]
         for c in cols:
             c["cover_url"] = get_fast_thumb_url(c.get("cover_url") or "")
+            cursor.execute('''
+                SELECT id, gif_url, title 
+                FROM collection_items 
+                WHERE collection_id = ? 
+                ORDER BY sort_order ASC, id ASC 
+                LIMIT 4
+            ''', (c["collection_id"],))
+            items = [dict(r) for r in cursor.fetchall()]
+            for it in items:
+                it["thumb_url"] = get_fast_thumb_url(it.get("gif_url") or "")
+            c["preview_items"] = items
+            # 严格以数据库中实际关联条目数为准
+            c["item_count"] = len(items)
         return cols
