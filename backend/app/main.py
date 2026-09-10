@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.api.meme import router as meme_router
+from app.api.wechat import router as wechat_router
 
 app = FastAPI(title=settings.PROJECT_NAME, debug=settings.DEBUG)
 
@@ -20,6 +21,7 @@ app.add_middleware(
 
 # 挂载 API
 app.include_router(meme_router)
+app.include_router(wechat_router)
 
 # 静态文件映射
 app.mount("/static", StaticFiles(directory=str(settings.STATIC_DIR)), name="static")

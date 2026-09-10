@@ -18,7 +18,27 @@ class Settings(BaseSettings):
     STATIC_DIR: Path = BASE_DIR / "static"
 
     # 域名与外部基础 URL（如果配置了反代或直接访问）
-    PUBLIC_BASE_URL: str = ""
+    PUBLIC_BASE_URL: str = "http://204.44.67.184:8290"
+    PUBLIC_DOMAIN: str = "meme.tg-cc755.cn"
+
+    # 微信小程序凭据
+    WX_APPID: str = "wx86e299efa495d1f6"
+    WX_APPSECRET: str = "967e928c228889894f883d40acc097db"
+
+    # 微信虚拟支付 2.0 (XPay)
+    XPAY_OFFER_ID: str = "1450644655"
+    XPAY_APP_KEY_SANDBOX: str = "5DvEfstYuA9rzsjkG33qfnhS49aQxltO"
+    XPAY_APP_KEY_LIVE: str = "IWQenoFtS11w1qMGdtWcbB08qLsBHvRI"
+    XPAY_APP_KEY: str = "IWQenoFtS11w1qMGdtWcbB08qLsBHvRI"
+    XPAY_ENV: int = 0  # 0: 现网正式环境, 1: 沙箱测试环境
+    WX_MCH_ID: str = "1750438891"
+
+    # 客服微信号
+    WX_KEFU_ADMIN: str = "abc1202abc"
+
+    # 微信消息推送配置
+    WX_MSG_TOKEN: str = "memeTokenSecret2026"
+    WX_MSG_AES_KEY: str = "PobB5dp4ypgFOSz0IYlLSLWwgoJjTt3K5U3MBPFbtZx"
 
     # CLIProxyAPI 反代配置 (ChatGPT Plus 出海中转)
     CPA_API_BASE: str = "http://127.0.0.1:8317/v1"
