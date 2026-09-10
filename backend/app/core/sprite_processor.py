@@ -9,12 +9,13 @@ from PIL import Image
 
 class SpriteProcessor:
     @classmethod
-    def slice_grid(cls, image: Image.Image, rows: int = 4, cols: int = 4) -> List[Image.Image]:
+    def slice_grid(cls, image: Image.Image, rows: int = 4, cols: int = 4, padding_percent: float = 0.03) -> List[Image.Image]:
         """
-        智能自适应网格分割算法 (Adaptive Projection Valley Slicing):
-        1. 解决 AI 出图外围留白不对称、行列间距不完全均等导致的切偏错位问题；
-        2. 基于投影波谷 (Projection Valleys) 精准定位各行各列之间的真实空白分割带；
-        3. 彻底杜绝下一行的文字/头顶被误切到上一行脚底（文字错位跑到下方）的致命 Bug！
+        自适应投影波谷切片 + 全局紧凑包络裁剪算法 (Tight Envelope Slicing):
+        1. 基于投影波谷 (Projection Valleys) 精准定位各行各列之间的真实空白分割带，彻底杜绝上下行文字错位；
+        2. 提取每格真实内容 Bounding Box，计算全 16 帧的最大统一包络尺寸；
+        3. 去除多余留白，只保留极简安全边距（默认 ~3% 安全留白），使人物与文字在画面中饱满清晰（填充率达 95%）；
+        4. 统一归一化为 256×256 规范表情包分辨率，保持动图零抖动、零残影。
         """
         img_rgb = image.convert("RGB")
         img_np = np.array(img_rgb)
@@ -32,7 +33,6 @@ class SpriteProcessor:
         x_content = np.where(proj_x > 0)[0]
 
         if len(y_content) == 0 or len(x_content) == 0:
-            # 异常兜底：平均切割
             return [image.crop((c * (w // cols), r * (h // rows), (c + 1) * (w // cols), (r + 1) * (h // rows)))
                     for r in range(rows) for c in range(cols)]
 
@@ -41,19 +41,18 @@ class SpriteProcessor:
         h_content = y_max - y_min
         w_content = x_max - x_min
 
-        # 智能搜寻 3 条水平空白分割线 (波谷)
+        # 1. 智能搜寻 3 条水平空白分割线 (波谷)
         y_cuts = [0]
         for i in range(1, rows):
             expected_y = y_min + int(h_content * i / rows)
             search_radius = max(10, int(h_content / rows * 0.25))
             start_y = max(y_min, expected_y - search_radius)
             end_y = min(y_max, expected_y + search_radius)
-            # 在搜索窗口内寻找内容最少（投影值最小）的空白行
             min_idx = start_y + np.argmin(proj_y[start_y:end_y])
             y_cuts.append(int(min_idx))
         y_cuts.append(h)
 
-        # 智能搜寻 3 条垂直空白分割线 (波谷)
+        # 2. 智能搜寻 3 条垂直空白分割线 (波谷)
         x_cuts = [0]
         for j in range(1, cols):
             expected_x = x_min + int(w_content * j / cols)
@@ -64,29 +63,38 @@ class SpriteProcessor:
             x_cuts.append(int(min_idx))
         x_cuts.append(w)
 
-        # 裁剪出 16 个原始单元格
-        raw_cells = []
+        # 3. 提取每格真实内容并紧肤裁剪 (去除内部无效大白边)
+        raw_crops = []
         for r in range(rows):
             for c in range(cols):
-                box = (x_cuts[c], y_cuts[r], x_cuts[c + 1], y_cuts[r + 1])
-                raw_cells.append(image.crop(box))
+                cell = image.crop((x_cuts[c], y_cuts[r], x_cuts[c + 1], y_cuts[r + 1]))
+                arr = np.array(cell.convert("RGB"))
+                _, c_bin = cv2.threshold(255 - cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY), 25, 255, cv2.THRESH_BINARY)
+                ys, xs = np.where(c_bin > 0)
+                if len(ys) > 0:
+                    crop = cell.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+                else:
+                    crop = cell
+                raw_crops.append(crop)
 
-        # 规整化：居中对齐到统一尺寸画布，确保 GIF 播放时不抖动
-        target_w = max(cell.width for cell in raw_cells)
-        target_h = max(cell.height for cell in raw_cells)
-        target_size = max(target_w, target_h)
+        # 4. 计算 16 帧全局最大内容包络，避免个别动作被截断或播放时缩放跳动
+        max_w = max(c.width for c in raw_crops)
+        max_h = max(c.height for c in raw_crops)
+
+        # 加入最小可控安全边距 (默认约 3%~5%)
+        pad = max(4, int(max(max_w, max_h) * padding_percent))
+        target_size = max(max_w, max_h) + pad * 2
 
         uniform_frames = []
-        for cell in raw_cells:
+        for c in raw_crops:
             canvas = Image.new("RGBA", (target_size, target_size), (255, 255, 255, 255))
-            ox = (target_size - cell.width) // 2
-            oy = (target_size - cell.height) // 2
-            canvas.paste(cell.convert("RGBA"), (ox, oy))
+            # 居中对齐，确保人物与文字稳定居中
+            ox = (target_size - c.width) // 2
+            oy = (target_size - c.height) // 2
+            canvas.paste(c.convert("RGBA"), (ox, oy))
 
-            # 若单帧分辨率过大，适当缩放到规范的 256x256，进一步压缩体积提升流畅度
-            if target_size > 320:
-                canvas = canvas.resize((256, 256), Image.Resampling.LANCZOS)
-
+            # 输出统一标准 256×256 微信表情规格
+            canvas = canvas.resize((256, 256), Image.Resampling.LANCZOS)
             uniform_frames.append(canvas)
 
         return uniform_frames

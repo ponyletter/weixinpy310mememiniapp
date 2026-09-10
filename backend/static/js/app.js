@@ -19,8 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const fpsRange = document.getElementById("fpsRange");
   const fpsVal = document.getElementById("fpsVal");
+  const padSelect = document.getElementById("padSelect");
   const chkTransparent = document.getElementById("chkTransparent");
   const btnProcess = document.getElementById("btnProcess");
+
 
   const resultCard = document.getElementById("resultCard");
   const gifImage = document.getElementById("gifImage");
@@ -178,6 +180,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     formData.append("fps", fpsRange.value);
     formData.append("make_transparent", chkTransparent.checked);
+    formData.append("padding_percent", padSelect.value);
+
 
     try {
       const resp = await fetch("/api/process-sprite", {

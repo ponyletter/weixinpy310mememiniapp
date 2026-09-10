@@ -105,14 +105,23 @@
       <!-- 参数调节 -->
       <div class="params-panel">
         <div class="param-item">
+          <label for="padSelect">画面紧凑留白：</label>
+          <select id="padSelect" class="form-select" style="width: auto; padding: 6px 10px; font-size: 13px;">
+            <option value="0.02" selected>超紧凑饱满 (留白约 2% - 微信大图推荐⭐)</option>
+            <option value="0.06">适中呼吸 (留白约 6%)</option>
+            <option value="0.12">较多留白 (留白约 12%)</option>
+          </select>
+        </div>
+        <div class="param-item">
           <label for="fpsRange">播放速率 (<span id="fpsVal">8</span> 帧/秒):</label>
           <input type="range" id="fpsRange" min="4" max="16" value="8" step="1">
         </div>
         <div class="param-item toggle-item">
-          <label for="chkTransparent">智能去除外围白底 (Alpha 透明化):</label>
+          <label for="chkTransparent">智能去外围白底 (Alpha 透明):</label>
           <input type="checkbox" id="chkTransparent" checked>
         </div>
       </div>
+
 
       <div class="action-bar">
         <button class="btn btn-primary btn-lg" id="btnProcess">⚡ 开始 4×4 切帧与极速合成 GIF</button>

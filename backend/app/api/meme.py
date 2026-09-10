@@ -57,7 +57,8 @@ async def process_sprite_sheet(
     file: Optional[UploadFile] = File(None),
     sample_id: Optional[str] = Form(None),
     fps: int = Form(8),
-    make_transparent: bool = Form(True)
+    make_transparent: bool = Form(True),
+    padding_percent: float = Form(0.03)
 ):
     """
     核心接口：接收 4x4 精灵大图，执行切片、智能外围去白底、GIF合成与ZIP导出
@@ -85,8 +86,9 @@ async def process_sprite_sheet(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"无法解析图片: {str(e)}")
 
-    # 1. 切分为 16 帧
-    frames = SpriteProcessor.slice_grid(source_image, rows=4, cols=4)
+    # 1. 切分为 16 帧 (紧凑包络裁剪，杜绝多余留白)
+    frames = SpriteProcessor.slice_grid(source_image, rows=4, cols=4, padding_percent=padding_percent)
+
 
     # 2. 生成透明动图 GIF (完美保留原画原生字幕)
     gif_path = task_dir / "meme_result.gif"
