@@ -107,6 +107,33 @@ def init_db():
             )
         ''')
 
+        # 7. 表情包合集表 (支持微信群分享与分类管理)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS collections (
+                collection_id TEXT PRIMARY KEY,
+                openid TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                cover_url TEXT DEFAULT '',
+                is_public INTEGER DEFAULT 1,
+                view_count INTEGER DEFAULT 0,
+                share_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # 8. 合集条目表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS collection_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                collection_id TEXT NOT NULL,
+                gif_url TEXT NOT NULL,
+                title TEXT DEFAULT '',
+                sort_order INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
         # 预置三大极简黄金道具 (低同行80%以上)
         default_packages = [
             ("item_100", "动图制作尝鲜包1元", "尝鲜包 (20次)", 100, 20, 0, "超低破冰", 1),
@@ -363,4 +390,80 @@ def get_user_orders(openid: str) -> List[Dict[str, Any]]:
             WHERE o.openid = ?
             ORDER BY o.created_at DESC
         ''', (openid,))
+        return [dict(r) for r in cursor.fetchall()]
+
+# --- 表情包合集管理 (Collections) ---
+
+def create_collection(openid: str, title: str, description: str = "", cover_url: str = "") -> Dict[str, Any]:
+    collection_id = f"col_{uuid.uuid4().hex[:8]}"
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO collections (collection_id, openid, title, description, cover_url)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (collection_id, openid, title, description, cover_url))
+        conn.commit()
+    return get_collection_detail(collection_id)
+
+def add_item_to_collection(collection_id: str, gif_url: str, title: str = "") -> Dict[str, Any]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO collection_items (collection_id, gif_url, title)
+            VALUES (?, ?, ?)
+        ''', (collection_id, gif_url, title))
+        item_id = cursor.lastrowid
+        # 若合集尚未设置封面，自动将首个表情包设为封面
+        cursor.execute('''
+            UPDATE collections 
+            SET cover_url = CASE WHEN cover_url = '' THEN ? ELSE cover_url END
+            WHERE collection_id = ?
+        ''', (gif_url, collection_id))
+        conn.commit()
+    return {"id": item_id, "collection_id": collection_id, "gif_url": gif_url, "title": title}
+
+def get_collection_detail(collection_id: str) -> Optional[Dict[str, Any]]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        # 增加浏览次数
+        cursor.execute("UPDATE collections SET view_count = view_count + 1 WHERE collection_id = ?", (collection_id,))
+        conn.commit()
+        
+        cursor.execute("SELECT * FROM collections WHERE collection_id = ?", (collection_id,))
+        col_row = cursor.fetchone()
+        if not col_row:
+            return None
+        col = dict(col_row)
+
+        cursor.execute("SELECT id, gif_url, title, sort_order, created_at FROM collection_items WHERE collection_id = ? ORDER BY sort_order ASC, id ASC", (collection_id,))
+        items = [dict(r) for r in cursor.fetchall()]
+        col["items"] = items
+        col["item_count"] = len(items)
+        return col
+
+def get_user_collections(openid: str) -> List[Dict[str, Any]]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT c.*, COUNT(ci.id) as item_count
+            FROM collections c
+            LEFT JOIN collection_items ci ON c.collection_id = ci.collection_id
+            WHERE c.openid = ?
+            GROUP BY c.collection_id
+            ORDER BY c.created_at DESC
+        ''', (openid,))
+        return [dict(r) for r in cursor.fetchall()]
+
+def get_public_collections(limit: int = 15) -> List[Dict[str, Any]]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT c.*, COUNT(ci.id) as item_count
+            FROM collections c
+            LEFT JOIN collection_items ci ON c.collection_id = ci.collection_id
+            WHERE c.is_public = 1
+            GROUP BY c.collection_id
+            ORDER BY c.view_count DESC, c.created_at DESC
+            LIMIT ?
+        ''', (limit,))
         return [dict(r) for r in cursor.fetchall()]

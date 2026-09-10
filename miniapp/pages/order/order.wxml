@@ -1,0 +1,54 @@
+<view class="container">
+  <view class="order-hero card">
+    <view class="hero-title">微信虚拟支付 2.0 履约与订单记录</view>
+    <view class="hero-sub">根据微信官方规范，所有虚拟道具与算力包均自动履约发货到账。</view>
+  </view>
+
+  <view wx:if="{{orders.length === 0}}" class="empty-box card">
+    <text class="empty-icon">🧾</text>
+    <text class="empty-text">暂无充值与支付记录</text>
+  </view>
+
+  <view class="order-list">
+    <view wx:for="{{orders}}" wx:key="order_id" class="order-card card">
+      <view class="order-row header-row">
+        <text class="pkg-name">{{item.package_title || item.package_id}}</text>
+        <text class="badge {{item.status === 'PAID' ? 'badge-green' : 'badge-gold'}}">
+          {{item.status === 'PAID' ? '已支付·已发货' : '待付款'}}
+        </text>
+      </view>
+
+      <view class="order-row meta-row">
+        <text class="label">商户订单号:</text>
+        <text class="val font-mono">{{item.order_id}}</text>
+      </view>
+
+      <view wx:if="{{item.wx_order_id}}" class="order-row meta-row">
+        <text class="label">微信支付单号:</text>
+        <text class="val font-mono">{{item.wx_order_id}}</text>
+      </view>
+
+      <view class="order-row meta-row">
+        <text class="label">下单时间:</text>
+        <text class="val">{{item.created_at}}</text>
+      </view>
+
+      <view class="order-divider"></view>
+
+      <view class="order-row footer-row">
+        <text class="reward-hint">获得权益: +{{item.quota_reward}} 次生成额度</text>
+        <view class="amount-wrap">
+          <text class="curr">¥</text>
+          <text class="amount">{{item.amount / 100}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 客服支持 -->
+  <view class="support-wrap">
+    <button class="btn-secondary" style="width: 100%;" open-type="contact">
+      💬 订单有疑问？联系人工在线客服
+    </button>
+  </view>
+</view>

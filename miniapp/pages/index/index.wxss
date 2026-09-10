@@ -1,0 +1,408 @@
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx;
+}
+
+.user-quota {
+  display: flex;
+  align-items: baseline;
+}
+
+.quota-label {
+  font-size: 26rpx;
+  color: #9ca3af;
+}
+
+.quota-num {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #6366f1;
+  margin-left: 8rpx;
+}
+
+.quota-unit {
+  font-size: 24rpx;
+  color: #9ca3af;
+  margin-left: 4rpx;
+}
+
+.top-actions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.btn-sm {
+  font-size: 24rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 12rpx;
+  border: none;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.btn-checkin {
+  background: #252538;
+  color: #34d399;
+  border: 1px solid #32473f;
+}
+
+.btn-recharge {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin: 20rpx 4rpx 14rpx 4rpx;
+}
+
+/* 模版滚动条 */
+.template-scroll {
+  display: flex;
+  white-space: nowrap;
+  padding-bottom: 8rpx;
+  margin-bottom: 20rpx;
+}
+
+.template-card {
+  display: inline-block;
+  background: #171722;
+  border: 1px solid #27273a;
+  border-radius: 16rpx;
+  padding: 18rpx 24rpx;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.template-card.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+  box-shadow: 0 4rpx 16rpx rgba(99, 102, 241, 0.3);
+}
+
+.template-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.template-desc {
+  font-size: 20rpx;
+  color: #94a3b8;
+  margin-top: 4rpx;
+}
+
+/* 模式切换 */
+.mode-card {
+  padding: 20rpx;
+}
+
+.mode-tabs {
+  display: flex;
+  background: #101018;
+  border-radius: 12rpx;
+  padding: 6rpx;
+  margin-bottom: 20rpx;
+}
+
+.mode-tab {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx 0;
+  font-size: 26rpx;
+  color: #94a3b8;
+  border-radius: 8rpx;
+}
+
+.mode-tab.active {
+  background: #252538;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* 上传区 */
+.upload-placeholder {
+  border: 2rpx dashed #374151;
+  border-radius: 16rpx;
+  padding: 40rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-icon {
+  font-size: 48rpx;
+  color: #6366f1;
+}
+
+.upload-text {
+  font-size: 24rpx;
+  color: #94a3b8;
+  margin-top: 8rpx;
+}
+
+.image-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ref-preview {
+  width: 280rpx;
+  height: 280rpx;
+  border-radius: 12rpx;
+  background: #1e1e2d;
+}
+
+.remove-btn {
+  font-size: 22rpx;
+  color: #ef4444;
+  margin-top: 12rpx;
+}
+
+/* 草图画布 */
+.sketch-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sketch-canvas {
+  width: 320px;
+  height: 240px;
+  background: #000000;
+  border: 1px solid #334155;
+  border-radius: 12rpx;
+}
+
+.sketch-toolbar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12rpx;
+}
+
+.sketch-hint {
+  font-size: 22rpx;
+  color: #64748b;
+}
+
+.btn-xs {
+  font-size: 22rpx;
+  padding: 8rpx 18rpx;
+  background: #27273a;
+  color: #cbd5e1;
+  border-radius: 8rpx;
+  border: none;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* 表单输入 */
+.form-card {
+  padding: 20rpx;
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 18rpx;
+}
+
+.form-item:last-child {
+  margin-bottom: 0;
+}
+
+.form-label {
+  width: 140rpx;
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+
+.form-input {
+  flex: 1;
+  background: #111118;
+  border: 1px solid #28283c;
+  border-radius: 12rpx;
+  padding: 14rpx 18rpx;
+  color: #ffffff;
+  font-size: 26rpx;
+}
+
+.btn-ai-suggest {
+  margin-left: 12rpx;
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.btn-generate {
+  margin-top: 24rpx;
+}
+
+/* 动图预览与贪吃蛇 */
+.preview-card {
+  min-height: 480rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20rpx;
+  overflow: hidden;
+  padding: 24rpx;
+}
+
+.preview-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.idle-icon {
+  font-size: 64rpx;
+  margin-bottom: 16rpx;
+}
+
+.idle-text {
+  font-size: 28rpx;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.idle-subtext {
+  font-size: 22rpx;
+  color: #64748b;
+  margin-top: 6rpx;
+}
+
+/* 生成中与贪吃蛇 */
+.generating-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.progress-box {
+  width: 90%;
+  height: 14rpx;
+  background: #252536;
+  border-radius: 8rpx;
+  overflow: hidden;
+  margin-bottom: 12rpx;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #10b981);
+  border-radius: 8rpx;
+  transition: width 0.3s;
+}
+
+.stage-text {
+  font-size: 24rpx;
+  color: #a5b4fc;
+  margin-bottom: 20rpx;
+}
+
+.snake-box {
+  width: 100%;
+  background: #111118;
+  border: 1px solid #28283d;
+  border-radius: 16rpx;
+  padding: 16rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.snake-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 22rpx;
+  color: #34d399;
+  margin-bottom: 12rpx;
+}
+
+.btn-snake-reset {
+  font-size: 20rpx;
+  background: #262638;
+  color: #ffffff;
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+  border: none;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.snake-canvas {
+  width: 280px;
+  height: 180px;
+  background: #08080c;
+  border: 1px solid #1f2937;
+  border-radius: 8rpx;
+}
+
+.snake-ctrls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 14rpx;
+}
+
+.ctrl-h {
+  display: flex;
+  gap: 40rpx;
+  margin: 6rpx 0;
+}
+
+.ctrl-btn {
+  width: 80rpx;
+  height: 60rpx;
+  background: #242436;
+  color: #cbd5e1;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8rpx;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* 结果展示 */
+.result-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.result-gif {
+  width: 380rpx;
+  height: 380rpx;
+  border-radius: 16rpx;
+}
+
+.result-actions {
+  display: flex;
+  gap: 20rpx;
+  width: 100%;
+  margin-top: 24rpx;
+}
+
+.action-btn {
+  flex: 1;
+  margin: 0;
+}

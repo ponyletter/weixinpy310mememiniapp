@@ -148,8 +148,49 @@ def test_all():
     assert r.status_code == 200
     print("✅ 17. 用户生成历史与作品展示 /api/history 测试通过")
 
+    # 18. 创建表情包合集
+    r = requests.post(f"{BASE_URL}/api/collection/create", json={
+        "openid": openid,
+        "title": "打工人周一发疯合集",
+        "description": "每周一专用摸鱼吐槽表情包"
+    })
+    assert r.status_code == 200
+    col_data = r.json()["data"]
+    col_id = col_data["collection_id"]
+    print(f"✅ 18. 表情包合集创建 /api/collection/create 测试通过 (合集ID: {col_id})")
+
+    # 19. 添加表情包至合集
+    r = requests.post(f"{BASE_URL}/api/collection/add-item", json={
+        "collection_id": col_id,
+        "gif_url": "/samples/sample_run.png",
+        "title": "冲鸭"
+    })
+    assert r.status_code == 200
+    print("✅ 19. 添加表情包至合集 /api/collection/add-item 测试通过")
+
+    # 20. 查询合集详情 (模拟微信群友点击卡片打开查看)
+    r = requests.get(f"{BASE_URL}/api/collection/detail?collection_id={col_id}")
+    assert r.status_code == 200
+    detail = r.json()["data"]
+    assert detail["item_count"] >= 1
+    print(f"✅ 20. 微信群分享打开合集详情 /api/collection/detail 测试通过 (包含 {detail['item_count']} 个表情包)")
+
+    # 21. 查询我的合集列表与探索广场
+    r = requests.get(f"{BASE_URL}/api/collection/my?openid={openid}")
+    assert r.status_code == 200
+    r_exp = requests.get(f"{BASE_URL}/api/collection/explore")
+    assert r_exp.status_code == 200
+    print("✅ 21. 我的合集列表与广场探索 /api/collection/my & /explore 测试通过")
+
+    # 22. AI 爆笑文案/台词推荐
+    r = requests.post(f"{BASE_URL}/api/convert/caption-suggest", data={"keyword": "摸鱼", "style": "all"})
+    assert r.status_code == 200
+    suggs = r.json()["suggestions"]
+    assert len(suggs) >= 3
+    print(f"✅ 22. AI 爆笑文案推荐 /api/convert/caption-suggest 测试通过 (生成 {len(suggs)} 条候选台词)")
+
     print("=" * 60)
-    print("🎉 恭喜！全套 17 个微信小程序核心后端接口自动化测试 100% 全部通过！")
+    print("🎉 恭喜！全套 22 个微信小程序核心后端接口自动化测试 100% 全部通过！")
     print("=" * 60)
 
 if __name__ == "__main__":

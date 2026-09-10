@@ -1,0 +1,101 @@
+<view class="container">
+  <!-- 顶部模式选择卡片 -->
+  <view class="remix-tabs card">
+    <view class="remix-tab {{tab === 'video' ? 'active' : ''}}" bindtap="switchTab" data-tab="video">
+      📹 视频转GIF
+    </view>
+    <view class="remix-tab {{tab === 'images' ? 'active' : ''}}" bindtap="switchTab" data-tab="images">
+      🖼️ 多图拼动图
+    </view>
+    <view class="remix-tab {{tab === 'caption' ? 'active' : ''}}" bindtap="switchTab" data-tab="caption">
+      ✍️ 动图改字
+    </view>
+  </view>
+
+  <!-- 提示条：聊天素材直接打开说明 -->
+  <view class="tip-bar">
+    <text class="tip-icon">💡</text>
+    <text class="tip-text">在微信聊天长按图片/视频，选【打开方式】也可直接秒进！</text>
+  </view>
+
+  <!-- 模式 1: 视频转动图 -->
+  <view wx:if="{{tab === 'video'}}" class="card action-box">
+    <view class="section-title">选择或拍摄短视频 (自动截取精彩片段)</view>
+    <view wx:if="{{!videoPath}}" class="upload-zone" bindtap="chooseVideo">
+      <text class="upload-icon">📹</text>
+      <text class="upload-title">点击选择视频 (支持 MP4/MOV)</text>
+      <text class="upload-sub">自动提取前 3 秒精彩动图，微信 <1MB 规范</text>
+    </view>
+    <view wx:else class="selected-wrap">
+      <video class="preview-video" src="{{videoPath}}" controls></video>
+      <button class="btn-xs remove-btn" bindtap="clearVideo">重新选择视频</button>
+    </view>
+
+    <view class="form-item" style="margin-top: 20rpx;">
+      <text class="form-label">追加字幕:</text>
+      <input class="form-input" placeholder="可填字幕(如: 绝了、哈哈哈哈)" value="{{captionText}}" bindinput="onInputCaption" />
+    </view>
+
+    <button class="btn-primary" style="margin-top: 24rpx;" bindtap="convertVideoToGif" loading="{{isConverting}}">
+      ⚡ 一键秒转标准 GIF
+    </button>
+  </view>
+
+  <!-- 模式 2: 多图合成动图 -->
+  <view wx:if="{{tab === 'images'}}" class="card action-box">
+    <view class="section-title">选择 2~9 张连续图片合成动图</view>
+    <view class="image-grid">
+      <view wx:for="{{multiImages}}" wx:key="*this" class="grid-item">
+        <image class="grid-img" src="{{item}}" mode="aspectFill"></image>
+      </view>
+      <view wx:if="{{multiImages.length < 9}}" class="grid-add" bindtap="chooseMultiImages">
+        <text class="add-icon">＋</text>
+        <text class="add-text">{{multiImages.length === 0 ? '选多图' : '继续添加'}}</text>
+      </view>
+    </view>
+
+    <view class="form-item" style="margin-top: 20rpx;">
+      <text class="form-label">追加字幕:</text>
+      <input class="form-input" placeholder="可选填字幕" value="{{captionText}}" bindinput="onInputCaption" />
+    </view>
+
+    <button class="btn-primary" style="margin-top: 24rpx;" bindtap="convertImagesToGif" loading="{{isConverting}}">
+      🪄 一键合成连续动图
+    </button>
+  </view>
+
+  <!-- 模式 3: 动图二次改字 -->
+  <view wx:if="{{tab === 'caption'}}" class="card action-box">
+    <view class="section-title">上传已有表情包重写台词</view>
+    <view wx:if="{{!srcGifPath}}" class="upload-zone" bindtap="chooseGifToEdit">
+      <text class="upload-icon">🎨</text>
+      <text class="upload-title">点击上传需要二创改字的表情包 (GIF)</text>
+    </view>
+    <view wx:else class="selected-wrap">
+      <image class="preview-gif" src="{{srcGifPath}}" mode="aspectFit"></image>
+      <button class="btn-xs remove-btn" bindtap="clearSrcGif">换一张动图</button>
+    </view>
+
+    <view class="form-item" style="margin-top: 20rpx;">
+      <text class="form-label">全新台词:</text>
+      <input class="form-input" placeholder="换上你的独家神台词" value="{{captionText}}" bindinput="onInputCaption" />
+    </view>
+
+    <button class="btn-primary" style="margin-top: 24rpx;" bindtap="editGifCaption" loading="{{isConverting}}">
+      🔥 重新渲染并改字
+    </button>
+  </view>
+
+  <!-- 转换成功结果卡片 -->
+  <view wx:if="{{remixResultUrl}}" class="card result-card checkerboard-bg">
+    <view class="result-header">
+      <text class="result-title">🎉 制作完成！</text>
+      <text class="badge badge-green">微信表情尺寸已优化</text>
+    </view>
+    <image class="remix-result-img" src="{{remixResultUrl}}" mode="aspectFit"></image>
+    <view class="remix-actions">
+      <button class="btn-secondary" style="flex: 1;" bindtap="saveRemixGif">💾 保存至相册</button>
+      <button class="btn-primary" style="flex: 1;" bindtap="addToCollection">📁 加入合集</button>
+    </view>
+  </view>
+</view>

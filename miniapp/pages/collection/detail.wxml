@@ -1,0 +1,39 @@
+<view class="container">
+  <!-- 合集头部信息 -->
+  <view class="col-hero card">
+    <view class="hero-title">{{collection.title}}</view>
+    <view class="hero-desc">{{collection.description || '精选表情包小抽屉'}}</view>
+    <view class="hero-stats">
+      <text class="badge badge-gold">{{collection.item_count || 0}} 个表情</text>
+      <text class="stat-text">👁️ {{collection.view_count || 1}} 次围观</text>
+    </view>
+    <view class="hero-btns">
+      <button class="btn-primary" style="flex: 1;" open-type="share">
+        🚀 分享此合集到微信群
+      </button>
+      <button class="btn-secondary" style="flex: 1;" bindtap="goToMake">
+        🎨 我也要做表情包
+      </button>
+    </view>
+  </view>
+
+  <!-- 表情包列表瀑布流 / 网格 -->
+  <view class="section-title">合集包含表情 (点击长按保存至微信)</view>
+  <view class="meme-grid">
+    <view 
+      wx:for="{{collection.items}}" 
+      wx:key="id" 
+      class="meme-item card checkerboard-bg"
+      bindtap="previewOrSave"
+      data-url="{{item.gif_url}}"
+    >
+      <image class="meme-img" src="{{formatUrl(item.gif_url)}}" mode="aspectFit"></image>
+      <view class="meme-title">{{item.title || 'GIF动图'}}</view>
+      <view class="btn-save-tag">保存</view>
+    </view>
+  </view>
+
+  <view wx:if="{{!collection.items || collection.items.length === 0}}" class="empty-hint">
+    这个合集还是空的，点击下方按钮去添加表情包吧~
+  </view>
+</view>

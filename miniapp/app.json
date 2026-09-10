@@ -1,0 +1,53 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/remix/remix",
+    "pages/collection/collection",
+    "pages/collection/detail",
+    "pages/order/order",
+    "pages/user/user"
+  ],
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#13131a",
+    "navigationBarTitleText": "GIF表情包制作神器",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0d0d12"
+  },
+  "tabBar": {
+    "color": "#8e8e9f",
+    "selectedColor": "#6366f1",
+    "backgroundColor": "#171720",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "AI生成"
+      },
+      {
+        "pagePath": "pages/remix/remix",
+        "text": "极速二创"
+      },
+      {
+        "pagePath": "pages/collection/collection",
+        "text": "表情合集"
+      },
+      {
+        "pagePath": "pages/user/user",
+        "text": "我的资产"
+      }
+    ]
+  },
+  "chatMaterials": [
+    {
+      "materialType": "image",
+      "pagePath": "pages/remix/remix"
+    },
+    {
+      "materialType": "video",
+      "pagePath": "pages/remix/remix"
+    }
+  ],
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

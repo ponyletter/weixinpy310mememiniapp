@@ -1,0 +1,97 @@
+<view class="container">
+  <!-- 顶部模式切换与创建按钮 -->
+  <view class="header-row">
+    <view class="col-tabs">
+      <view class="col-tab {{activeTab === 'my' ? 'active' : ''}}" bindtap="switchTab" data-tab="my">
+        📂 我的小抽屉 ({{myCollections.length}})
+      </view>
+      <view class="col-tab {{activeTab === 'explore' ? 'active' : ''}}" bindtap="switchTab" data-tab="explore">
+        🔥 精选广场
+      </view>
+    </view>
+    <button class="btn-create" bindtap="openCreateModal">＋ 新建合集</button>
+  </view>
+
+  <!-- 提示条：合集分享价值 -->
+  <view class="tip-bar">
+    <text class="tip-icon">✨</text>
+    <text class="tip-text">把表情归类成合集，支持以卡片一键打包分享给微信群友！</text>
+  </view>
+
+  <!-- 我的合集列表 -->
+  <view wx:if="{{activeTab === 'my'}}" class="collection-list">
+    <view wx:if="{{myCollections.length === 0}}" class="empty-box card">
+      <text class="empty-icon">🗂️</text>
+      <text class="empty-text">你还没有创建表情包合集</text>
+      <button class="btn-secondary" style="margin-top: 20rpx;" bindtap="openCreateModal">立即创建第一个合集</button>
+    </view>
+
+    <view 
+      wx:for="{{myCollections}}" 
+      wx:key="collection_id" 
+      class="collection-card card" 
+      bindtap="goToDetail" 
+      data-id="{{item.collection_id}}"
+    >
+      <image class="col-cover" src="{{item.cover_url || '/images/default_cover.png'}}" mode="aspectFill"></image>
+      <view class="col-info">
+        <view class="col-title">{{item.title}}</view>
+        <view class="col-desc">{{item.description || '暂无描述'}}</view>
+        <view class="col-meta">
+          <text class="badge badge-blue">{{item.item_count}} 个表情</text>
+          <text class="view-num">👁️ {{item.view_count}} 次浏览</text>
+        </view>
+      </view>
+      <button class="btn-xs btn-share-col" open-type="share" catchtap="setShareTarget" data-item="{{item}}">
+        分享群
+      </button>
+    </view>
+  </view>
+
+  <!-- 广场精选合集 -->
+  <view wx:if="{{activeTab === 'explore'}}" class="collection-list">
+    <view 
+      wx:for="{{exploreCollections}}" 
+      wx:key="collection_id" 
+      class="collection-card card" 
+      bindtap="goToDetail" 
+      data-id="{{item.collection_id}}"
+    >
+      <image class="col-cover" src="{{item.cover_url || '/images/default_cover.png'}}" mode="aspectFill"></image>
+      <view class="col-info">
+        <view class="col-title">{{item.title}}</view>
+        <view class="col-desc">{{item.description || '热门推荐合集'}}</view>
+        <view class="col-meta">
+          <text class="badge badge-green">{{item.item_count}} 个表情</text>
+          <text class="view-num">🔥 热门推荐</text>
+        </view>
+      </view>
+      <button class="btn-xs btn-share-col" catchtap="goToDetail" data-id="{{item.collection_id}}">
+        查看合集
+      </button>
+    </view>
+  </view>
+
+  <!-- 创建合集弹窗 -->
+  <view wx:if="{{showCreateModal}}" class="modal-mask">
+    <view class="modal-card card">
+      <view class="modal-title">新建表情包小抽屉</view>
+      <input 
+        class="form-input modal-input" 
+        placeholder="如: 打工人周一发疯系列、情侣互怼" 
+        value="{{newTitle}}" 
+        bindinput="onInputTitle" 
+      />
+      <input 
+        class="form-input modal-input" 
+        placeholder="合集描述(选填)" 
+        value="{{newDesc}}" 
+        bindinput="onInputDesc" 
+      />
+      <view class="modal-actions">
+        <button class="btn-secondary" style="flex: 1;" bindtap="closeCreateModal">取消</button>
+        <button class="btn-primary" style="flex: 1;" bindtap="submitCreateCollection">确定创建</button>
+      </view>
+    </view>
+  </view>
+</view>

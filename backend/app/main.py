@@ -10,6 +10,8 @@ from app.api.meme import router as meme_router
 from app.api.wechat import router as wechat_router
 from app.api.auth import router as auth_router
 from app.api.payment import router as payment_router
+from app.api.collection import router as collection_router
+from app.api.convert import router as convert_router
 
 # 初始化数据库结构与基础种子
 init_db()
@@ -30,6 +32,8 @@ app.include_router(meme_router)
 app.include_router(wechat_router)
 app.include_router(auth_router)
 app.include_router(payment_router)
+app.include_router(collection_router)
+app.include_router(convert_router)
 
 # 静态文件映射
 app.mount("/static", StaticFiles(directory=str(settings.STATIC_DIR)), name="static")
