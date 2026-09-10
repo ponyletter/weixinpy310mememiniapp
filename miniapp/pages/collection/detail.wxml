@@ -11,11 +11,11 @@
       <text class="stat-text">👁️ {{collection.view_count || 1}} 次围观</text>
     </view>
     <view class="hero-btns">
-      <button class="btn-primary" style="flex: 1;" open-type="share">
-        🚀 分享此合集到微信群
+      <button class="btn-primary btn-hero-action" style="flex: 1;" open-type="share">
+        🚀 分享合集
       </button>
-      <button class="btn-secondary" style="flex: 1;" bindtap="goToMake">
-        🎨 我也要做表情包
+      <button class="btn-secondary btn-hero-action" style="flex: 1;" bindtap="goToMake">
+        🎨 制作新表情
       </button>
     </view>
   </view>
@@ -31,8 +31,8 @@
       <image class="meme-img" src="{{item.full_url || item.gif_url}}" mode="aspectFit" bindtap="previewOrSave" data-url="{{item.gif_url}}"></image>
       <view class="meme-title text-ellipsis">{{item.title || 'GIF动图'}}</view>
       <view class="meme-card-actions">
-        <button class="btn-xs-meme btn-save-action" catchtap="saveMemeDirect" data-url="{{item.full_url || item.gif_url}}">💾 保存</button>
-        <button class="btn-xs-meme btn-del-action" catchtap="deleteItem" data-id="{{item.id}}">🗑️ 移除</button>
+        <button class="btn-xs-meme btn-save-action" catchtap="saveMemeDirect" data-url="{{item.full_url || item.gif_url}}">💾 保存相册</button>
+        <button class="btn-xs-meme btn-del-action" catchtap="deleteItem" data-id="{{item.id}}">🗑️ 删除</button>
       </view>
     </view>
   </view>

@@ -1,9 +1,10 @@
+/* 极速二创页面样式 (对齐 index 现代清爽白风格) */
 .remix-tabs {
   display: flex;
   background: #f1f5f9;
   border-radius: 18rpx;
   padding: 6rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 .remix-tab {
@@ -15,6 +16,7 @@
   font-weight: 500;
   border-radius: 14rpx;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .remix-tab.active {
@@ -25,84 +27,92 @@
 }
 
 .tip-bar {
-  background: #eef2ff;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
   border: 1rpx solid #c7d2fe;
   border-radius: 16rpx;
-  padding: 16rpx 24rpx;
+  padding: 14rpx 20rpx;
   display: flex;
   align-items: center;
-  margin-bottom: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 .tip-icon {
-  font-size: 30rpx;
-  margin-right: 14rpx;
+  font-size: 28rpx;
+  margin-right: 12rpx;
+  flex-shrink: 0;
 }
 
 .tip-text {
-  font-size: 24rpx;
-  color: #4338ca;
+  font-size: 22rpx;
+  color: #3730a3;
   line-height: 1.4;
 }
 
 .action-box {
   padding: 28rpx;
+  border-radius: 24rpx;
+  margin-bottom: 24rpx;
 }
 
 .upload-zone {
-  border: 2rpx dashed #cbd5e1;
-  border-radius: 20rpx;
-  padding: 50rpx 20rpx;
+  border: 3rpx dashed #a5b4fc;
+  border-radius: 24rpx;
+  padding: 50rpx 24rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  margin-bottom: 24rpx;
+  transition: all 0.2s;
 }
 
 .upload-icon {
-  font-size: 56rpx;
+  font-size: 64rpx;
   margin-bottom: 12rpx;
 }
 
 .upload-title {
   font-size: 28rpx;
-  font-weight: 600;
+  font-weight: 700;
   color: #1e293b;
 }
 
 .upload-sub {
   font-size: 22rpx;
-  color: #64748b;
+  color: #94a3b8;
   margin-top: 8rpx;
+  text-align: center;
 }
 
 .selected-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-bottom: 24rpx;
 }
 
 .preview-video {
   width: 100%;
-  height: 360rpx;
-  border-radius: 16rpx;
+  height: 380rpx;
+  border-radius: 20rpx;
   background: #000000;
 }
 
 .preview-gif {
-  width: 300rpx;
-  height: 300rpx;
-  border-radius: 16rpx;
-  background: #f1f5f9;
+  width: 320rpx;
+  height: 320rpx;
+  border-radius: 20rpx;
+  background: #ffffff;
   border: 1rpx solid #e2e8f0;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
 }
 
 .remove-btn {
   margin-top: 16rpx;
   font-size: 24rpx;
   color: #ef4444;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* 多图网格 */
@@ -110,6 +120,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16rpx;
+  margin-bottom: 24rpx;
 }
 
 .grid-item {
@@ -129,55 +140,73 @@
 .grid-add {
   width: 100%;
   height: 190rpx;
-  border: 2rpx dashed #cbd5e1;
+  border: 2rpx dashed #a5b4fc;
   border-radius: 16rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f8fafc;
+  background: #eef2ff;
 }
 
 .add-icon {
-  font-size: 44rpx;
+  font-size: 48rpx;
   color: #4f46e5;
+  font-weight: 300;
 }
 
 .add-text {
   font-size: 22rpx;
-  color: #64748b;
+  color: #4f46e5;
+  font-weight: 600;
   margin-top: 6rpx;
 }
 
-.form-item {
+/* 表单输入：防止文本垂直截断 */
+.form-item-remix {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 10rpx;
+  margin-top: 16rpx;
+  margin-bottom: 24rpx;
 }
 
-.form-label {
-  width: 140rpx;
+.form-label-remix {
   font-size: 26rpx;
-  font-weight: 600;
-  color: #334155;
+  font-weight: 700;
+  color: #1e293b;
 }
 
-.form-input {
-  flex: 1;
+.form-input-remix {
+  width: 100%;
+  height: 80rpx;
+  min-height: 80rpx;
+  line-height: 80rpx;
   background: #f8fafc;
   border: 1rpx solid #e2e8f0;
-  border-radius: 14rpx;
-  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
   color: #1e293b;
-  font-size: 26rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.btn-convert {
+  width: 100% !important;
+  font-size: 28rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0;
 }
 
 /* 结果卡片 */
 .result-card {
-  margin-top: 30rpx;
+  margin-top: 24rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 28rpx;
+  padding: 30rpx 24rpx;
+  border-radius: 24rpx;
 }
 
 .result-header {
@@ -195,16 +224,16 @@
 }
 
 .remix-result-img {
-  width: 340rpx;
-  height: 340rpx;
-  border-radius: 16rpx;
+  width: 360rpx;
+  height: 360rpx;
+  border-radius: 20rpx;
   background: #ffffff;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.08);
 }
 
 .remix-actions {
   display: flex;
   gap: 20rpx;
   width: 100%;
-  margin-top: 24rpx;
+  margin-top: 28rpx;
 }

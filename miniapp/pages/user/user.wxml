@@ -38,15 +38,15 @@
         <view class="q-label">我的作品库 (点此查看)</view>
       </view>
     </view>
-    <button class="btn-primary" style="margin-top: 24rpx;" bindtap="handleDailyCheckin">
-      🎁 每日签到免费领 3 次额度
+    <button class="btn-primary btn-checkin-full" bindtap="handleDailyCheckin">
+      🎁 每日签到 +3 次制作额度
     </button>
   </view>
 
   <!-- 微信虚拟支付 2.0 充值专区 -->
   <view class="section-title">
-    <text>⚡ 动图制作算力包</text>
-    <text class="section-sub">按需使用 · 即时生效 · 自动到账</text>
+    <text>⚡ 制作额度加量包</text>
+    <text class="section-sub">即时生效 · 自动到账</text>
   </view>
 
   <view class="package-list grid-3">
@@ -79,8 +79,8 @@
       <text class="invite-code">{{user.invite_code || '---'}}</text>
       <button class="btn-xs btn-copy" bindtap="copyInviteCode">复制口令</button>
     </view>
-    <button class="btn-secondary" style="margin-top: 16rpx;" open-type="share">
-      🚀 分享给好友/微信群 (+5次/人)
+    <button class="btn-secondary btn-invite-full" open-type="share">
+      🚀 邀请微信好友 (+5次/人)
     </button>
   </view>
 
@@ -137,15 +137,15 @@
         </view>
         <view class="faq-item">
           <view class="faq-q">Q2: 制作出的动图能直接在微信发给好友吗？</view>
-          <view class="faq-a">完全可以！所有输出的 GIF 均严格按照微信动图规范压缩（体积稳定在 &lt;1MB、自动去白底透明化），在制作完成页面长按即可保存到手机相册，或直接在微信聊天框添加为自定义表情。</view>
+          <view class="faq-a">完全可以！所有输出的 GIF 均严格按照微信动图规范压缩（体积稳定在 1MB 以内、自动去白底透明化），在制作完成页面长按即可保存到手机相册，或直接在微信聊天框添加为自定义表情。</view>
         </view>
         <view class="faq-item">
           <view class="faq-q">Q3: 免费制作额度每天都会有吗？</view>
           <view class="faq-a">是的！每天进入个人中心点击【每日签到】即可免费领取 3 次体验额度；此外将小程序分享给好友，双方各能额外获赠 5 次额度，每日可领。</view>
         </view>
         <view class="faq-item">
-          <view class="faq-q">Q4: 充值开通的算力包有使用期限吗？</view>
-          <view class="faq-a">按需开通使用！制作算力直接绑定至您的微信账号，随充随用，支持多设备无缝同步。</view>
+          <view class="faq-q">Q4: 充值开通的制作额度有使用期限吗？</view>
+          <view class="faq-a">按需开通使用！制作额度直接绑定至您的微信账号，随充随用，支持多设备无缝同步。</view>
         </view>
         <view class="faq-item">
           <view class="faq-q">Q5: 如果制作遇到异常会扣除我的额度吗？</view>
@@ -170,7 +170,7 @@
         </view>
         <view class="agreement-section">
           <view class="agreement-h">二、虚拟商品与交付规范</view>
-          <view class="agreement-p">本平台提供的动图制作算力属于虚拟数字化在线计算与排版服务。虚拟商品一经开通充值、或动图生成交付完毕即视为履约完成，不支持无理由退款。如因不可抗力或网络故障导致出图失败，系统将自动补还相应制作额度。</view>
+          <view class="agreement-p">本平台提供的动图制作额度属于虚拟数字化在线渲染与排版服务。虚拟商品一经开通充值、或动图生成交付完毕即视为履约完成，不支持无理由退款。如因不可抗力或网络故障导致出图失败，系统将自动补还相应制作额度。</view>
         </view>
         <view class="agreement-section">
           <view class="agreement-h">三、合规承诺与内容准则</view>
@@ -178,7 +178,7 @@
         </view>
         <view class="agreement-section">
           <view class="agreement-h">四、隐私保护与数据存储</view>
-          <view class="agreement-p">我们高度尊重并保护用户个人隐私。平台仅基于微信开放平台提供的匿名标识（OpenID）用于记录用户的算力余额及订单状态，不收集任何用户姓名、手机号等私密身份信息。生成素材经加密隔离保存，仅供用户本人下载与管理。</view>
+          <view class="agreement-p">我们高度尊重并保护用户个人隐私。平台仅基于微信开放平台提供的匿名标识（OpenID）用于记录用户的制作额度余额及订单状态，不收集任何用户姓名、手机号等私密身份信息。生成素材经加密隔离保存，仅供用户本人下载与管理。</view>
         </view>
         <view class="agreement-section">
           <view class="agreement-h">五、官方客服与售后咨询</view>

@@ -208,7 +208,7 @@
   <!-- 全屏沉浸式草图绘制画板 -->
   <view wx:if="{{showFullScreenSketch}}" class="fullscreen-sketch-mask" catchtouchmove="preventTouchMove">
     <view class="fullscreen-sketch-header">
-      <text class="fs-title">✏️ 全屏沉浸涂鸦画板</text>
+      <text class="fs-title">✏️ 全屏手绘画板</text>
       <view class="fs-header-actions">
         <button class="btn-xs" bindtap="clearFullScreenSketch">清空</button>
         <button class="btn-xs btn-fs-close" bindtap="closeFullScreenSketch">✕ 关闭</button>

@@ -31,12 +31,12 @@
       <button class="btn-xs remove-btn" bindtap="clearVideo">重新选择视频</button>
     </view>
 
-    <view class="form-item" style="margin-top: 20rpx;">
-      <text class="form-label">追加字幕:</text>
-      <input class="form-input" placeholder="可填字幕(如: 绝了、哈哈哈哈)" value="{{captionText}}" bindinput="onInputCaption" />
+    <view class="form-item-remix">
+      <text class="form-label-remix">追加字幕 (可选):</text>
+      <input class="form-input-remix" placeholder="可填字幕 (如: 绝了、哈哈哈哈)" value="{{captionText}}" bindinput="onInputCaption" />
     </view>
 
-    <button class="btn-primary" style="margin-top: 24rpx;" bindtap="convertVideoToGif" loading="{{isConverting}}">
+    <button class="btn-primary btn-convert" bindtap="convertVideoToGif" loading="{{isConverting}}">
       ⚡ 一键秒转标准 GIF
     </button>
   </view>
@@ -54,12 +54,12 @@
       </view>
     </view>
 
-    <view class="form-item" style="margin-top: 20rpx;">
-      <text class="form-label">追加字幕:</text>
-      <input class="form-input" placeholder="可选填字幕" value="{{captionText}}" bindinput="onInputCaption" />
+    <view class="form-item-remix">
+      <text class="form-label-remix">追加字幕 (可选):</text>
+      <input class="form-input-remix" placeholder="可选填字幕 (如: 摸鱼中、冲鸭)" value="{{captionText}}" bindinput="onInputCaption" />
     </view>
 
-    <button class="btn-primary" style="margin-top: 24rpx;" bindtap="convertImagesToGif" loading="{{isConverting}}">
+    <button class="btn-primary btn-convert" bindtap="convertImagesToGif" loading="{{isConverting}}">
       🪄 一键合成连续动图
     </button>
   </view>
@@ -77,12 +77,12 @@
       <button class="btn-xs remove-btn" bindtap="clearSrcGif">换一张图片/动图</button>
     </view>
 
-    <view class="form-item" style="margin-top: 20rpx;">
-      <text class="form-label">台词字幕:</text>
-      <input class="form-input" placeholder="输入你想追加的神台词 (如: 听懂掌声、收到)" value="{{captionText}}" bindinput="onInputCaption" />
+    <view class="form-item-remix">
+      <text class="form-label-remix">台词字幕:</text>
+      <input class="form-input-remix" placeholder="输入你想追加的神台词 (如: 听懂掌声、收到)" value="{{captionText}}" bindinput="onInputCaption" />
     </view>
 
-    <button class="btn-primary" style="margin-top: 24rpx;" bindtap="editGifCaption" loading="{{isConverting}}">
+    <button class="btn-primary btn-convert" bindtap="editGifCaption" loading="{{isConverting}}">
       ⚡ 一键合成表情包
     </button>
   </view>

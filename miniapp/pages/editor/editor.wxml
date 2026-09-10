@@ -1,17 +1,12 @@
 <view class="editor-container">
-  <!-- 顶部操作导航条 -->
+  <!-- 顶部精简操作栏 -->
   <view class="editor-nav-bar">
-    <view class="nav-left" bindtap="goBack">
-      <text class="nav-icon">‹</text>
-      <text class="nav-text">取消</text>
-    </view>
-    <view class="nav-center">
-      <text class="editor-title">贴纸与修图工坊</text>
-    </view>
-    <view class="nav-right">
+    <view class="nav-left-actions">
       <view class="action-btn-sm" bindtap="undo">↩ 撤销</view>
-      <view class="action-btn-sm btn-clear" bindtap="clearAll">清空</view>
-      <button class="btn-save-apply" bindtap="finishAndApply">完成应用</button>
+      <view class="action-btn-sm btn-clear" bindtap="clearAll">🗑️ 清空</view>
+    </view>
+    <view class="nav-right-actions">
+      <button class="btn-save-apply" bindtap="finishAndApply">✅ 完成并应用</button>
     </view>
   </view>
 

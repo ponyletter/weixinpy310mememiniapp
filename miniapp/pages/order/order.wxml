@@ -1,7 +1,7 @@
 <view class="container">
   <view class="order-hero card">
     <view class="hero-title">微信虚拟支付 2.0 履约与订单记录</view>
-    <view class="hero-sub">根据微信官方规范，所有虚拟道具与算力包均自动履约发货到账。</view>
+    <view class="hero-sub">根据微信官方规范，所有虚拟商品与制作额度均自动履约发货到账。</view>
   </view>
 
   <view wx:if="{{orders.length === 0}}" class="empty-box card">
@@ -36,7 +36,7 @@
       <view class="order-divider"></view>
 
       <view class="order-row footer-row">
-        <text class="reward-hint">获得权益: +{{item.quota_reward}} 次生成额度</text>
+        <text class="reward-hint">获得权益: +{{item.quota_reward}} 次制作额度</text>
         <view class="amount-wrap">
           <text class="curr">¥</text>
           <text class="amount">{{item.amount / 100}}</text>

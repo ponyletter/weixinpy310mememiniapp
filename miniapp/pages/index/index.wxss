@@ -576,14 +576,18 @@
 }
 
 .fs-title {
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 800;
   color: #1e293b;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .fs-header-actions {
   display: flex;
+  align-items: center;
   gap: 16rpx;
+  flex-shrink: 0;
 }
 
 .btn-fs-close {

@@ -11,9 +11,9 @@ page {
   box-sizing: border-box;
 }
 
-/* 顶部导航条 */
+/* 顶部精简操作栏 */
 .editor-nav-bar {
-  height: 90rpx;
+  height: 84rpx;
   background: #ffffff;
   display: flex;
   align-items: center;
@@ -24,35 +24,15 @@ page {
   z-index: 100;
 }
 
-.nav-left {
+.nav-left-actions {
   display: flex;
   align-items: center;
-  color: #64748b;
-  font-size: 28rpx;
-  padding: 10rpx 0;
+  gap: 16rpx;
 }
 
-.nav-icon {
-  font-size: 40rpx;
-  margin-right: 4rpx;
-  line-height: 1;
-}
-
-.nav-center {
-  flex: 1;
-  text-align: center;
-}
-
-.editor-title {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.nav-right {
+.nav-right-actions {
   display: flex;
   align-items: center;
-  gap: 14rpx;
 }
 
 .action-btn-sm {
