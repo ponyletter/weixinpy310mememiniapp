@@ -251,6 +251,7 @@
   background: #ffffff;
   border: 2rpx solid #cbd5e1;
   border-radius: 16rpx;
+  touch-action: none;
 }
 
 .sketch-zoom-badge {
@@ -537,14 +538,30 @@
   margin-top: 6rpx;
 }
 
+/* 页面滚动锁定 (全屏手绘展开时锁定底层页面，杜绝外层滑动条与背景抖动) */
+.page-locked {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+  touch-action: none !important;
+}
+
 /* ========== 全屏涂鸦画板模态层 ========== */
 .fullscreen-sketch-mask {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 9999;
   background: #ffffff;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .fullscreen-sketch-header {
@@ -555,6 +572,7 @@
   align-items: center;
   border-bottom: 1rpx solid #f1f5f9;
   background: #ffffff;
+  flex-shrink: 0;
 }
 
 .fs-title {
@@ -579,12 +597,16 @@
   width: 100%;
   background: #ffffff;
   position: relative;
+  overflow: hidden;
+  touch-action: none;
 }
 
 .fullscreen-canvas {
   width: 100%;
   height: 100%;
   background: #ffffff;
+  touch-action: none;
+  display: block;
 }
 
 .fullscreen-sketch-footer {

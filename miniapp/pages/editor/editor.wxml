@@ -23,9 +23,9 @@
         id="editorCanvas"
         class="editor-canvas"
         style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"
-        bindtouchstart="onTouchStart"
-        bindtouchmove="onTouchMove"
-        bindtouchend="onTouchEnd"
+        catchtouchstart="onTouchStart"
+        catchtouchmove="onTouchMove"
+        catchtouchend="onTouchEnd"
       ></canvas>
     </view>
     <view class="canvas-tip">

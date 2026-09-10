@@ -1,4 +1,4 @@
-<view class="container">
+<view class="container {{showFullScreenSketch ? 'page-locked' : ''}}">
   <!-- 顶部添加收藏/「我的小程序」快捷引导气泡 -->
   <view wx:if="{{showFavoriteTip}}" class="favorite-guide-bar">
     <view class="fav-guide-content" bindtap="showFavoriteTutorial">
@@ -69,9 +69,9 @@
           type="2d"
           id="sketchCanvas"
           class="sketch-canvas"
-          bindtouchstart="onSketchStart"
-          bindtouchmove="onSketchMove"
-          bindtouchend="onSketchEnd"
+          catchtouchstart="onSketchStart"
+          catchtouchmove="onSketchMove"
+          catchtouchend="onSketchEnd"
         ></canvas>
         <view class="sketch-zoom-badge" bindtap="openFullScreenSketch">
           <text>🔍 全屏涂鸦</text>
@@ -206,7 +206,7 @@
   </view>
 
   <!-- 全屏沉浸式草图绘制画板 -->
-  <view wx:if="{{showFullScreenSketch}}" class="fullscreen-sketch-mask">
+  <view wx:if="{{showFullScreenSketch}}" class="fullscreen-sketch-mask" catchtouchmove="preventTouchMove">
     <view class="fullscreen-sketch-header">
       <text class="fs-title">✏️ 全屏沉浸涂鸦画板</text>
       <view class="fs-header-actions">
@@ -214,17 +214,17 @@
         <button class="btn-xs btn-fs-close" bindtap="closeFullScreenSketch">✕ 关闭</button>
       </view>
     </view>
-    <view class="fullscreen-canvas-container">
+    <view class="fullscreen-canvas-container" catchtouchmove="preventTouchMove">
       <canvas
         type="2d"
         id="fullScreenCanvas"
         class="fullscreen-canvas"
-        bindtouchstart="onFSSketchStart"
-        bindtouchmove="onFSSketchMove"
-        bindtouchend="onFSSketchEnd"
+        catchtouchstart="onFSSketchStart"
+        catchtouchmove="onFSSketchMove"
+        catchtouchend="onFSSketchEnd"
       ></canvas>
     </view>
-    <view class="fullscreen-sketch-footer">
+    <view class="fullscreen-sketch-footer" catchtouchmove="preventTouchMove">
       <view class="palette-row">
         <view class="color-item {{fsColor === '#1e293b' ? 'active' : ''}}" style="background: #1e293b;" bindtap="setFSColor" data-color="#1e293b"></view>
         <view class="color-item {{fsColor === '#ef4444' ? 'active' : ''}}" style="background: #ef4444;" bindtap="setFSColor" data-color="#ef4444"></view>

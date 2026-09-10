@@ -104,6 +104,7 @@ page {
 
 .editor-canvas {
   background: #ffffff;
+  touch-action: none;
 }
 
 .canvas-tip {

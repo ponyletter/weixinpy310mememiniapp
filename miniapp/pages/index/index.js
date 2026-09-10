@@ -527,45 +527,114 @@ Page({
   },
 
   pollTaskStatus(taskId) {
-    if (this.pollTimer) clearInterval(this.pollTimer);
-    this.pollTimer = setInterval(() => {
+    if (!taskId) return;
+
+    // 清理可能已有的轮询器，避免并发定时器与网络请求排队
+    if (this.pollTimeout) {
+      clearTimeout(this.pollTimeout);
+      this.pollTimeout = null;
+    }
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+
+    this._pollingTaskId = taskId;
+    this._isTaskFinalized = false;
+    this._isRequestingStatus = false;
+
+    const pollStep = () => {
+      // 若任务已锁定终结、任务ID变更或非生成状态，则彻底退出轮询
+      if (this._isTaskFinalized || this._pollingTaskId !== taskId || !this.data.isGenerating) {
+        return;
+      }
+
+      // 若上一次网络请求尚未返回，跳过当前时钟周期，杜绝请求并发堆叠
+      if (this._isRequestingStatus) {
+        this.pollTimeout = setTimeout(pollStep, 1500);
+        return;
+      }
+
+      this._isRequestingStatus = true;
+
       wx.request({
         url: `${app.globalData.baseURL}/api/task-status/${taskId}`,
         method: 'GET',
         success: (res) => {
+          // 如果响应返回时任务已被处理终结，直接丢弃该次响应
+          if (this._isTaskFinalized || this._pollingTaskId !== taskId) return;
+
           if (res.data && res.data.data) {
             const tInfo = res.data.data;
-            this.setData({
-              progress: tInfo.progress || 10,
-              stageText: tInfo.stage_text || '逐帧渲染处理中...'
-            });
 
             if (tInfo.status === 'completed') {
-              clearInterval(this.pollTimer);
+              // 【核心修复】：瞬间加锁！确保整个生命周期只执行一次成功交付与单次Toast
+              this._isTaskFinalized = true;
+              if (this.pollTimeout) {
+                clearTimeout(this.pollTimeout);
+                this.pollTimeout = null;
+              }
               wx.removeStorageSync('active_meme_task');
+
               const gifPath = tInfo.data.gif_url;
+              const fullGifUrl = `${app.globalData.baseURL}${gifPath}`;
+
+              // 一次性渲染完成状态，避免重复 setData 导致 GIF 反复重载
               this.setData({
                 isGenerating: false,
-                gifResultUrl: `${app.globalData.baseURL}${gifPath}`,
-                progress: 100
+                gifResultUrl: fullGifUrl,
+                progress: 100,
+                stageText: '制作成功已交付'
               });
-              wx.showToast({ title: '制作成功！', icon: 'success' });
+
+              // 单次提示，确保动图流畅播放
+              wx.showToast({ title: '制作成功！', icon: 'success', duration: 1800 });
+              return;
             } else if (tInfo.status === 'failed') {
-              clearInterval(this.pollTimer);
+              this._isTaskFinalized = true;
+              if (this.pollTimeout) {
+                clearTimeout(this.pollTimeout);
+                this.pollTimeout = null;
+              }
               wx.removeStorageSync('active_meme_task');
               this.handleGenerateError(tInfo.error || "生成异常");
+              return;
+            } else {
+              // 仍处于处理中，更新进度条
+              this.setData({
+                progress: tInfo.progress || 10,
+                stageText: tInfo.stage_text || '逐帧渲染处理中...'
+              });
             }
           }
         },
         fail: () => {
-          // 网络抖动不打断轮询
+          // 网络抖动不打断
+        },
+        complete: () => {
+          this._isRequestingStatus = false;
+          // 仅当未终结且仍在生成时，串行排期下一次轮询
+          if (!this._isTaskFinalized && this.data.isGenerating && this._pollingTaskId === taskId) {
+            this.pollTimeout = setTimeout(pollStep, 1500);
+          }
         }
       });
-    }, 1500);
+    };
+
+    // 1秒后启动串行轮询
+    this.pollTimeout = setTimeout(pollStep, 1000);
   },
 
   handleGenerateError(msg) {
-    if (this.pollTimer) clearInterval(this.pollTimer);
+    this._isTaskFinalized = true;
+    if (this.pollTimeout) {
+      clearTimeout(this.pollTimeout);
+      this.pollTimeout = null;
+    }
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
     wx.removeStorageSync('active_meme_task');
     this.setData({ isGenerating: false });
     wx.showModal({
@@ -783,6 +852,23 @@ Page({
     });
   },
 
-  stopBubble() {}
+  stopBubble() {},
+
+  preventTouchMove() {
+    // 拦截全屏涂鸦与遮罩层的页面滚动穿透
+    return false;
+  },
+
+  onUnload() {
+    this._isTaskFinalized = true;
+    if (this.pollTimeout) {
+      clearTimeout(this.pollTimeout);
+      this.pollTimeout = null;
+    }
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
 });
 
