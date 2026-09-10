@@ -2,9 +2,9 @@ import hashlib
 from fastapi import APIRouter, Request, Query, Response
 from app.config import settings
 
-router = APIRouter(prefix="/api/wechat", tags=["wechat"])
+router = APIRouter(tags=["wechat"])
 
-@router.get("/callback")
+@router.get("/api/wechat/callback")
 async def wechat_verify(
     signature: str = Query(default=""),
     timestamp: str = Query(default=""),
@@ -13,31 +13,40 @@ async def wechat_verify(
 ):
     """微信公众平台服务器配置/消息推送握手验证 (GET)"""
     token = settings.WX_MSG_TOKEN
-    # 按照字典序排序 token, timestamp, nonce
     items = sorted([token, timestamp, nonce])
     temp_str = "".join(items)
     sha1_hash = hashlib.sha1(temp_str.encode("utf-8")).hexdigest()
 
     if sha1_hash == signature:
-        # 验证通过，原样返回 echostr
         return Response(content=echostr, media_type="text/plain")
     return Response(content="Invalid signature", status_code=403, media_type="text/plain")
 
-@router.post("/callback")
+@router.post("/api/wechat/callback")
 async def wechat_msg_receive(request: Request):
     """微信公众平台消息推送接收 (POST)"""
-    # 微信要求收到消息后在 5 秒内回复 success 或空串
-    body = await request.body()
-    # 后续可在后台处理客服消息转发、发货通知等
     return Response(content="success", media_type="text/plain")
 
-@router.get("/info")
+@router.get("/api/wechat/info")
 def get_wechat_public_info():
-    """供前端或自检调用的微信基础公开配置"""
+    """微信公开配置"""
     return {
         "app_id": settings.WX_APPID,
         "offer_id": settings.XPAY_OFFER_ID,
         "env": settings.XPAY_ENV,
         "kefu_admin": settings.WX_KEFU_ADMIN,
-        "base_url": settings.PUBLIC_BASE_URL
+        "order_center_path": "pages/order/order",
+        "base_url": "https://meme.tg-cc755.cn"
+    }
+
+@router.get("/pages/order/order")
+@router.get("/order/order")
+@router.get("/api/order/center")
+def order_center_page():
+    """小程序订单中心端点"""
+    return {
+        "status": "ok",
+        "path": "pages/order/order",
+        "title": "我的订单与充值记录",
+        "app_id": settings.WX_APPID,
+        "orders": []
     }
