@@ -36,10 +36,11 @@ def build_prompt(
     action_type: str = Form("kiss"),
     custom_caption: str = Form(""),
     has_image: bool = Form(False),
+    is_sketch: bool = Form(False),
 ):
     """根据动作与角色描述，动态生成让 ChatGPT 原生绘制动态跳跃汉字的专用 Prompt"""
     template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
-    final_prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image)
+    final_prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch)
 
     return {
         "code": 0,
@@ -274,6 +275,7 @@ async def run_generate_pipeline(
     fps: int,
     make_transparent: bool,
     padding_percent: float,
+    is_sketch: bool = False,
 ):
     """后台异步执行完整的生图、切割与动图合成流水线"""
     import io
@@ -282,16 +284,17 @@ async def run_generate_pipeline(
 
     try:
         # 阶段 1：组装提示词
+        stage_desc = "阶段 1/4: 结合手绘草图造型与动作语义对齐..." if is_sketch else "阶段 1/4: 组装角色提示词与人设语义对齐..."
         TASK_STORE[task_id] = {
             "status": "processing",
             "progress": 10,
             "stage": "prompt",
-            "stage_text": "阶段 1/4: 组装角色提示词与人设语义对齐..."
+            "stage_text": stage_desc
         }
 
         has_image = ref_image_bytes is not None and len(ref_image_bytes) > 0
         template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
-        prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image)
+        prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch)
 
         # 阶段 2：请求 ChatGPT Plus (Images 2.5) 出图
         TASK_STORE[task_id] = {
@@ -437,6 +440,7 @@ async def generate_async(
     fps: int = Form(8),
     make_transparent: bool = Form(True),
     padding_percent: float = Form(2.5),
+    is_sketch: bool = Form(False),
 ):
     """【推荐】异步启动 AI 生图任务，前端通过轮询获取实时进度与结果，绝无 HTTP 超时问题"""
     task_id = str(uuid.uuid4())[:8]
@@ -461,7 +465,8 @@ async def generate_async(
         character_desc=character_desc,
         fps=fps,
         make_transparent=make_transparent,
-        padding_percent=padding_percent
+        padding_percent=padding_percent,
+        is_sketch=is_sketch
     ))
 
     return {

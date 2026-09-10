@@ -4,10 +4,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================
   let currentTemplateId = "kiss";
   let templatesData = [];
-  let selectedRefImage = null;       // 模式 1：参考角色图片 (可选)
+  let selectedRefImage = null;       // 模式 1：参考角色图片 (文件或草图导出)
+  let isSketchMode = false;          // 是否为 ChatGPT Images 2.5 手绘草图模式
   let selectedSpriteFile = null;     // 模式 2：已有 4x4 精灵图
   let selectedSampleId = null;       // 模式 2：内置测试样本
   let progressInterval = null;
+  let pollInterval = null;
 
   // ==========================================
   // DOM 元素引用
@@ -18,13 +20,31 @@ document.addEventListener("DOMContentLoaded", () => {
   const panelAI = document.getElementById("panelAI");
   const panelSlicer = document.getElementById("panelSlicer");
 
-  // 模式 1：AI 生图
+  // 模式 1：人设来源切换 (上传图 vs 手绘草图)
+  const btnSourceUpload = document.getElementById("btnSourceUpload");
+  const btnSourceSketch = document.getElementById("btnSourceSketch");
+  const boxUploadRef = document.getElementById("boxUploadRef");
+  const boxSketchRef = document.getElementById("boxSketchRef");
+
+  // 图片上传元素
   const refDropZone = document.getElementById("refDropZone");
   const refImageInput = document.getElementById("refImageInput");
   const refPlaceholder = document.getElementById("refPlaceholder");
   const refPreviewContainer = document.getElementById("refPreviewContainer");
   const refPreviewImg = document.getElementById("refPreviewImg");
   const btnRemoveRef = document.getElementById("btnRemoveRef");
+
+  // 草图画板元素
+  const sketchCanvas = document.getElementById("sketchCanvas");
+  const sketchCtx = sketchCanvas ? sketchCanvas.getContext("2d") : null;
+  const toolPencil = document.getElementById("toolPencil");
+  const toolEraser = document.getElementById("toolEraser");
+  const btnUndoSketch = document.getElementById("btnUndoSketch");
+  const btnClearSketch = document.getElementById("btnClearSketch");
+  const sketchStatusText = document.getElementById("sketchStatusText");
+  const colorDots = document.querySelectorAll(".color-dot");
+
+  // 提示词 & 动作
   const charDescInput = document.getElementById("charDesc");
   const templateGrid = document.getElementById("templateGrid");
   const captionInput = document.getElementById("captionInput");
@@ -51,12 +71,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const chkTransparentSlicer = document.getElementById("chkTransparentSlicer");
   const btnProcess = document.getElementById("btnProcess");
 
-  // 等待交互区 (tqdm + 贪吃蛇)
+  // 等待交互区 (tqdm + 棋盘格彩蛋游戏)
   const waitingCard = document.getElementById("waitingCard");
   const tqdmStageText = document.getElementById("tqdmStageText");
   const tqdmPercentText = document.getElementById("tqdmPercentText");
   const tqdmBarFill = document.getElementById("tqdmBarFill");
   const tqdmTime = document.getElementById("tqdmTime");
+  const triggerEggArea = document.getElementById("triggerEggArea");
+  const compactLoadingState = document.getElementById("compactLoadingState");
+  const snakeGameBox = document.getElementById("snakeGameBox");
+  const btnCloseEgg = document.getElementById("btnCloseEgg");
 
   // 结果展示区
   const resultCard = document.getElementById("resultCard");
@@ -64,7 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const statFrames = document.getElementById("statFrames");
   const statSize = document.getElementById("statSize");
   const statDuration = document.getElementById("statDuration");
-  const statAlpha = document.getElementById("statAlpha");
   const btnDownloadGif = document.getElementById("btnDownloadGif");
   const btnDownloadZip = document.getElementById("btnDownloadZip");
   const framesGrid = document.getElementById("framesGrid");
@@ -87,35 +110,48 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 2. 模式 1：参考角色图片上传与移除
+  // 2. 人设来源切换 (上传图片 vs 在线手绘草图)
   // ==========================================
+  btnSourceUpload.addEventListener("click", () => {
+    btnSourceUpload.classList.add("active");
+    btnSourceSketch.classList.remove("active");
+    boxUploadRef.style.display = "block";
+    boxSketchRef.style.display = "none";
+    isSketchMode = false;
+    updatePrompt();
+  });
+
+  btnSourceSketch.addEventListener("click", () => {
+    btnSourceSketch.classList.add("active");
+    btnSourceUpload.classList.remove("active");
+    boxSketchRef.style.display = "block";
+    boxUploadRef.style.display = "none";
+    isSketchMode = true;
+    initSketchCanvasOnce();
+    syncSketchToRefImage();
+    updatePrompt();
+  });
+
+  // 上传图片处理
   refDropZone.addEventListener("click", (e) => {
-    if (e.target !== btnRemoveRef) {
-      refImageInput.click();
-    }
+    if (e.target !== btnRemoveRef) refImageInput.click();
   });
 
   refImageInput.addEventListener("change", (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleRefFile(e.target.files[0]);
-    }
+    if (e.target.files && e.target.files[0]) handleRefFile(e.target.files[0]);
   });
 
   refDropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
     refDropZone.style.borderColor = "#6366f1";
   });
-
   refDropZone.addEventListener("dragleave", () => {
     refDropZone.style.borderColor = "#cbd5e1";
   });
-
   refDropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     refDropZone.style.borderColor = "#cbd5e1";
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleRefFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleRefFile(e.dataTransfer.files[0]);
   });
 
   function handleRefFile(file) {
@@ -124,6 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     selectedRefImage = file;
+    isSketchMode = false;
     const reader = new FileReader();
     reader.onload = (e) => {
       refPreviewImg.src = e.target.result;
@@ -145,7 +182,155 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 3. 模式 1：动作模板加载与字幕处理
+  // 3. ChatGPT Images 2.5 在线手绘草图引擎 (Sketch Board)
+  // ==========================================
+  let isDrawing = false;
+  let sketchTool = "pencil";
+  let currentColor = "#1e293b";
+  let sketchHistory = [];
+  let sketchInitialized = false;
+
+  function initSketchCanvasOnce() {
+    if (sketchInitialized || !sketchCtx) return;
+    sketchInitialized = true;
+
+    // 初始化画板为纯白色背景
+    sketchCtx.fillStyle = "#ffffff";
+    sketchCtx.fillRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+    saveSketchState();
+
+    // 绑定鼠标事件
+    sketchCanvas.addEventListener("mousedown", startDrawing);
+    sketchCanvas.addEventListener("mousemove", draw);
+    sketchCanvas.addEventListener("mouseup", stopDrawing);
+    sketchCanvas.addEventListener("mouseleave", stopDrawing);
+
+    // 绑定触屏手势
+    sketchCanvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = sketchCanvas.getBoundingClientRect();
+      startDrawing({ offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top });
+    }, { passive: false });
+
+    sketchCanvas.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = sketchCanvas.getBoundingClientRect();
+      draw({ offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top });
+    }, { passive: false });
+
+    sketchCanvas.addEventListener("touchend", stopDrawing);
+  }
+
+  function startDrawing(e) {
+    isDrawing = true;
+    sketchCtx.beginPath();
+    sketchCtx.moveTo(e.offsetX, e.offsetY);
+    draw(e);
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+    sketchCtx.lineCap = "round";
+    sketchCtx.lineJoin = "round";
+
+    if (sketchTool === "eraser") {
+      sketchCtx.strokeStyle = "#ffffff";
+      sketchCtx.lineWidth = 14;
+    } else {
+      sketchCtx.strokeStyle = currentColor;
+      sketchCtx.lineWidth = 3.5;
+    }
+
+    sketchCtx.lineTo(e.offsetX, e.offsetY);
+    sketchCtx.stroke();
+  }
+
+  function stopDrawing() {
+    if (isDrawing) {
+      isDrawing = false;
+      sketchCtx.closePath();
+      saveSketchState();
+      syncSketchToRefImage();
+    }
+  }
+
+  function saveSketchState() {
+    if (!sketchCtx) return;
+    sketchHistory.push(sketchCtx.getImageData(0, 0, sketchCanvas.width, sketchCanvas.height));
+    if (sketchHistory.length > 20) sketchHistory.shift();
+  }
+
+  // 工具切换：画笔 vs 橡皮
+  if (toolPencil) {
+    toolPencil.addEventListener("click", () => {
+      sketchTool = "pencil";
+      toolPencil.classList.add("active");
+      toolEraser.classList.remove("active");
+    });
+  }
+
+  if (toolEraser) {
+    toolEraser.addEventListener("click", () => {
+      sketchTool = "eraser";
+      toolEraser.classList.add("active");
+      toolPencil.classList.remove("active");
+    });
+  }
+
+  // 颜色点切换
+  colorDots.forEach(dot => {
+    dot.addEventListener("click", () => {
+      colorDots.forEach(d => d.classList.remove("active"));
+      dot.classList.add("active");
+      currentColor = dot.getAttribute("data-color");
+      if (sketchTool === "eraser") {
+        sketchTool = "pencil";
+        toolPencil.classList.add("active");
+        toolEraser.classList.remove("active");
+      }
+    });
+  });
+
+  // 撤销
+  if (btnUndoSketch) {
+    btnUndoSketch.addEventListener("click", () => {
+      if (sketchHistory.length > 1) {
+        sketchHistory.pop();
+        const prev = sketchHistory[sketchHistory.length - 1];
+        sketchCtx.putImageData(prev, 0, 0);
+        syncSketchToRefImage();
+      }
+    });
+  }
+
+  // 清空画板
+  if (btnClearSketch) {
+    btnClearSketch.addEventListener("click", () => {
+      sketchCtx.fillStyle = "#ffffff";
+      sketchCtx.fillRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+      saveSketchState();
+      selectedRefImage = null;
+      sketchStatusText.textContent = "画板已清空";
+      updatePrompt();
+    });
+  }
+
+  // 将 Canvas 实时导出为图片供后端 API 使用
+  function syncSketchToRefImage() {
+    if (!sketchCanvas) return;
+    sketchCanvas.toBlob((blob) => {
+      if (blob) {
+        selectedRefImage = new File([blob], "sketch_character.png", { type: "image/png" });
+        sketchStatusText.textContent = "✓ 草图已同步，将按草图精绘";
+        updatePrompt();
+      }
+    }, "image/png");
+  }
+
+  // ==========================================
+  // 4. 动作模板与提示词处理
   // ==========================================
   fetch("/api/templates")
     .then(res => res.json())
@@ -206,6 +391,7 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("custom_caption", captionInput.value.trim());
     formData.append("character_desc", charDescInput.value.trim());
     formData.append("has_image", selectedRefImage !== null);
+    formData.append("is_sketch", isSketchMode && selectedRefImage !== null);
 
     fetch("/api/prompt-builder", {
       method: "POST",
@@ -227,7 +413,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 参数面板折叠
   toggleAdvParams.addEventListener("click", () => {
     const isHidden = advParamsContent.style.display === "none";
     advParamsContent.style.display = isHidden ? "block" : "none";
@@ -239,7 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 4. 模式 2：已有精灵图切片
+  // 5. 模式 2：已有精灵图切片
   // ==========================================
   dropZone.addEventListener("click", () => fileInput.click());
   dropZone.addEventListener("dragover", (e) => {
@@ -250,15 +435,11 @@ document.addEventListener("DOMContentLoaded", () => {
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropZone.classList.remove("dragover");
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleSpriteFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleSpriteFile(e.dataTransfer.files[0]);
   });
 
   fileInput.addEventListener("change", (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleSpriteFile(e.target.files[0]);
-    }
+    if (e.target.files && e.target.files[0]) handleSpriteFile(e.target.files[0]);
   });
 
   function handleSpriteFile(file) {
@@ -322,21 +503,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 5. 启动 AI 生图 + tqdm 进度条 + 贪吃蛇激活 (异步轮询模式，零超时)
+  // 6. 启动 AI 生图 + tqdm 进度条 + 棋盘格彩蛋小游戏
   // ==========================================
-  let pollInterval = null;
-
   btnAIGenerate.addEventListener("click", async () => {
     btnAIGenerate.disabled = true;
 
-    // 显示等待卡片并滚动到此
+    // 重置并显示等待卡片 (默认显示紧凑加载，小游戏隐藏节省空间)
     waitingCard.style.display = "block";
     resultCard.style.display = "none";
+    compactLoadingState.style.display = "flex";
+    snakeGameBox.style.display = "none";
     waitingCard.scrollIntoView({ behavior: "smooth" });
 
-    // 初始化进度条与小游戏
+    // 启动 tqdm 进度条
     startTqdmProgress();
-    startSnakeGame();
 
     const formData = new FormData();
     if (selectedRefImage) {
@@ -348,9 +528,10 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("fps", fpsRangeAI.value);
     formData.append("make_transparent", chkTransparentAI.checked);
     formData.append("padding_percent", padSelectAI.value);
+    formData.append("is_sketch", isSketchMode && selectedRefImage !== null);
 
     try {
-      // 1. 发起异步任务创建 (仅需 20ms)
+      // 发起异步任务创建 (仅需 20ms)
       const startResp = await fetch("/api/generate-async", {
         method: "POST",
         body: formData
@@ -364,7 +545,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const taskId = startJson.data.task_id;
       let startTime = Date.now();
 
-      // 2. 轮询任务状态 (每 1.5 秒一次，毫秒级轻量，绝无连接超时风险)
+      // 轮询任务状态 (每 1.5 秒一次，毫秒级轻量)
       clearInterval(pollInterval);
       pollInterval = setInterval(async () => {
         try {
@@ -386,72 +567,70 @@ document.addEventListener("DOMContentLoaded", () => {
           } else if (task.status === "completed") {
             clearInterval(pollInterval);
             clearInterval(progressInterval);
+            stopSnakeGame();
             finishTqdmProgress();
             setTimeout(() => {
               waitingCard.style.display = "none";
               displayResults(task.data);
               btnAIGenerate.disabled = false;
-            }, 1000);
+            }, 900);
           } else if (task.status === "failed") {
             clearInterval(pollInterval);
             clearInterval(progressInterval);
+            stopSnakeGame();
             alert("AI 出图失败: " + (task.error || "未知异常"));
             waitingCard.style.display = "none";
             btnAIGenerate.disabled = false;
           }
         } catch (pollErr) {
-          console.warn("轮询状态中...", pollErr);
+          console.warn("轮询中...", pollErr);
         }
       }, 1500);
 
     } catch (err) {
       clearInterval(pollInterval);
       clearInterval(progressInterval);
+      stopSnakeGame();
       alert("启动生成任务异常: " + err.message);
       waitingCard.style.display = "none";
       btnAIGenerate.disabled = false;
     }
   });
 
-  // tqdm 进度条逻辑
+  // tqdm 进度条辅助函数
   function startTqdmProgress() {
-    let seconds = 0;
-    const estTotal = 32;
     tqdmBarFill.style.width = "5%";
     tqdmPercentText.textContent = "5%";
-    tqdmStageText.textContent = "阶段 1/4: 组装角色提示词与姿态参数...";
-    tqdmTime.textContent = `耗时: 0s / 预计 ${estTotal}s`;
-
-    clearInterval(progressInterval);
-    progressInterval = setInterval(() => {
-      seconds++;
-      let percent = Math.min(92, Math.round((seconds / estTotal) * 100));
-
-      if (seconds < 3) {
-        tqdmStageText.textContent = "阶段 1/4: 组装角色提示词与人设语义对齐...";
-      } else if (seconds < 26) {
-        tqdmStageText.textContent = "阶段 2/4: ChatGPT Plus (Images 2.5) 正在逐帧绘制 16 宫格雪碧图...";
-      } else if (seconds < 30) {
-        tqdmStageText.textContent = "阶段 3/4: 多尺度主间隙投影网格切割与角色包络裁剪...";
-      } else {
-        tqdmStageText.textContent = "阶段 4/4: 固定色差泛洪去底并封装微信 GIF 动图...";
-      }
-
-      tqdmBarFill.style.width = `${percent}%`;
-      tqdmPercentText.textContent = `${percent}%`;
-      tqdmTime.textContent = `耗时: ${seconds}s / 预计 ${estTotal}s`;
-    }, 1000);
+    tqdmStageText.textContent = "阶段 1/4: 组装角色提示词与人设语义对齐...";
+    tqdmTime.textContent = `耗时: 0s / 预计 32s`;
   }
 
   function finishTqdmProgress() {
-    clearInterval(progressInterval);
     tqdmBarFill.style.width = "100%";
     tqdmPercentText.textContent = "100%";
     tqdmStageText.textContent = "🎉 制作全部完成！正在导出动图预览...";
   }
 
   // ==========================================
-  // 6. 结果渲染
+  // 7. 棋盘格点击展开 / 收起解闷彩蛋小游戏
+  // ==========================================
+  triggerEggArea.addEventListener("click", (e) => {
+    // 如果已经在游戏中且不是点击收起按钮，不重复触发
+    if (snakeGameBox.style.display === "block") return;
+    compactLoadingState.style.display = "none";
+    snakeGameBox.style.display = "block";
+    startSnakeGame();
+  });
+
+  btnCloseEgg.addEventListener("click", (e) => {
+    e.stopPropagation();
+    stopSnakeGame();
+    snakeGameBox.style.display = "none";
+    compactLoadingState.style.display = "flex";
+  });
+
+  // ==========================================
+  // 8. 结果渲染
   // ==========================================
   function displayResults(data) {
     resultCard.style.display = "block";
@@ -480,37 +659,39 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ==========================================
-  // 7. 贪吃蛇小游戏 (Retro Canvas Snake)
+  // 9. 贪吃蛇彩蛋小游戏逻辑
   // ==========================================
   const snakeCanvas = document.getElementById("snakeCanvas");
-  const ctx = snakeCanvas.getContext("2d");
+  const ctx = snakeCanvas ? snakeCanvas.getContext("2d") : null;
   const btnStartSnake = document.getElementById("btnStartSnake");
   const snakeOverlay = document.getElementById("snakeOverlay");
   const snakeCurrentScore = document.getElementById("snakeCurrentScore");
-  const snakeHighScore = document.getElementById("snakeHighScore");
 
   const CELL_SIZE = 10;
-  const COLS = snakeCanvas.width / CELL_SIZE;
-  const ROWS = snakeCanvas.height / CELL_SIZE;
+  let COLS = 30;
+  let ROWS = 18;
 
   let snake = [];
   let food = { x: 0, y: 0 };
   let dir = { x: 1, y: 0 };
   let nextDir = { x: 1, y: 0 };
   let score = 0;
-  let highScore = parseInt(localStorage.getItem("meme_snake_highscore") || "0", 10);
   let snakeTimer = null;
   let gameRunning = false;
 
-  snakeHighScore.textContent = highScore;
+  if (snakeCanvas) {
+    COLS = snakeCanvas.width / CELL_SIZE;
+    ROWS = snakeCanvas.height / CELL_SIZE;
+  }
 
-  btnStartSnake.addEventListener("click", startSnakeGame);
+  if (btnStartSnake) btnStartSnake.addEventListener("click", startSnakeGame);
 
   function startSnakeGame() {
+    if (!ctx) return;
     snake = [
-      { x: 10, y: 10 },
-      { x: 9, y: 10 },
-      { x: 8, y: 10 }
+      { x: 10, y: 9 },
+      { x: 9, y: 9 },
+      { x: 8, y: 9 }
     ];
     dir = { x: 1, y: 0 };
     nextDir = { x: 1, y: 0 };
@@ -518,10 +699,15 @@ document.addEventListener("DOMContentLoaded", () => {
     snakeCurrentScore.textContent = score;
     spawnFood();
     gameRunning = true;
-    snakeOverlay.style.display = "none";
+    if (snakeOverlay) snakeOverlay.style.display = "none";
 
     clearInterval(snakeTimer);
-    snakeTimer = setInterval(gameLoop, 90);
+    snakeTimer = setInterval(gameLoop, 95);
+  }
+
+  function stopSnakeGame() {
+    clearInterval(snakeTimer);
+    gameRunning = false;
   }
 
   function spawnFood() {
@@ -529,7 +715,6 @@ document.addEventListener("DOMContentLoaded", () => {
       x: Math.floor(Math.random() * COLS),
       y: Math.floor(Math.random() * ROWS)
     };
-    // 避免生成在蛇身上
     for (let segment of snake) {
       if (segment.x === food.x && segment.y === food.y) {
         spawnFood();
@@ -542,13 +727,13 @@ document.addEventListener("DOMContentLoaded", () => {
     dir = nextDir;
     const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
 
-    // 撞墙穿透循环 (经典街机风)
+    // 穿墙循环
     if (head.x < 0) head.x = COLS - 1;
     if (head.x >= COLS) head.x = 0;
     if (head.y < 0) head.y = ROWS - 1;
     if (head.y >= ROWS) head.y = 0;
 
-    // 撞自身检测
+    // 撞自身
     for (let segment of snake) {
       if (segment.x === head.x && segment.y === head.y) {
         gameOver();
@@ -562,11 +747,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (head.x === food.x && head.y === food.y) {
       score += 10;
       snakeCurrentScore.textContent = score;
-      if (score > highScore) {
-        highScore = score;
-        snakeHighScore.textContent = highScore;
-        localStorage.setItem("meme_snake_highscore", highScore);
-      }
       spawnFood();
     } else {
       snake.pop();
@@ -579,10 +759,8 @@ document.addEventListener("DOMContentLoaded", () => {
     ctx.fillStyle = "#090d16";
     ctx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
 
-    // 画食物 (发光红苹果)
+    // 画食物
     ctx.fillStyle = "#ef4444";
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = "#ef4444";
     ctx.beginPath();
     ctx.arc(food.x * CELL_SIZE + CELL_SIZE/2, food.y * CELL_SIZE + CELL_SIZE/2, CELL_SIZE/2 - 1, 0, Math.PI * 2);
     ctx.fill();
@@ -590,22 +768,17 @@ document.addEventListener("DOMContentLoaded", () => {
     // 画蛇
     snake.forEach((seg, idx) => {
       ctx.fillStyle = idx === 0 ? "#10b981" : "#34d399";
-      ctx.shadowBlur = idx === 0 ? 6 : 0;
-      ctx.shadowColor = "#10b981";
       ctx.fillRect(seg.x * CELL_SIZE + 1, seg.y * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2);
     });
-
-    ctx.shadowBlur = 0;
   }
 
   function gameOver() {
-    clearInterval(snakeTimer);
-    gameRunning = false;
-    snakeOverlay.style.display = "flex";
-    btnStartSnake.innerText = `💥 游戏结束 (得分: ${score})，点击重来`;
+    stopSnakeGame();
+    if (snakeOverlay) snakeOverlay.style.display = "flex";
+    if (btnStartSnake) btnStartSnake.innerText = `💥 游戏结束 (得分: ${score})，点击重来`;
   }
 
-  // 键盘控制
+  // 键盘方向控制
   window.addEventListener("keydown", (e) => {
     if (!gameRunning) return;
     if (["ArrowUp", "KeyW"].includes(e.code) && dir.y === 0) nextDir = { x: 0, y: -1 };
@@ -614,7 +787,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (["ArrowRight", "KeyD"].includes(e.code) && dir.x === 0) nextDir = { x: 1, y: 0 };
   });
 
-  // 虚拟十字按键控制 (手机端)
+  // 手机触屏虚拟十字键
   document.querySelectorAll(".dpad-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       if (!gameRunning) startSnakeGame();

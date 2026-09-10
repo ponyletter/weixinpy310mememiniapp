@@ -26,7 +26,7 @@
         <span class="tab-icon">✨</span>
         <div class="tab-info">
           <span class="tab-title">AI 智能生图模式 (全自动)</span>
-          <span class="tab-sub">上传参考人设 ➔ ChatGPT 原生出图 ➔ 自动切帧合成</span>
+          <span class="tab-sub">手绘草图/上传人设 ➔ ChatGPT 原生出图 ➔ 自动切帧合成</span>
         </div>
       </button>
       <button type="button" class="mode-tab" id="tabModeSlicer">
@@ -40,17 +40,28 @@
 
     <!-- 模式 1：AI 智能生图面板 -->
     <div id="panelAI" class="mode-panel active">
-      <!-- 模块 A：角色形象设定 (图片与文本描述) -->
+      <!-- 模块 A：角色形象设定 (上传图片 OR 在线画草图 Sketch) -->
       <section class="card">
         <div class="card-header">
           <span class="badge badge-purple">设定 1</span>
-          <h2>角色形象设定 (人设参考图 + 补充描述)</h2>
+          <h2>角色形象设定 (支持手绘草图 Sketch & 人设图参考)</h2>
         </div>
-        <p class="desc">你可以上传自己喜欢的角色图片（自拍/头像/二次元立绘），AI 将严格还原其五官、发型与服饰特征：</p>
+        <p class="desc">ChatGPT Images 2.5 原生支持<strong>草图草稿重绘 (Sketch-to-Image)</strong>。你可以上传现成图片，或直接在线手绘简笔画：</p>
+
+        <!-- 人设输入源切换 Segmented Control -->
+        <div class="input-source-tabs">
+          <button type="button" class="source-tab active" id="btnSourceUpload">
+            <span>📷 上传人设参考图</span>
+          </button>
+          <button type="button" class="source-tab" id="btnSourceSketch">
+            <span>🖌️ 在线手绘草图 (SketchUP 涂鸦板)</span>
+            <span class="source-tag">Images 2.5 特色</span>
+          </button>
+        </div>
 
         <div class="char-setup-grid">
-          <!-- 参考图片上传框 (可选) -->
-          <div class="ref-upload-box">
+          <!-- 区域 1：上传图片面板 (默认) -->
+          <div id="boxUploadRef" class="char-source-box">
             <label class="input-label">
               <span>📷 参考角色图片</span>
               <span class="badge-tag">可选 · 强烈推荐</span>
@@ -73,14 +84,53 @@
             </div>
           </div>
 
+          <!-- 区域 2：在线手绘草图板 (Sketch Canvas) -->
+          <div id="boxSketchRef" class="char-source-box" style="display: none;">
+            <div class="sketch-header">
+              <label class="input-label">
+                <span>🖌️ 在线手绘涂鸦板</span>
+                <span class="badge-tag badge-tag-green">SketchUP 模式已激活</span>
+              </label>
+              <div class="sketch-status" id="sketchStatusText">随手画下轮廓与姿态即可</div>
+            </div>
+
+            <div class="sketch-canvas-wrapper">
+              <canvas id="sketchCanvas" width="320" height="200"></canvas>
+            </div>
+
+            <!-- 草图工具栏 -->
+            <div class="sketch-toolbar">
+              <div class="tool-group">
+                <button type="button" class="tool-btn active" id="toolPencil" title="画笔">🖌️ 铅笔</button>
+                <button type="button" class="tool-btn" id="toolEraser" title="橡皮擦">🧹 橡皮</button>
+              </div>
+
+              <!-- 颜色拾取 -->
+              <div class="color-palette">
+                <span class="color-dot active" data-color="#1e293b" style="background: #1e293b;" title="黑色"></span>
+                <span class="color-dot" data-color="#ef4444" style="background: #ef4444;" title="红色"></span>
+                <span class="color-dot" data-color="#3b82f6" style="background: #3b82f6;" title="蓝色"></span>
+                <span class="color-dot" data-color="#10b981" style="background: #10b981;" title="绿色"></span>
+                <span class="color-dot" data-color="#f59e0b" style="background: #f59e0b;" title="黄色"></span>
+                <span class="color-dot" data-color="#ec4899" style="background: #ec4899;" title="粉色"></span>
+              </div>
+
+              <div class="tool-group tool-actions">
+                <button type="button" class="tool-btn-sm" id="btnUndoSketch" title="撤销">↩️</button>
+                <button type="button" class="tool-btn-sm" id="btnClearSketch" title="清空画板">🗑️</button>
+              </div>
+            </div>
+            <p class="field-hint">💡 随意勾勒几笔姿态、五官或造型，ChatGPT 将把您的草图精修为 16 帧动图！</p>
+          </div>
+
           <!-- 角色外貌补充描述 -->
           <div class="char-desc-box">
             <label class="input-label" for="charDesc">
               <span>✍️ 角色补充描述</span>
               <span class="badge-tag tag-gray">可选</span>
             </label>
-            <textarea id="charDesc" class="form-textarea" rows="4" placeholder="例：一只呆萌的白色折耳猫，戴着鲜艳的红色围巾，圆圆的眼睛，Line 贴纸可爱风格... (若未上传图片，AI 将完全依据此描述生成)"></textarea>
-            <p class="field-hint">💡 提示：上传了参考图时，补充描述可强调重点（如“保留发型，但变成Q版三头身”）。</p>
+            <textarea id="charDesc" class="form-textarea" rows="4" placeholder="例：一只呆萌的白色折耳猫，戴着鲜艳的红色围巾，圆圆的眼睛，Line 贴纸可爱风格... (若未上传图片或草图，AI 将完全依据此描述生成)"></textarea>
+            <p class="field-hint">💡 配合手绘草图时，可写“草图画的是猫咪打招呼，帮我按Q版Line贴纸上色细化”。</p>
           </div>
         </div>
       </section>
@@ -217,7 +267,7 @@
       </section>
     </div>
 
-    <!-- 等待中交互容器：tqdm 进度条 + 贪吃蛇小游戏 (Snake Game) -->
+    <!-- 等待中交互容器：tqdm 进度条 + 紧凑棋盘格 + 彩蛋式贪吃蛇 (默认隐藏，点击展开) -->
     <section class="card waiting-card" id="waitingCard" style="display: none;">
       <div class="card-header">
         <span class="badge badge-green">AI 制作进行中</span>
@@ -236,40 +286,55 @@
         <div class="tqdm-meta">
           <span id="tqdmTime">耗时: 5s / 预计 32s</span>
           <span class="tqdm-rate">8.2 it/s</span>
-          <span class="tqdm-tip">✨ 耗时大约 25~35 秒，下方小游戏让等待不再无聊！</span>
+          <span class="tqdm-tip">✨ 预计 25~35 秒完成</span>
         </div>
       </div>
 
-      <!-- 贪吃蛇小游戏容器 -->
-      <div class="snake-game-container">
-        <div class="snake-header">
-          <div class="snake-title">
-            <span class="snake-icon">🐍</span>
-            <strong>贪吃蛇小挑战 (生图不无聊)</strong>
+      <!-- 紧凑预览等待区域 (默认显示，节省大量空间；点击可展开解闷彩蛋) -->
+      <div class="waiting-preview-container" id="waitingPreviewBox">
+        <div class="checkerboard-bg waiting-checkerboard" id="triggerEggArea" title="点击展开解闷互动彩蛋">
+          <!-- 默认紧凑加载动画 -->
+          <div class="loading-state-compact" id="compactLoadingState">
+            <div class="pulse-ring"></div>
+            <div class="loading-icon-anim">🎨</div>
+            <p class="loading-title">AI 正在绘制 16 帧角色连贯动作...</p>
+            <div class="egg-hint-badge">
+              <span>🕹️ 等待无聊？点击此区域展开互动解闷彩蛋 ➔</span>
+            </div>
           </div>
-          <div class="snake-scores">
-            <span>当前得分: <strong id="snakeCurrentScore">0</strong></span>
-            <span>最高记录: <strong id="snakeHighScore">0</strong></span>
-          </div>
-        </div>
 
-        <div class="canvas-wrapper">
-          <canvas id="snakeCanvas" width="320" height="220"></canvas>
-          <div id="snakeOverlay" class="snake-overlay">
-            <button type="button" id="btnStartSnake" class="btn btn-primary btn-sm">▶ 点击开始贪吃蛇游戏</button>
-            <p class="snake-hint">支持键盘 ↑ ↓ ← → / WASD，手机端可用下方十字键</p>
-          </div>
-        </div>
+          <!-- 点击后展开的贪吃蛇小游戏 (默认隐藏，个人小程序合规安全) -->
+          <div class="snake-game-container" id="snakeGameBox" style="display: none;">
+            <div class="snake-header">
+              <div class="snake-title">
+                <span class="snake-icon">🐍</span>
+                <strong>解闷小彩蛋 (消磨出图时间)</strong>
+              </div>
+              <div class="snake-scores">
+                <span>得分: <strong id="snakeCurrentScore">0</strong></span>
+                <button type="button" class="btn-close-egg" id="btnCloseEgg" title="收起彩蛋">✕ 收起</button>
+              </div>
+            </div>
 
-        <!-- 手机触屏虚拟十字键 -->
-        <div class="virtual-dpad">
-          <button type="button" class="dpad-btn dpad-up" data-dir="up">▲</button>
-          <div class="dpad-middle">
-            <button type="button" class="dpad-btn dpad-left" data-dir="left">◄</button>
-            <div class="dpad-center">●</div>
-            <button type="button" class="dpad-btn dpad-right" data-dir="right">►</button>
+            <div class="canvas-wrapper">
+              <canvas id="snakeCanvas" width="300" height="180"></canvas>
+              <div id="snakeOverlay" class="snake-overlay">
+                <button type="button" id="btnStartSnake" class="btn btn-primary btn-sm">▶ 开始游戏</button>
+                <p class="snake-hint">键盘方向键 / WASD / 触屏下方按键</p>
+              </div>
+            </div>
+
+            <!-- 手机触屏虚拟十字键 -->
+            <div class="virtual-dpad">
+              <button type="button" class="dpad-btn dpad-up" data-dir="up">▲</button>
+              <div class="dpad-middle">
+                <button type="button" class="dpad-btn dpad-left" data-dir="left">◄</button>
+                <div class="dpad-center">●</div>
+                <button type="button" class="dpad-btn dpad-right" data-dir="right">►</button>
+              </div>
+              <button type="button" class="dpad-btn dpad-down" data-dir="down">▼</button>
+            </div>
           </div>
-          <button type="button" class="dpad-btn dpad-down" data-dir="down">▼</button>
         </div>
       </div>
     </section>

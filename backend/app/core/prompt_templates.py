@@ -3,13 +3,18 @@
 支持让 ChatGPT 原生在每一帧中绘制随动作跳跃的动态艺术汉字！
 """
 
-def build_meme_prompt(template_id: str, char_desc: str = "", caption: str = "", has_image: bool = False) -> str:
-    """根据动作模板、角色描述、文字内容及是否有参考图，智能组装提示词"""
+def build_meme_prompt(template_id: str, char_desc: str = "", caption: str = "", has_image: bool = False, is_sketch: bool = False) -> str:
+    """根据动作模板、角色描述、文字内容、是否有参考图及是否为手绘草图，智能组装提示词"""
     char_desc = (char_desc or "").strip()
     caption = (caption or "").strip()
 
-    # 1. 角色人设从句
-    if has_image:
+    # 1. 角色人设从句 (支持手绘草图 SketchUP 模式与常规图生图)
+    if is_sketch:
+        if char_desc:
+            char_clause = f"严格依据我上传的手绘草图（草图包含人设轮廓、姿势构图与造型线条），结合补充描述（{char_desc}），将其精修绘制为高质量可爱Line贴纸风格卡通角色，精准还原草图中的核心特征与神态"
+        else:
+            char_clause = "严格依据我上传的手绘草图（草图包含人设轮廓、姿势构图与造型线条），将其精细化绘制为生动呆萌的Q版Line贴纸风格卡通角色，精准还原草图中的神韵与造型"
+    elif has_image:
         if char_desc:
             char_clause = f"严格使用我上传的参考图片作为角色原型，结合补充描述（{char_desc}），精准还原外貌特征、五官、发型与服饰配色"
         else:
@@ -69,7 +74,7 @@ PROMPT_TEMPLATES = [
         "desc": "可爱的飞吻分解动作，适合日常情侣/社交互动",
         "action": "飞吻示爱",
         "default_caption": "爱你哦",
-        "prompt_builder": lambda char, text, has_image=False: build_meme_prompt("kiss", char, text, has_image)
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("kiss", char, text, has_image, is_sketch)
     },
     {
         "id": "battle_chibi",
@@ -77,7 +82,7 @@ PROMPT_TEMPLATES = [
         "desc": "准备→蓄力→出击→冲击峰值→收势，打击感拉满",
         "action": "战斗出击",
         "default_caption": "吃我一拳",
-        "prompt_builder": lambda char, text, has_image=False: build_meme_prompt("battle_chibi", char, text, has_image)
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("battle_chibi", char, text, has_image, is_sketch)
     },
     {
         "id": "slack_worker",
@@ -85,7 +90,7 @@ PROMPT_TEMPLATES = [
         "desc": "疯狂敲键盘→偷打哈欠→喝水偷瞄，打工人必备共鸣",
         "action": "摸鱼",
         "default_caption": "疯狂摸鱼中",
-        "prompt_builder": lambda char, text, has_image=False: build_meme_prompt("slack_worker", char, text, has_image)
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("slack_worker", char, text, has_image, is_sketch)
     },
     {
         "id": "pet_idle",
@@ -93,7 +98,7 @@ PROMPT_TEMPLATES = [
         "desc": "呼吸起伏、眨眼与耳朵摆动，无缝循环萌化人心",
         "action": "呆萌晃动",
         "default_caption": "乖巧等待",
-        "prompt_builder": lambda char, text, has_image=False: build_meme_prompt("pet_idle", char, text, has_image)
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("pet_idle", char, text, has_image, is_sketch)
     },
     {
         "id": "heart_dance",
@@ -101,7 +106,7 @@ PROMPT_TEMPLATES = [
         "desc": "欢快左右律动，双手从胸前变出爱心",
         "action": "比心摇摆",
         "default_caption": "比心心",
-        "prompt_builder": lambda char, text, has_image=False: build_meme_prompt("heart_dance", char, text, has_image)
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False: build_meme_prompt("heart_dance", char, text, has_image, is_sketch)
     }
 ]
 
