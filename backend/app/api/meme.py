@@ -119,6 +119,9 @@ async def process_sprite_sheet(
         f_clean.save(f_thumb_path, format="PNG")
         frame_preview_urls.append(f"/outputs/{task_id}/frames/frame_{idx:02d}.png")
 
+    # 异步推送至国内高速节点
+    asyncio.create_task(sync_task_outputs_to_domestic(task_id, task_dir))
+
     return {
         "code": 0,
         "message": "success",
@@ -271,6 +274,34 @@ async def generate_and_process(
 # 全局异步任务存储
 import asyncio
 TASK_STORE: dict[str, dict] = {}
+
+async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path):
+    """
+    异步将新生成的动图与缩略图推送至国内腾讯云节点 /var/www/outputs/{task_id}，
+    彻底消除跨国反向代理隧道传输延迟，国内用户秒级保存与预览！
+    即使推送延迟，国内 Nginx 也会自动通过 proxy_cache 首次回源并自动落盘缓存。
+    """
+    try:
+        remote_dest = f"81.69.190.161:/var/www/outputs/{task_id}/"
+        proc = await asyncio.create_subprocess_exec(
+            "ssh", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes",
+            "81.69.190.161", f"mkdir -p /var/www/outputs/{task_id}"
+        )
+        await proc.wait()
+        
+        files_to_sync = []
+        for f in ["meme_result.gif", "thumb.jpg"]:
+            p = task_dir / f
+            if p.exists():
+                files_to_sync.append(str(p))
+        if files_to_sync:
+            proc2 = await asyncio.create_subprocess_exec(
+                "scp", "-q", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes",
+                *files_to_sync, remote_dest
+            )
+            await proc2.wait()
+    except Exception as e:
+        print(f"[{task_id}] Warning: Failed to sync output to domestic node: {e}")
 
 async def run_generate_pipeline(
     task_id: str,
@@ -437,6 +468,9 @@ async def run_generate_pipeline(
                 "stats": stats
             }
         }
+
+        # 异步推送至国内腾讯云节点，国内用户即时享受本地高速加载与保存相册
+        asyncio.create_task(sync_task_outputs_to_domestic(task_id, task_dir))
 
         # 记录到 SQLite 表情包任务库
         if openid:
