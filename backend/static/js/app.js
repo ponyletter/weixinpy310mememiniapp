@@ -19,13 +19,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const fpsRange = document.getElementById("fpsRange");
   const fpsVal = document.getElementById("fpsVal");
-  const fontSizeRange = document.getElementById("fontSizeRange");
-  const fontSizeVal = document.getElementById("fontSizeVal");
-  const fontSelect = document.getElementById("fontSelect");
-  const posSelect = document.getElementById("posSelect");
   const chkTransparent = document.getElementById("chkTransparent");
   const btnProcess = document.getElementById("btnProcess");
-
 
   const resultCard = document.getElementById("resultCard");
   const gifImage = document.getElementById("gifImage");
@@ -159,13 +154,9 @@ document.addEventListener("DOMContentLoaded", () => {
     btnUseSample.classList.add("btn-primary");
   });
 
-  // 滑动条监听
+  // FPS 滑动条
   fpsRange.addEventListener("input", (e) => {
     fpsVal.textContent = e.target.value;
-  });
-
-  fontSizeRange.addEventListener("input", (e) => {
-    fontSizeVal.textContent = e.target.value;
   });
 
   // 3. 执行切帧与动图合成
@@ -177,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const origBtnText = btnProcess.innerText;
     btnProcess.disabled = true;
-    btnProcess.innerText = "⏳ 正在执行 4×4 切帧与智能透明化合成中...";
+    btnProcess.innerText = "⏳ 正在极速执行 4×4 切帧与智能透明化合成中...";
 
     const formData = new FormData();
     if (selectedFile) {
@@ -187,11 +178,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     formData.append("fps", fpsRange.value);
     formData.append("make_transparent", chkTransparent.checked);
-    formData.append("caption", captionInput.value);
-    formData.append("font_family", fontSelect.value);
-    formData.append("caption_position", posSelect.value);
-    formData.append("font_size", fontSizeRange.value);
-
 
     try {
       const resp = await fetch("/api/process-sprite", {
@@ -218,8 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resultCard.style.display = "block";
     resultCard.scrollIntoView({ behavior: "smooth" });
 
-    // 动图预览
-    // 添加时间戳防止浏览器强缓存动图
+    // 动图预览带时间戳
     const timestamp = new Date().getTime();
     gifImage.src = `${data.gif_url}?t=${timestamp}`;
 
@@ -243,7 +228,7 @@ document.addEventListener("DOMContentLoaded", () => {
       framesGrid.appendChild(thumb);
     });
 
-    // 激活工作流第 3 步高亮
+    // 激活工作流步骤高亮
     document.querySelectorAll(".step-item").forEach(s => s.classList.add("active"));
   }
 });

@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>GIF表情包制作神器 - ChatGPT Images 2.5 动图实验室</title>
   <link rel="stylesheet" href="/static/css/style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
 </head>
 <body>
   <div class="app-container">
@@ -15,27 +14,27 @@
         <div class="logo-badge">GIF</div>
         <div class="title-group">
           <h1>GIF表情包制作神器</h1>
-          <p class="subtitle">基于 ChatGPT Images 2.5 角色一致性 16 帧动图引擎</p>
+          <p class="subtitle">基于 ChatGPT Images 2.5 角色一致性 16 帧原生动图引擎</p>
         </div>
       </div>
-      <div class="status-badge" id="serviceStatus">● 引擎运行中</div>
+      <div class="status-badge" id="serviceStatus">● 引擎极速运行中</div>
     </header>
 
     <!-- 工作流步骤指示 -->
     <div class="workflow-steps">
       <div class="step-item active" data-step="1">
         <span class="step-num">1</span>
-        <span class="step-text">挑选动作提示词</span>
+        <span class="step-text">选动作与字幕提示词</span>
       </div>
       <div class="step-line"></div>
       <div class="step-item" data-step="2">
         <span class="step-num">2</span>
-        <span class="step-text">上传/选择精灵图</span>
+        <span class="step-text">上传/选择精灵大图</span>
       </div>
       <div class="step-line"></div>
       <div class="step-item" data-step="3">
         <span class="step-num">3</span>
-        <span class="step-text">动图合成与预览</span>
+        <span class="step-text">动图合成与微信导出</span>
       </div>
     </div>
 
@@ -43,9 +42,9 @@
     <section class="card section-prompt">
       <div class="card-header">
         <span class="badge">步骤 1</span>
-        <h2>动作模板与 ChatGPT 提示词生成器</h2>
+        <h2>挑选动作模板 ➔ 生成 ChatGPT 原生动态字体提示词</h2>
       </div>
-      <p class="desc">选择连贯动作主题，一键生成契合 ChatGPT Images 2.5 规范的 4×4 精灵图提示词：</p>
+      <p class="desc">选择连贯动作，输入想要包含的字幕，ChatGPT 将在画画时**直接把文字画成随动作律动跳跃的艺术字**：</p>
 
       <!-- 动作卡片选择 -->
       <div class="template-grid" id="templateGrid">
@@ -55,23 +54,23 @@
       <!-- 角色补充与文字 -->
       <div class="input-row">
         <div class="input-group">
-          <label for="charDesc">角色特征 (可选)：</label>
+          <label for="charDesc">角色外貌描述 (可选)：</label>
           <input type="text" id="charDesc" placeholder="例：戴红色蝴蝶结的小白猫 / 短发戴眼镜的女孩">
         </div>
         <div class="input-group">
-          <label for="captionInput">表情包字幕 (支持自定义)：</label>
-          <input type="text" id="captionInput" placeholder="例：爱你哦 / 收到 / 摸鱼中">
+          <label for="captionInput">让 GPT 绘制的动态字幕：</label>
+          <input type="text" id="captionInput" placeholder="例：爱你哦 / 吃我一拳 / 收到 / 疯狂摸鱼中">
         </div>
       </div>
 
       <!-- 生成的提示词框 -->
       <div class="prompt-box">
         <div class="prompt-header">
-          <span>📋 发给 ChatGPT Plus 的出图提示词：</span>
+          <span>📋 发给 ChatGPT Plus 的专用提示词：</span>
           <button class="btn btn-secondary btn-sm" id="btnCopyPrompt">一键复制提示词</button>
         </div>
-        <textarea id="promptOutput" readonly rows="4"></textarea>
-        <p class="tip">💡 提示：在 ChatGPT Plus 网页端对话框发送参考图并粘贴此提示词，生成后把 4×4 大图保存并在下方上传。</p>
+        <textarea id="promptOutput" readonly rows="5"></textarea>
+        <p class="tip">✨ <strong>原生动感字幕</strong>：无需任何外置字体覆盖！ChatGPT 会直接在 16 帧画面中绘制与画风完全融合、随动作弹跳的艺术字。</p>
       </div>
     </section>
 
@@ -79,7 +78,7 @@
     <section class="card section-upload">
       <div class="card-header">
         <span class="badge">步骤 2</span>
-        <h2>上传 4×4 精灵图或使用测试素材</h2>
+        <h2>上传 4×4 精灵大图 (或使用内置高保真测试样本)</h2>
       </div>
 
       <div class="upload-options">
@@ -98,52 +97,25 @@
 
         <!-- 快速测试按钮 -->
         <div class="quick-test-bar">
-          <span>或者直接使用内置测试图：</span>
-          <button class="btn btn-outline" id="btnUseSample">🚀 载入【飞吻16帧】测试样本</button>
-        </div>
-      </div>
-
-      <!-- 字幕与字体高级设置 (防遮挡 & 开源商用字库) -->
-      <div class="font-settings-panel">
-        <div class="input-row" style="margin-bottom: 0;">
-          <div class="input-group">
-            <label for="fontSelect">开源商用字体：</label>
-            <select id="fontSelect" class="form-select">
-              <option value="smiley_sans" selected>得意黑 Smiley Sans (潮酷/手绘风格/推荐⭐)</option>
-              <option value="noto_sans">思源黑体 Noto Sans SC (经典加粗/稳重清晰)</option>
-            </select>
-          </div>
-          <div class="input-group">
-            <label for="posSelect">字幕防遮挡摆放位置：</label>
-            <select id="posSelect" class="form-select">
-              <option value="bottom" selected>画内居底 (3px纯黑外描边)</option>
-              <option value="outside_bottom">外挂底部留白 (100%不遮挡角色 ⭐)</option>
-              <option value="top">画内居顶 (适合角色脚部动作大)</option>
-              <option value="none">不显示文字 (纯净动图)</option>
-            </select>
-          </div>
+          <span>不想开 ChatGPT？直接体验效果：</span>
+          <button class="btn btn-outline" id="btnUseSample">🚀 载入【飞吻16帧】样本测试</button>
         </div>
       </div>
 
       <!-- 参数调节 -->
       <div class="params-panel">
         <div class="param-item">
-          <label for="fontSizeRange">字号大小 (<span id="fontSizeVal">26</span>px):</label>
-          <input type="range" id="fontSizeRange" min="18" max="36" value="26" step="1">
-        </div>
-        <div class="param-item">
           <label for="fpsRange">播放速率 (<span id="fpsVal">8</span> 帧/秒):</label>
           <input type="range" id="fpsRange" min="4" max="16" value="8" step="1">
         </div>
         <div class="param-item toggle-item">
-          <label for="chkTransparent">智能去白底 (Alpha 透明):</label>
+          <label for="chkTransparent">智能去除外围白底 (Alpha 透明化):</label>
           <input type="checkbox" id="chkTransparent" checked>
         </div>
       </div>
 
-
       <div class="action-bar">
-        <button class="btn btn-primary btn-lg" id="btnProcess">⚡ 开始智能切帧并合成 GIF</button>
+        <button class="btn btn-primary btn-lg" id="btnProcess">⚡ 开始 4×4 切帧与极速合成 GIF</button>
       </div>
     </section>
 
@@ -160,7 +132,7 @@
           <div class="checkerboard-bg">
             <img id="gifImage" src="" alt="生成的 GIF 动图">
           </div>
-          <div class="gif-tag">微信表情兼容标准</div>
+          <div class="gif-tag">微信表情免压缩标准 (＜1MB)</div>
         </div>
 
         <!-- 详情指标与下载 -->
@@ -169,16 +141,16 @@
             <h3>✅ 微信单个表情合规指标</h3>
             <ul class="stats-list">
               <li><strong>总帧数：</strong><span id="statFrames">16 帧</span></li>
-              <li><strong>文件体积：</strong><span id="statSize" class="text-success">26.8 KB</span> (< 1000KB 微信免压缩)</li>
+              <li><strong>文件体积：</strong><span id="statSize" class="text-success">-- KB</span> (< 1000KB 微信免压缩)</li>
               <li><strong>单帧间隔：</strong><span id="statDuration">125 ms</span></li>
-              <li><strong>背景透明：</strong><span id="statAlpha">真透明通道 (Disposal: 2)</span></li>
+              <li><strong>背景透明：</strong><span id="statAlpha">真透明通道 (无残影 Disposal: 2)</span></li>
             </ul>
           </div>
 
           <div class="download-buttons">
             <a id="btnDownloadGif" href="#" download="meme.gif" class="btn btn-primary btn-block">📥 下载透明 GIF 动图</a>
             <a id="btnDownloadZip" href="#" download="frames.zip" class="btn btn-secondary btn-block">📦 下载全部 16 帧透明 PNG (ZIP)</a>
-            <p class="mobile-tip">📱 手机端：长按上方动图即可直接【发送给朋友】或【保存到相册】添加到微信表情</p>
+            <p class="mobile-tip">📱 手机端提示：长按上方动图即可直接【发送给朋友】或【保存到相册】添加到微信表情！</p>
           </div>
         </div>
       </div>
@@ -194,7 +166,7 @@
 
     <!-- 页脚 -->
     <footer class="footer">
-      <p>© 2026 GIF表情包制作神器 · weixinpy310mememiniapp · 本地与国内服务器全量就绪</p>
+      <p>© 2026 GIF表情包制作神器 · weixinpy310mememiniapp · ChatGPT Images 2.5 动图实验室</p>
     </footer>
   </div>
 
