@@ -32,6 +32,7 @@ Page({
       birthday: '',
       bio: ''
     },
+    bioLength: 0,
 
     // 历史创作记录 / 我的相册
     showHistoryModal: false,
@@ -108,7 +109,8 @@ Page({
         gender: u.gender || '保密',
         birthday: u.birthday || '',
         bio: u.bio || ''
-      }
+      },
+      bioLength: (u.bio || '').length
     });
   },
 
@@ -172,7 +174,11 @@ Page({
   },
 
   onBioInput(e) {
-    this.setData({ 'editForm.bio': e.detail.value });
+    const val = e.detail.value || '';
+    this.setData({ 
+      'editForm.bio': val,
+      bioLength: val.length
+    });
   },
 
   saveProfile() {

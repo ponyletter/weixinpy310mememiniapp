@@ -363,7 +363,7 @@
           maxlength="80"
           bindinput="onBioInput"
         ></textarea>
-        <view class="char-count">{{(editForm.bio || '').length}}/80</view>
+        <view class="char-count">{{bioLength || 0}}/80</view>
       </view>
 
       <view class="modal-actions" style="margin-top: 24rpx;">
