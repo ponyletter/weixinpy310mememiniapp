@@ -458,8 +458,11 @@ async def generate_async(
     padding_percent: float = Form(2.5),
     is_sketch: bool = Form(False),
     openid: Optional[str] = Form(""),
+    resolution: Optional[str] = Form("240x240"),
+    fast_mode: Optional[str] = Form("1"),
+    loop_count: Optional[int] = Form(0),
 ):
-    """【推荐】异步启动 AI 生图任务，前端通过轮询获取实时进度与结果，绝无 HTTP 超时问题"""
+    """【推荐】异步启动动图生图任务，前端通过轮询获取实时进度与结果，绝无 HTTP 超时问题"""
     # 额度扣减审查 (支持游客体验或绑定 openid 扣点)
     if openid:
         quota_res = check_and_deduct_quota(openid)

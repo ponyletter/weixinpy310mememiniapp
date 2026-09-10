@@ -1,95 +1,154 @@
-/** app.wxss 全局极简暗黑高级风 **/
+/** app.wxss 全局清爽现代白风格 (iOS/微信原生质感) **/
 page {
-  background-color: #0b0b10;
-  color: #f3f4f6;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f6f8fb;
+  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
 }
 
 view, text, image, input, button, scroll-view {
   box-sizing: border-box;
 }
 
-/* 常用容器 */
+/* 常用主容器 (间距开阔，不拥挤) */
 .container {
-  padding: 30rpx 24rpx;
+  padding: 24rpx 28rpx;
   min-height: 100vh;
 }
 
-/* 玻璃拟态卡片 */
+/* 清爽白底立体卡片 */
 .card {
-  background: #15151e;
-  border: 1px solid #232333;
-  border-radius: 20rpx;
+  background: #ffffff;
+  border: 1rpx solid #edf2f7;
+  border-radius: 24rpx;
   padding: 28rpx;
   margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.04);
 }
 
-/* 渐变高亮按钮 */
+/* Tkinter 风格 CSS Grid 栅格布局系统 */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14rpx;
+}
+
+/* 渐变高亮按钮 (科技蓝紫，清爽克制) */
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
   color: #ffffff;
   font-weight: 600;
   font-size: 30rpx;
-  border-radius: 16rpx;
+  border-radius: 18rpx;
   border: none;
-  padding: 22rpx 0;
+  padding: 24rpx 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.3);
+  box-shadow: 0 6rpx 20rpx rgba(79, 70, 229, 0.25);
+  transition: all 0.2s ease;
 }
 
 .btn-primary:active {
-  opacity: 0.9;
+  opacity: 0.92;
   transform: scale(0.99);
 }
 
 .btn-secondary {
-  background: #20202e;
-  color: #e2e8f0;
-  border: 1px solid #2d2d42;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1rpx solid #e2e8f0;
   font-size: 28rpx;
-  border-radius: 16rpx;
-  padding: 18rpx 0;
+  font-weight: 500;
+  border-radius: 18rpx;
+  padding: 20rpx 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* 标签角标 */
+.btn-secondary:active {
+  background: #e2e8f0;
+}
+
+/* 超轻量胶囊按钮 */
+.btn-xs {
+  font-size: 22rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 30rpx;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1rpx solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.4;
+}
+
+/* 通用标题风格 */
+.section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-sub {
+  font-size: 22rpx;
+  font-weight: normal;
+  color: #64748b;
+}
+
+/* 标签角标 (浅色清爽底) */
 .badge {
   font-size: 20rpx;
   padding: 4rpx 14rpx;
   border-radius: 20rpx;
-  font-weight: 500;
+  font-weight: 600;
+  display: inline-block;
 }
 
 .badge-gold {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: #fef3c7;
+  color: #b45309;
+  border: 1rpx solid #fde68a;
 }
 
 .badge-green {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: #d1fae5;
+  color: #047857;
+  border: 1rpx solid #a7f3d0;
 }
 
 .badge-blue {
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: #e0e7ff;
+  color: #4338ca;
+  border: 1rpx solid #c7d2fe;
 }
 
-/* 棋盘格背景 (用于透明动图预览) */
+/* 浅色棋盘格背景 (用于透明动图背景预览，清晰不刺眼) */
 .checkerboard-bg {
-  background-color: #121218;
-  background-image: linear-gradient(45deg, #1b1b24 25%, transparent 25%), 
-                    linear-gradient(-45deg, #1b1b24 25%, transparent 25%), 
-                    linear-gradient(45deg, transparent 75%, #1b1b24 75%), 
-                    linear-gradient(-45deg, transparent 75%, #1b1b24 75%);
+  background-color: #ffffff;
+  background-image: linear-gradient(45deg, #f1f5f9 25%, transparent 25%), 
+                    linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), 
+                    linear-gradient(45deg, transparent 75%, #f1f5f9 75%), 
+                    linear-gradient(-45deg, transparent 75%, #f1f5f9 75%);
   background-size: 24rpx 24rpx;
   background-position: 0 0, 0 12rpx, 12rpx -12rpx, -12rpx 0px;
 }

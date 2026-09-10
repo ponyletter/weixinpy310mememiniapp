@@ -6,6 +6,7 @@ Page({
     isVip: false,
     templates: [],
     selectedTemplate: 'kiss',
+    selectedTemplateTitle: '飞吻',
     mode: 'upload', // 'upload' | 'sketch'
     refImagePath: '',
     characterDesc: '可爱的白色柴犬',
@@ -15,10 +16,15 @@ Page({
     stageText: '',
     gifResultUrl: '',
     taskId: '',
-    
-    // 贪吃蛇小游戏
-    snakeScore: 0,
-    showSnake: true
+
+    // 动图专属参数配置 (参考制作大师，默认开启极速模式，支持一键重置)
+    config: {
+      fastMode: true,
+      resolution: '240x240',
+      fps: 8,
+      smartCompress: true,
+      loopCount: 0
+    }
   },
 
   onLoad() {
@@ -53,16 +59,21 @@ Page({
       method: 'GET',
       success: (res) => {
         if (res.data && res.data.data) {
-          this.setData({ templates: res.data.data });
+          const list = res.data.data;
+          this.setData({
+            templates: list,
+            selectedTemplateTitle: (list.find(t => t.id === this.data.selectedTemplate) || {}).title || '飞吻'
+          });
         }
       }
     });
   },
 
   selectTemplate(e) {
-    const { id, caption } = e.currentTarget.dataset;
+    const { id, title, caption } = e.currentTarget.dataset;
     this.setData({
       selectedTemplate: id,
+      selectedTemplateTitle: title || id,
       caption: caption || this.data.caption
     });
   },
@@ -73,6 +84,43 @@ Page({
     if (mode === 'sketch') {
       setTimeout(() => this.initSketchCanvas(), 200);
     }
+  },
+
+  // --- 动图配置处理 ---
+  onToggleFastMode(e) {
+    this.setData({ ['config.fastMode']: e.detail.value });
+  },
+
+  setResolution(e) {
+    const val = e.currentTarget.dataset.val;
+    this.setData({ ['config.resolution']: val });
+  },
+
+  setFps(e) {
+    const val = Number(e.currentTarget.dataset.val);
+    this.setData({ ['config.fps']: val });
+  },
+
+  onToggleSmartCompress(e) {
+    this.setData({ ['config.smartCompress']: e.detail.value });
+  },
+
+  setLoopCount(e) {
+    const val = Number(e.currentTarget.dataset.val);
+    this.setData({ ['config.loopCount']: val });
+  },
+
+  resetConfig() {
+    this.setData({
+      config: {
+        fastMode: true,
+        resolution: '240x240',
+        fps: 8,
+        smartCompress: true,
+        loopCount: 0
+      }
+    });
+    wx.showToast({ title: '已恢复默认设置', icon: 'success' });
   },
 
   // --- 图片上传 ---
@@ -102,8 +150,8 @@ Page({
     this.setData({ caption: e.detail.value });
   },
 
-  getAiSuggestions() {
-    wx.showLoading({ title: 'AI灵感激发中...' });
+  getCaptionSuggestions() {
+    wx.showLoading({ title: '正在提取灵感...' });
     wx.request({
       url: `${app.globalData.baseURL}/api/convert/caption-suggest`,
       method: 'POST',
@@ -128,7 +176,7 @@ Page({
     });
   },
 
-  // --- 草图画板实现 ---
+  // --- 草图画板实现 (黑笔白底) ---
   initSketchCanvas() {
     const query = wx.createSelectorQuery();
     query.select('#sketchCanvas')
@@ -141,7 +189,7 @@ Page({
         canvas.width = res[0].width * dpr;
         canvas.height = res[0].height * dpr;
         ctx.scale(dpr, dpr);
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 4;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -181,9 +229,9 @@ Page({
     if (this.data.quota <= 0 && !this.data.isVip) {
       wx.showModal({
         title: '制作额度不足',
-        content: '新用户已赠送10次已用完。仅需 1.00 元即可开通 20 次超值尝鲜包，是否立即充值？',
-        confirmText: '1元充值',
-        cancelText: '去签到',
+        content: '免费体验额度已用完，仅需 1.00 元即可开通 20 次超值尝鲜包，是否立即开通？',
+        confirmText: '1元开通',
+        cancelText: '每日签到',
         success: (mRes) => {
           if (mRes.confirm) {
             this.goToRecharge();
@@ -198,20 +246,18 @@ Page({
     this.setData({
       isGenerating: true,
       progress: 5,
-      stageText: '正在启动任务...',
+      stageText: '正在启动极速渲染引擎...',
       gifResultUrl: ''
     });
-
-    // 启动贪吃蛇游戏
-    setTimeout(() => {
-      this.initSnakeGame();
-    }, 200);
 
     const formData = {
       action_type: this.data.selectedTemplate,
       character_desc: this.data.characterDesc,
       custom_caption: this.data.caption,
-      fps: 8,
+      fps: this.data.config.fps || 8,
+      resolution: this.data.config.resolution || '240x240',
+      fast_mode: this.data.config.fastMode ? '1' : '0',
+      loop_count: this.data.config.loopCount,
       openid: app.globalData.openid || '',
       is_sketch: this.data.mode === 'sketch'
     };
@@ -228,11 +274,10 @@ Page({
           this.handleTaskResponse(res.data);
         },
         fail: (err) => {
-          this.handleGenerateError("网络传输失败");
+          this.handleGenerateError("网络传输超时，请重试");
         }
       });
     } else if (this.data.mode === 'sketch' && this.sketchCanvas) {
-      // 导出画布图片
       wx.canvasToTempFilePath({
         canvas: this.sketchCanvas,
         success: (cRes) => {
@@ -245,12 +290,11 @@ Page({
               this.handleTaskResponse(res.data);
             },
             fail: () => {
-              this.handleGenerateError("草图上传失败");
+              this.handleGenerateError("草图传输失败");
             }
           });
         },
         fail: () => {
-          // 直接表单上传
           this.postFormGenerate(uploadUrl, formData);
         }
       });
@@ -269,7 +313,7 @@ Page({
         this.handleTaskResponse(res.data);
       },
       fail: () => {
-        this.handleGenerateError("请求失败");
+        this.handleGenerateError("网络连接失败");
       }
     });
   },
@@ -300,7 +344,7 @@ Page({
             const tInfo = res.data.data;
             this.setData({
               progress: tInfo.progress || 10,
-              stageText: tInfo.stage_text || 'AI绘制中...'
+              stageText: tInfo.stage_text || '逐帧渲染处理中...'
             });
 
             if (tInfo.status === 'completed') {
@@ -311,10 +355,10 @@ Page({
                 gifResultUrl: `${app.globalData.baseURL}${gifPath}`,
                 progress: 100
               });
-              wx.showToast({ title: '动图生成成功！', icon: 'success' });
+              wx.showToast({ title: '制作成功！', icon: 'success' });
             } else if (tInfo.status === 'failed') {
               clearInterval(this.pollTimer);
-              this.handleGenerateError(tInfo.error || "出图失败");
+              this.handleGenerateError(tInfo.error || "生成异常");
             }
           }
         }
@@ -326,117 +370,11 @@ Page({
     clearInterval(this.pollTimer);
     this.setData({ isGenerating: false });
     wx.showModal({
-      title: '生成异常',
-      content: msg || 'AI生成超时或异常，已为您自动返还额度！',
+      title: '制作提示',
+      content: msg || '制作任务响应超时，已为您自动返还制作额度！',
       showCancel: false
     });
     this.updateQuotaInfo();
-  },
-
-  // --- 贪吃蛇小游戏实现 ---
-  initSnakeGame() {
-    const query = wx.createSelectorQuery();
-    query.select('#snakeCanvas')
-      .fields({ node: true, size: true })
-      .exec((res) => {
-        if (!res[0] || !res[0].node) return;
-        const canvas = res[0].node;
-        const ctx = canvas.getContext('2d');
-        this.snakeCanvas = canvas;
-        this.snakeCtx = ctx;
-
-        this.gridSize = 14;
-        this.cols = Math.floor(res[0].width / this.gridSize);
-        this.rows = Math.floor(res[0].height / this.gridSize);
-
-        this.restartSnake();
-      });
-  },
-
-  restartSnake() {
-    this.snake = [
-      { x: 5, y: 5 },
-      { x: 4, y: 5 },
-      { x: 3, y: 5 }
-    ];
-    this.snakeDir = 'RIGHT';
-    this.nextDir = 'RIGHT';
-    this.spawnFood();
-    this.setData({ snakeScore: 0 });
-
-    if (this.snakeLoop) clearInterval(this.snakeLoop);
-    this.snakeLoop = setInterval(() => {
-      this.updateSnake();
-    }, 120);
-  },
-
-  spawnFood() {
-    this.food = {
-      x: Math.floor(Math.random() * (this.cols - 2)) + 1,
-      y: Math.floor(Math.random() * (this.rows - 2)) + 1
-    };
-  },
-
-  updateSnake() {
-    if (!this.snakeCtx) return;
-    this.snakeDir = this.nextDir;
-    const head = { ...this.snake[0] };
-
-    if (this.snakeDir === 'UP') head.y--;
-    else if (this.snakeDir === 'DOWN') head.y++;
-    else if (this.snakeDir === 'LEFT') head.x--;
-    else if (this.snakeDir === 'RIGHT') head.x++;
-
-    // 撞墙穿墙
-    if (head.x < 0) head.x = this.cols - 1;
-    if (head.x >= this.cols) head.x = 0;
-    if (head.y < 0) head.y = this.rows - 1;
-    if (head.y >= this.rows) head.y = 0;
-
-    // 撞自身重开
-    for (let i = 1; i < this.snake.length; i++) {
-      if (this.snake[i].x === head.x && this.snake[i].y === head.y) {
-        this.restartSnake();
-        return;
-      }
-    }
-
-    this.snake.unshift(head);
-
-    // 吃食物
-    if (head.x === this.food.x && head.y === this.food.y) {
-      this.setData({ snakeScore: this.data.snakeScore + 1 });
-      this.spawnFood();
-    } else {
-      this.snake.pop();
-    }
-
-    this.drawSnake();
-  },
-
-  drawSnake() {
-    const ctx = this.snakeCtx;
-    ctx.clearRect(0, 0, this.snakeCanvas.width, this.snakeCanvas.height);
-
-    // 画食物
-    ctx.fillStyle = '#f59e0b';
-    ctx.fillRect(this.food.x * this.gridSize, this.food.y * this.gridSize, this.gridSize - 2, this.gridSize - 2);
-
-    // 画蛇
-    ctx.fillStyle = '#10b981';
-    for (let i = 0; i < this.snake.length; i++) {
-      if (i === 0) ctx.fillStyle = '#34d399';
-      else ctx.fillStyle = '#059669';
-      ctx.fillRect(this.snake[i].x * this.gridSize, this.snake[i].y * this.gridSize, this.gridSize - 2, this.gridSize - 2);
-    }
-  },
-
-  changeSnakeDir(e) {
-    const dir = e.currentTarget.dataset.dir;
-    const opp = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
-    if (opp[dir] !== this.snakeDir) {
-      this.nextDir = dir;
-    }
   },
 
   // --- 保存相册 ---
@@ -451,10 +389,10 @@ Page({
           wx.saveImageToPhotosAlbum({
             filePath: res.tempFilePath,
             success: () => {
-              wx.showToast({ title: '已保存至相册！', icon: 'success' });
+              wx.showToast({ title: '已保存至手机相册！', icon: 'success' });
             },
             fail: () => {
-              wx.showToast({ title: '保存失败，请检查相册权限', icon: 'none' });
+              wx.showToast({ title: '保存失败，请授权相册写入权限', icon: 'none' });
             }
           });
         }
@@ -502,7 +440,6 @@ Page({
     app.invokeVirtualPayment('item_100', () => {
       this.updateQuotaInfo();
     });
-  },
-
-  preventBubble() {}
+  }
 });
+

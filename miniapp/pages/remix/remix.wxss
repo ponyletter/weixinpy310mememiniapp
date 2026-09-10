@@ -1,7 +1,9 @@
 .remix-tabs {
   display: flex;
-  padding: 8rpx;
-  margin-bottom: 20rpx;
+  background: #f1f5f9;
+  border-radius: 18rpx;
+  padding: 6rpx;
+  margin-bottom: 24rpx;
 }
 
 .remix-tab {
@@ -9,50 +11,53 @@
   text-align: center;
   padding: 18rpx 0;
   font-size: 26rpx;
-  color: #94a3b8;
-  border-radius: 12rpx;
+  color: #64748b;
+  font-weight: 500;
+  border-radius: 14rpx;
+  transition: all 0.2s ease;
 }
 
 .remix-tab.active {
-  background: #252538;
-  color: #ffffff;
-  font-weight: 600;
+  background: #ffffff;
+  color: #4f46e5;
+  font-weight: 700;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.06);
 }
 
 .tip-bar {
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  border-radius: 12rpx;
-  padding: 14rpx 20rpx;
+  background: #eef2ff;
+  border: 1rpx solid #c7d2fe;
+  border-radius: 16rpx;
+  padding: 16rpx 24rpx;
   display: flex;
   align-items: center;
   margin-bottom: 24rpx;
 }
 
 .tip-icon {
-  font-size: 28rpx;
-  margin-right: 12rpx;
+  font-size: 30rpx;
+  margin-right: 14rpx;
 }
 
 .tip-text {
-  font-size: 22rpx;
-  color: #a5b4fc;
+  font-size: 24rpx;
+  color: #4338ca;
   line-height: 1.4;
 }
 
 .action-box {
-  padding: 24rpx;
+  padding: 28rpx;
 }
 
 .upload-zone {
-  border: 2rpx dashed #374151;
-  border-radius: 16rpx;
+  border: 2rpx dashed #cbd5e1;
+  border-radius: 20rpx;
   padding: 50rpx 20rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #111118;
+  background: #f8fafc;
 }
 
 .upload-icon {
@@ -62,8 +67,8 @@
 
 .upload-title {
   font-size: 28rpx;
-  font-weight: 500;
-  color: #e2e8f0;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .upload-sub {
@@ -81,36 +86,39 @@
 .preview-video {
   width: 100%;
   height: 360rpx;
-  border-radius: 12rpx;
-  background: #000;
+  border-radius: 16rpx;
+  background: #000000;
 }
 
 .preview-gif {
-  width: 320rpx;
-  height: 320rpx;
-  border-radius: 12rpx;
-  background: #1a1a24;
+  width: 300rpx;
+  height: 300rpx;
+  border-radius: 16rpx;
+  background: #f1f5f9;
+  border: 1rpx solid #e2e8f0;
 }
 
 .remove-btn {
-  margin-top: 14rpx;
-  font-size: 22rpx;
+  margin-top: 16rpx;
+  font-size: 24rpx;
   color: #ef4444;
+  font-weight: 500;
 }
 
 /* 多图网格 */
 .image-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16rpx;
 }
 
 .grid-item {
-  width: 150rpx;
-  height: 150rpx;
-  border-radius: 12rpx;
+  width: 100%;
+  height: 190rpx;
+  border-radius: 16rpx;
   overflow: hidden;
-  background: #1a1a26;
+  background: #f1f5f9;
+  border: 1rpx solid #e2e8f0;
 }
 
 .grid-img {
@@ -119,26 +127,26 @@
 }
 
 .grid-add {
-  width: 150rpx;
-  height: 150rpx;
-  border: 2rpx dashed #374151;
-  border-radius: 12rpx;
+  width: 100%;
+  height: 190rpx;
+  border: 2rpx dashed #cbd5e1;
+  border-radius: 16rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #111118;
+  background: #f8fafc;
 }
 
 .add-icon {
-  font-size: 40rpx;
-  color: #6366f1;
+  font-size: 44rpx;
+  color: #4f46e5;
 }
 
 .add-text {
-  font-size: 20rpx;
-  color: #94a3b8;
-  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #64748b;
+  margin-top: 6rpx;
 }
 
 .form-item {
@@ -149,16 +157,17 @@
 .form-label {
   width: 140rpx;
   font-size: 26rpx;
-  color: #94a3b8;
+  font-weight: 600;
+  color: #334155;
 }
 
 .form-input {
   flex: 1;
-  background: #111118;
-  border: 1px solid #28283c;
-  border-radius: 12rpx;
-  padding: 14rpx 18rpx;
-  color: #ffffff;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 14rpx;
+  padding: 16rpx 20rpx;
+  color: #1e293b;
   font-size: 26rpx;
 }
 
@@ -181,14 +190,16 @@
 
 .result-title {
   font-size: 28rpx;
-  font-weight: 600;
-  color: #f1f5f9;
+  font-weight: 700;
+  color: #1e293b;
 }
 
 .remix-result-img {
-  width: 380rpx;
-  height: 380rpx;
+  width: 340rpx;
+  height: 340rpx;
   border-radius: 16rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
 }
 
 .remix-actions {

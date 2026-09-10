@@ -7,27 +7,27 @@
     <view class="user-meta">
       <view class="user-name">
         <text>{{user.nickname || '微信用户'}}</text>
-        <text wx:if="{{user.is_vip}}" class="badge badge-gold" style="margin-left: 12rpx;">尊享VIP</text>
+        <text wx:if="{{user.is_vip}}" class="badge badge-gold" style="margin-left: 12rpx;">尊享会员</text>
       </view>
-      <view class="user-id">UID: {{user.display_id || '未登录'}}</view>
+      <view class="user-id">创作者中心 · 正常服务中</view>
     </view>
     <button class="btn-xs btn-refresh-user" bindtap="refreshProfile">刷新</button>
   </view>
 
   <!-- 核心制作额度资产卡片 -->
   <view class="quota-hero card">
-    <view class="quota-row">
+    <view class="quota-row grid-3">
       <view class="quota-cell">
         <view class="q-val">{{user.free_quota || 0}}</view>
-        <view class="q-label">赠送免费额度</view>
+        <view class="q-label">体验免费额度</view>
       </view>
       <view class="quota-cell">
-        <view class="q-val" style="color: #34d399;">{{user.purchased_quota || 0}}</view>
-        <view class="q-label">购买永久额度</view>
+        <view class="q-val" style="color: #059669;">{{user.purchased_quota || 0}}</view>
+        <view class="q-label">开通永久额度</view>
       </view>
       <view class="quota-cell">
-        <view class="q-val" style="color: #818cf8;">{{user.total_generated || 0}}</view>
-        <view class="q-label">累计已生成</view>
+        <view class="q-val" style="color: #4f46e5;">{{user.total_generated || 0}}</view>
+        <view class="q-label">累计已制作</view>
       </view>
     </view>
     <button class="btn-primary" style="margin-top: 24rpx;" bindtap="handleDailyCheckin">
@@ -35,13 +35,13 @@
     </button>
   </view>
 
-  <!-- 微信虚拟支付 2.0 破冰充值专区 (降维打击：比同行低80%+) -->
+  <!-- 微信虚拟支付 2.0 充值专区 -->
   <view class="section-title">
-    <text>⚡ 微信虚拟支付 2.0 超值算力包</text>
-    <text class="section-sub">比同行公司低 80% 以上，送更多次数</text>
+    <text>⚡ 动图制作算力包</text>
+    <text class="section-sub">随充随用 · 永久有效 · 自动到账</text>
   </view>
 
-  <view class="package-list">
+  <view class="package-list grid-3">
     <view 
       wx:for="{{packages}}" 
       wx:key="package_id" 
@@ -54,15 +54,15 @@
         <text class="price-val">{{item.price_yuan}}</text>
         <text class="price-unit">元</text>
       </view>
-      <view class="pkg-desc">折合约 ¥{{item.unit_price}} / 次 (同行¥0.6/次)</view>
+      <view class="pkg-desc">折合约 ¥{{item.unit_price}} / 次</view>
       <button class="btn-primary btn-buy" bindtap="buyPackage" data-id="{{item.package_id}}">
         立即开通
       </button>
     </view>
   </view>
 
-  <!-- 邀请好友裂变福利 -->
-  <view class="section-title">👥 好友邀请福利 (双方各得 5 次)</view>
+  <!-- 邀请好友福利 -->
+  <view class="section-title">👥 好友互动福利 (双方各得 5 次)</view>
   <view class="card invite-card">
     <view class="invite-info">
       <text class="invite-label">我的专属邀请码:</text>
@@ -70,16 +70,16 @@
       <button class="btn-xs btn-copy" bindtap="copyInviteCode">复制口令</button>
     </view>
     <button class="btn-secondary" style="margin-top: 16rpx;" open-type="share">
-      🚀 邀请微信好友/微信群 (+5次/人)
+      🚀 分享给好友/微信群 (+5次/人)
     </button>
   </view>
 
-  <!-- 私域兑换码兑换 -->
+  <!-- 兑换码中心 -->
   <view class="section-title">🎟️ 兑换码中心</view>
   <view class="card redeem-card">
     <input 
       class="form-input redeem-input" 
-      placeholder="输入兑换码 (如 MEME888)" 
+      placeholder="输入福利兑换码 (如 MEME888)" 
       value="{{redeemCode}}" 
       bindinput="onInputRedeem" 
     />
@@ -89,15 +89,15 @@
   <!-- 官方订单中心与在线客服入口 -->
   <view class="card menu-card">
     <view class="menu-item" bindtap="goToOrderCenter">
-      <text class="menu-text">🧾 查看充值与发货订单记录 (订单中心)</text>
+      <text class="menu-text">🧾 查看充值与开通订单记录</text>
       <text class="menu-arrow">›</text>
     </view>
     <button class="btn-contact-native" open-type="contact">
-      💬 联系微信在线客服 (技术咨询 / 需求定制)
+      💬 常见使用帮助与微信在线客服
     </button>
   </view>
 
   <view class="copyright-text">
-    GIF表情包制作神器 v1.0.0 · 微信虚拟支付 2.0 合规支持
+    GIF表情包制作工具 · 微信虚拟支付 2.0 履约支持
   </view>
 </view>

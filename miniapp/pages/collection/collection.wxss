@@ -2,76 +2,82 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20rpx;
+  margin-bottom: 24rpx;
 }
 
 .col-tabs {
   display: flex;
-  background: #14141c;
-  border-radius: 14rpx;
+  background: #f1f5f9;
+  border-radius: 16rpx;
   padding: 6rpx;
 }
 
 .col-tab {
-  padding: 12rpx 20rpx;
+  padding: 12rpx 24rpx;
   font-size: 24rpx;
-  color: #94a3b8;
-  border-radius: 10rpx;
+  color: #64748b;
+  font-weight: 500;
+  border-radius: 12rpx;
+  transition: all 0.2s ease;
 }
 
 .col-tab.active {
-  background: #252538;
-  color: #ffffff;
-  font-weight: 600;
+  background: #ffffff;
+  color: #4f46e5;
+  font-weight: 700;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
 }
 
 .btn-create {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
   color: #ffffff;
   font-size: 24rpx;
   font-weight: 600;
-  padding: 12rpx 24rpx;
-  border-radius: 12rpx;
+  padding: 14rpx 28rpx;
+  border-radius: 14rpx;
   border: none;
   line-height: 1.4;
   margin: 0;
+  box-shadow: 0 4rpx 14rpx rgba(79, 70, 229, 0.25);
 }
 
 .tip-bar {
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  border-radius: 12rpx;
-  padding: 14rpx 20rpx;
+  background: #ecfdf5;
+  border: 1rpx solid #a7f3d0;
+  border-radius: 16rpx;
+  padding: 16rpx 24rpx;
   display: flex;
   align-items: center;
   margin-bottom: 24rpx;
 }
 
 .tip-icon {
-  font-size: 28rpx;
-  margin-right: 12rpx;
+  font-size: 30rpx;
+  margin-right: 14rpx;
 }
 
 .tip-text {
-  font-size: 22rpx;
-  color: #34d399;
+  font-size: 24rpx;
+  color: #047857;
 }
 
 /* 合集卡片 */
 .collection-card {
   display: flex;
   align-items: center;
-  padding: 20rpx;
-  margin-bottom: 18rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  border: 1rpx solid #edf2f7;
 }
 
 .col-cover {
   width: 140rpx;
   height: 140rpx;
-  border-radius: 14rpx;
-  background: #1e1e2d;
+  border-radius: 16rpx;
+  background: #f1f5f9;
+  border: 1rpx solid #e2e8f0;
   flex-shrink: 0;
-  margin-right: 20rpx;
+  margin-right: 24rpx;
 }
 
 .col-info {
@@ -80,18 +86,18 @@
 }
 
 .col-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #f1f5f9;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1e293b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .col-desc {
-  font-size: 22rpx;
-  color: #94a3b8;
-  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #64748b;
+  margin-top: 8rpx;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -100,22 +106,23 @@
 .col-meta {
   display: flex;
   align-items: center;
-  gap: 14rpx;
-  margin-top: 12rpx;
+  gap: 16rpx;
+  margin-top: 14rpx;
 }
 
 .view-num {
-  font-size: 20rpx;
-  color: #64748b;
+  font-size: 22rpx;
+  color: #94a3b8;
 }
 
 .btn-share-col {
-  background: rgba(99, 102, 241, 0.2);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.4);
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1rpx solid #c7d2fe;
   font-size: 22rpx;
-  padding: 10rpx 20rpx;
-  border-radius: 10rpx;
+  font-weight: 600;
+  padding: 12rpx 22rpx;
+  border-radius: 12rpx;
   margin: 0;
   line-height: 1.4;
   flex-shrink: 0;
@@ -125,12 +132,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 60rpx 20rpx;
+  padding: 80rpx 20rpx;
 }
 
 .empty-icon {
-  font-size: 64rpx;
-  margin-bottom: 14rpx;
+  font-size: 72rpx;
+  margin-bottom: 16rpx;
 }
 
 .empty-text {
@@ -145,7 +152,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -154,25 +162,33 @@
 
 .modal-card {
   width: 85%;
-  padding: 36rpx;
-  background: #171724;
+  padding: 40rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 20rpx 50rpx rgba(0, 0, 0, 0.15);
 }
 
 .modal-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 24rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 28rpx;
   text-align: center;
 }
 
 .modal-input {
   margin-bottom: 20rpx;
   width: 100%;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 14rpx;
+  padding: 18rpx 20rpx;
+  font-size: 26rpx;
+  color: #1e293b;
 }
 
 .modal-actions {
   display: flex;
   gap: 20rpx;
-  margin-top: 24rpx;
+  margin-top: 28rpx;
 }

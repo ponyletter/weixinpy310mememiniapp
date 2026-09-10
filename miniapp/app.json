@@ -9,20 +9,20 @@
   ],
   "window": {
     "backgroundTextStyle": "dark",
-    "navigationBarBackgroundColor": "#13131a",
-    "navigationBarTitleText": "GIF表情包制作神器",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#0d0d12"
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTitleText": "GIF表情包制作工具",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f8fafc"
   },
   "tabBar": {
-    "color": "#8e8e9f",
-    "selectedColor": "#6366f1",
-    "backgroundColor": "#171720",
-    "borderStyle": "black",
+    "color": "#64748b",
+    "selectedColor": "#4f46e5",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "AI生成"
+        "text": "创意制作"
       },
       {
         "pagePath": "pages/remix/remix",
@@ -34,7 +34,7 @@
       },
       {
         "pagePath": "pages/user/user",
-        "text": "我的资产"
+        "text": "个人中心"
       }
     ]
   },

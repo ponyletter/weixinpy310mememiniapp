@@ -5,39 +5,43 @@
       <text class="quota-label">制作额度:</text>
       <text class="quota-num">{{quota}}</text>
       <text class="quota-unit">次</text>
-      <text wx:if="{{isVip}}" class="badge badge-gold" style="margin-left: 12rpx;">尊享VIP</text>
+      <text wx:if="{{isVip}}" class="badge badge-gold" style="margin-left: 12rpx;">尊享会员</text>
     </view>
     <view class="top-actions">
-      <button class="btn-sm btn-checkin" bindtap="handleCheckin">🎁 签到+3</button>
-      <button class="btn-sm btn-recharge" bindtap="goToRecharge">⚡ 1元领20次</button>
+      <button class="btn-sm btn-checkin" bindtap="handleCheckin">🎁 签到+3次</button>
+      <button class="btn-sm btn-recharge" bindtap="goToRecharge">⚡ 1元开通20次</button>
     </view>
   </view>
 
-  <!-- 步骤 1: 选择动图动作模版 -->
-  <view class="section-title">1. 选择动作模版</view>
-  <scroll-view scroll-x class="template-scroll" enable-flex>
+  <!-- 步骤 1: 选择动作模版 (Grid 栅格整齐布局) -->
+  <view class="section-title">
+    <text>1. 选择动作模版</text>
+    <text class="section-sub">已选: {{selectedTemplateTitle}}</text>
+  </view>
+  <view class="template-grid grid-3">
     <view 
       wx:for="{{templates}}" 
       wx:key="id" 
       class="template-card {{selectedTemplate === item.id ? 'active' : ''}}"
       bindtap="selectTemplate"
       data-id="{{item.id}}"
+      data-title="{{item.title}}"
       data-caption="{{item.default_caption}}"
     >
       <view class="template-name">{{item.title}}</view>
       <view class="template-desc">{{item.action}}</view>
     </view>
-  </scroll-view>
+  </view>
 
-  <!-- 步骤 2: 角色素材与手绘草图 -->
-  <view class="section-title">2. 设定形象 (二选一)</view>
+  <!-- 步骤 2: 形象设定 (照片参考 / 在线手绘) -->
+  <view class="section-title">2. 设定主角形象 (二选一)</view>
   <view class="card mode-card">
     <view class="mode-tabs">
       <view class="mode-tab {{mode === 'upload' ? 'active' : ''}}" bindtap="switchMode" data-mode="upload">
         📷 上传参考图
       </view>
       <view class="mode-tab {{mode === 'sketch' ? 'active' : ''}}" bindtap="switchMode" data-mode="sketch">
-        ✏️ 在线画草图
+        ✏️ 在线手绘草图
       </view>
     </view>
 
@@ -45,7 +49,7 @@
     <view wx:if="{{mode === 'upload'}}" class="upload-area">
       <view wx:if="{{!refImagePath}}" class="upload-placeholder" bindtap="chooseImage">
         <text class="upload-icon">＋</text>
-        <text class="upload-text">点击上传角色/宠物/真人底图</text>
+        <text class="upload-text">点击上传人物、宠物或真人头像底图</text>
       </view>
       <view wx:else class="image-preview-wrap">
         <image class="ref-preview" src="{{refImagePath}}" mode="aspectFit"></image>
@@ -65,87 +69,180 @@
       ></canvas>
       <view class="sketch-toolbar">
         <button class="btn-xs" bindtap="clearSketch">清空画布</button>
-        <text class="sketch-hint">在黑板上勾勒角色造型轮廓</text>
+        <text class="sketch-hint">在白板上勾勒角色造型轮廓</text>
       </view>
     </view>
   </view>
 
-  <!-- 步骤 3: 角色描述与爆笑字幕 -->
-  <view class="section-title">3. 描述与文字</view>
+  <!-- 步骤 3: 角色描述与动图字幕 -->
+  <view class="section-title">3. 描述与台词</view>
   <view class="card form-card">
     <view class="form-item">
       <text class="form-label">角色人设:</text>
       <input 
         class="form-input" 
-        placeholder="如: 可爱的白色柴犬、戴墨镜的猫" 
+        placeholder="如: 可爱的白色柴犬、戴墨镜的猫咪" 
         value="{{characterDesc}}" 
         bindinput="onInputDesc" 
       />
     </view>
     <view class="form-item">
-      <text class="form-label">弹幕字幕:</text>
+      <text class="form-label">弹幕台词:</text>
       <input 
         class="form-input" 
-        placeholder="如: 么么哒、老板发红包、摸鱼中" 
+        placeholder="如: 收到、么么哒、干得漂亮、摸鱼中" 
         value="{{caption}}" 
         bindinput="onInputCaption" 
       />
-      <button class="btn-xs btn-ai-suggest" bindtap="getAiSuggestions">✨ AI文案</button>
+      <button class="btn-xs btn-suggest" bindtap="getCaptionSuggestions">✨ 灵感推荐</button>
     </view>
   </view>
 
-  <!-- 生成按钮 -->
-  <button class="btn-primary btn-generate" bindtap="startGenerate" loading="{{isGenerating}}">
-    {{isGenerating ? 'AI正在逐帧绘制中...' : '🚀 立即生成动图 (扣1次额度)'}}
-  </button>
-
-  <!-- 动图预览与贪吃蛇游戏彩蛋区 -->
-  <view class="section-title" style="margin-top: 36rpx;">4. 生成预览与动图导出</view>
-  <view class="preview-card card checkerboard-bg" bindtap="toggleSnakeGame">
-    <!-- 状态 1: 空闲未开始 -->
-    <view wx:if="{{!isGenerating && !gifResultUrl}}" class="preview-idle">
-      <text class="idle-icon">🎬</text>
-      <text class="idle-text">设置好模版后，点击上方立即生成</text>
-      <text class="idle-subtext">透明背景 16 宫格原生跳跃汉字动图</text>
+  <!-- 步骤 4: 动图专属参数配置 (参考制作大师，默认开启极速模式，支持恢复默认) -->
+  <view class="section-title">
+    <text>4. 动图专属参数配置</text>
+    <text class="btn-reset-text" bindtap="resetConfig">恢复默认</text>
+  </view>
+  <view class="card config-card">
+    <!-- 极速制作模式 -->
+    <view class="config-row">
+      <view class="config-info">
+        <view class="config-name">⚡ 极速制作模式</view>
+        <view class="config-tip">开启后通过并行渲染引擎加速，缩短制作时间</view>
+      </view>
+      <switch checked="{{config.fastMode}}" bindchange="onToggleFastMode" color="#4f46e5" />
     </view>
 
-    <!-- 状态 2: 正在生成中 (显示进度条 + 贪吃蛇小游戏) -->
+    <view class="config-divider"></view>
+
+    <!-- 尺寸分辨率 -->
+    <view class="config-row-vertical">
+      <view class="config-label-row">
+        <text class="config-name">📐 动图分辨率</text>
+        <text class="config-badge-desc">{{config.resolution === '240x240' ? '微信推荐标准' : config.resolution === '180x180' ? '超轻量省体积' : '高清画质'}}</text>
+      </view>
+      <view class="seg-grid grid-3">
+        <view 
+          class="seg-item {{config.resolution === '240x240' ? 'active' : ''}}" 
+          bindtap="setResolution" 
+          data-val="240x240"
+        >
+          240×240 (推荐)
+        </view>
+        <view 
+          class="seg-item {{config.resolution === '180x180' ? 'active' : ''}}" 
+          bindtap="setResolution" 
+          data-val="180x180"
+        >
+          180×180 (轻量)
+        </view>
+        <view 
+          class="seg-item {{config.resolution === '300x300' ? 'active' : ''}}" 
+          bindtap="setResolution" 
+          data-val="300x300"
+        >
+          300×300 (高清)
+        </view>
+      </view>
+    </view>
+
+    <view class="config-divider"></view>
+
+    <!-- 流畅度帧率 -->
+    <view class="config-row-vertical">
+      <view class="config-label-row">
+        <text class="config-name">🎞️ 画面流畅度 (帧率)</text>
+        <text class="config-badge-desc">{{config.fps === 8 ? '8 FPS (标准动图)' : config.fps === 12 ? '12 FPS (丝滑动态)' : '6 FPS (轻巧小图)'}}</text>
+      </view>
+      <view class="seg-grid grid-3">
+        <view 
+          class="seg-item {{config.fps === 8 ? 'active' : ''}}" 
+          bindtap="setFps" 
+          data-val="{{8}}"
+        >
+          8 FPS (标准)
+        </view>
+        <view 
+          class="seg-item {{config.fps === 12 ? 'active' : ''}}" 
+          bindtap="setFps" 
+          data-val="{{12}}"
+        >
+          12 FPS (流畅)
+        </view>
+        <view 
+          class="seg-item {{config.fps === 6 ? 'active' : ''}}" 
+          bindtap="setFps" 
+          data-val="{{6}}"
+        >
+          6 FPS (轻巧)
+        </view>
+      </view>
+    </view>
+
+    <view class="config-divider"></view>
+
+    <!-- 智能体积压缩 & 播放循环 -->
+    <view class="config-row">
+      <view class="config-info">
+        <view class="config-name">🗜️ 智能压缩 (微信规范)</view>
+        <view class="config-tip">自动将动图优化至 1MB 以内微信表情要求</view>
+      </view>
+      <switch checked="{{config.smartCompress}}" bindchange="onToggleSmartCompress" color="#4f46e5" />
+    </view>
+
+    <view class="config-divider"></view>
+
+    <view class="config-row">
+      <view class="config-info">
+        <view class="config-name">🔁 播放方式</view>
+        <view class="config-tip">{{config.loopCount === 0 ? '无限循环播放 (推荐)' : '仅播放 1 次'}}</view>
+      </view>
+      <view class="seg-mini">
+        <view 
+          class="seg-mini-item {{config.loopCount === 0 ? 'active' : ''}}" 
+          bindtap="setLoopCount" 
+          data-val="{{0}}"
+        >无限循环</view>
+        <view 
+          class="seg-mini-item {{config.loopCount === 1 ? 'active' : ''}}" 
+          bindtap="setLoopCount" 
+          data-val="{{1}}"
+        >播 1 次</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 立即制作动图主按钮 -->
+  <button class="btn-primary btn-generate" bindtap="startGenerate" loading="{{isGenerating}}">
+    {{isGenerating ? '逐帧渲染动图中...' : '🚀 立即制作动图 (扣1次额度)'}}
+  </button>
+
+  <!-- 动图预览与导出区 (清爽白底棋盘格) -->
+  <view class="section-title" style="margin-top: 36rpx;">5. 制作结果与导出</view>
+  <view class="preview-card card checkerboard-bg">
+    <!-- 状态 1: 空闲等待制作 -->
+    <view wx:if="{{!isGenerating && !gifResultUrl}}" class="preview-idle">
+      <text class="idle-icon">🎬</text>
+      <text class="idle-text">设置好形象与模版后，点击上方立即制作</text>
+      <text class="idle-subtext">透明背景 · 原生跳跃汉字动图 · 支持一键存入微信</text>
+    </view>
+
+    <!-- 状态 2: 正在逐帧渲染中 (清爽动画进度条) -->
     <view wx:if="{{isGenerating}}" class="generating-wrap">
+      <view class="loading-spinner"></view>
       <view class="progress-box">
         <view class="progress-bar" style="width: {{progress}}%;"></view>
       </view>
       <view class="stage-text">{{stageText}} ({{progress}}%)</view>
-      
-      <!-- 贪吃蛇小游戏容器 -->
-      <view class="snake-box" catchtap="preventBubble">
-        <view class="snake-header">
-          <text>🐍 别无聊！等候期间玩把贪吃蛇 (得分: {{snakeScore}})</text>
-          <button class="btn-snake-reset" bindtap="restartSnake">重玩</button>
-        </view>
-        <canvas 
-          type="2d"
-          id="snakeCanvas"
-          class="snake-canvas"
-          bindtouchstart="onSnakeTouchStart"
-          bindtouchmove="onSnakeTouchMove"
-        ></canvas>
-        <view class="snake-ctrls">
-          <button class="ctrl-btn" bindtap="changeSnakeDir" data-dir="UP">▲</button>
-          <view class="ctrl-h">
-            <button class="ctrl-btn" bindtap="changeSnakeDir" data-dir="LEFT">◀</button>
-            <button class="ctrl-btn" bindtap="changeSnakeDir" data-dir="RIGHT">▶</button>
-          </view>
-          <button class="ctrl-btn" bindtap="changeSnakeDir" data-dir="DOWN">▼</button>
-        </view>
-      </view>
+      <view class="stage-tip">极速渲染引擎正在处理中，请稍候片刻...</view>
     </view>
 
-    <!-- 状态 3: 生成成功 (展示 GIF) -->
-    <view wx:if="{{gifResultUrl && !isGenerating}}" class="result-wrap" catchtap="preventBubble">
+    <!-- 状态 3: 制作成功 (展示 GIF 与导出操作) -->
+    <view wx:if="{{gifResultUrl && !isGenerating}}" class="result-wrap">
       <image class="result-gif" src="{{gifResultUrl}}" mode="aspectFit"></image>
-      <view class="result-actions">
-        <button class="btn-secondary action-btn" bindtap="saveGifToAlbum">💾 保存到相册</button>
-        <button class="btn-primary action-btn" bindtap="openAddToCollection">📁 存入合集</button>
+      <view class="result-actions grid-2">
+        <button class="btn-secondary action-btn" bindtap="saveGifToAlbum">💾 保存到手机相册</button>
+        <button class="btn-primary action-btn" bindtap="openAddToCollection">📁 存入表情合集</button>
       </view>
     </view>
   </view>
