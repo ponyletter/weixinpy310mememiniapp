@@ -119,12 +119,12 @@ App({
     });
   },
 
-  // 微信虚拟支付 2.0 统一下单与收银台调用
+  // 微信虚拟支付 2.0 统一下单与收银台调用 (对齐 weixinpy310sphinx_knowledge 成功模式)
   invokeVirtualPayment(packageId, onSuccess, onFail) {
     const that = this;
     const openid = that.globalData.openid || wx.getStorageSync('openid');
     if (!openid) {
-      wx.showToast({ title: '正在登录中，请稍候...', icon: 'none' });
+      wx.showToast({ title: '正在获取登录态...', icon: 'none' });
       that.silentLogin(() => {
         that.invokeVirtualPayment(packageId, onSuccess, onFail);
       });
@@ -132,7 +132,7 @@ App({
     }
     that.globalData.openid = openid;
 
-    wx.showLoading({ title: '正在拉起收银台...' });
+    wx.showLoading({ title: '创建订单...' });
     wx.request({
       url: `${that.globalData.baseURL}/api/pay/create-order`,
       method: 'POST',
@@ -143,93 +143,55 @@ App({
       success: (res) => {
         wx.hideLoading();
         if (res.data && res.data.success) {
-          const payData = res.data.data;
-          const params = payData.payment_params;
+          const orderInfo = res.data.data;
+          const { order_id, payment_params, is_sandbox } = orderInfo;
 
-          // 调用官方微信小程序虚拟支付能力
-          if (wx.requestVirtualPayment) {
+          if (wx.requestVirtualPayment && !is_sandbox) {
             wx.requestVirtualPayment({
-              signData: params.signData,
-              paySig: params.paySig,
-              signature: params.signature,
-              mode: params.mode,
+              signData: payment_params.signData,
+              paySig: payment_params.paySig,
+              signature: payment_params.signature,
+              mode: payment_params.mode,
               success: () => {
-                wx.showToast({ title: '充值成功！', icon: 'success' });
+                wx.showToast({ title: '支付成功！', icon: 'success' });
                 that.fetchUserProfile();
                 if (onSuccess) onSuccess();
               },
               fail: (err) => {
-                console.warn("微信虚拟支付回调异常/取消:", err);
+                console.error('wx.requestVirtualPayment 失败详情:', err);
                 const errMsg = (err && (err.errMsg || err.message)) || '';
-
-                // 1. 用户主动取消支付
-                if (errMsg.includes("cancel") || errMsg.includes("取消")) {
+                if (errMsg.includes('cancel') || errMsg.includes('取消')) {
                   wx.showToast({ title: '已取消支付', icon: 'none' });
-                  if (onFail) onFail(err);
-                  return;
-                }
-
-                // 2. 模拟器环境、电脑开发工具或暂未挂载收银台
-                const isDevOrNotSupport = errMsg.includes("-15001") || 
-                                          errMsg.includes("not support") || 
-                                          errMsg.includes("不支持") || 
-                                          errMsg.includes("developer tools") || 
-                                          errMsg.includes("system error") ||
-                                          errMsg.includes("fail");
-
-                if (isDevOrNotSupport) {
-                  wx.showModal({
-                    title: '开发者环境提示',
-                    content: '检测到当前运行在开发工具或模拟器环境（微信虚拟支付金融收银台需在安卓真机端运行）。\n\n是否直接模拟完成本次额度充值进行流程测试？',
-                    confirmText: '模拟完成',
-                    cancelText: '取消',
-                    success: (mRes) => {
-                      if (mRes.confirm) {
-                        wx.showLoading({ title: '正在结算...' });
-                        wx.request({
-                          url: `${that.globalData.baseURL}/api/pay/mock-pay`,
-                          method: 'POST',
-                          data: { order_id: payData.order_id },
-                          success: () => {
-                            wx.hideLoading();
-                            wx.showToast({ title: '模拟支付成功！', icon: 'success' });
-                            that.fetchUserProfile();
-                            if (onSuccess) onSuccess();
-                          },
-                          fail: () => {
-                            wx.hideLoading();
-                            wx.showToast({ title: '模拟结算失败', icon: 'none' });
-                          }
-                        });
-                      }
-                    }
-                  });
                 } else {
-                  // 3. 真机端其它原因（如 iOS 受限或商户号未完成实名绑定）
-                  wx.showModal({
-                    title: '支付提示',
-                    content: `拉起支付遇到问题：${errMsg}。\n\n提示：iOS 设备受苹果政策限制暂不支持小程序虚拟支付，请使用安卓手机体验；或点击下方【邀请好友】免费获赠额度！`,
-                    showCancel: false,
-                    confirmText: '我知道了'
-                  });
-                  if (onFail) onFail(err);
+                  wx.showToast({ title: errMsg || '支付未完成', icon: 'none' });
                 }
+                if (onFail) onFail(err);
               }
             });
           } else {
-            // 兼容低版本
-            wx.showModal({
-              title: '提示',
-              content: '当前微信版本过低或基础库不支持虚拟支付，请升级微信后再试。'
+            // 沙箱测试模拟
+            wx.request({
+              url: `${that.globalData.baseURL}/api/pay/mock-pay`,
+              method: 'POST',
+              data: { order_id: order_id },
+              success: () => {
+                wx.showModal({
+                  title: '购买成功！',
+                  content: '制作额度已充入您的账户！',
+                  showCancel: false
+                });
+                that.fetchUserProfile();
+                if (onSuccess) onSuccess();
+              }
             });
           }
         } else {
-          wx.showToast({ title: (res.data && res.data.detail) || '下单失败', icon: 'none' });
+          wx.showToast({ title: (res.data && res.data.detail) || '创建订单失败', icon: 'none' });
         }
       },
       fail: (err) => {
         wx.hideLoading();
-        wx.showToast({ title: '网络请求失败', icon: 'none' });
+        wx.showToast({ title: (err && err.errMsg) || '网络请求失败', icon: 'none' });
         if (onFail) onFail(err);
       }
     });

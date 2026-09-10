@@ -306,7 +306,17 @@ def get_or_create_user(openid: str, session_key: str = "", inviter_code: str = "
             cursor.execute("SELECT * FROM users WHERE openid = ?", (openid,))
             row = cursor.fetchone()
 
-        # 无论新老用户，均自动确保拥有属于自己的默认私密合集，无需手动点击创建
+        # 无论新老用户，更新最新 session_key 与登录时间
+        updates = ["last_login = CURRENT_TIMESTAMP"]
+        params = []
+        if session_key:
+            updates.append("session_key = ?")
+            params.append(session_key)
+        params.append(openid)
+        cursor.execute(f"UPDATE users SET {', '.join(updates)} WHERE openid = ?", params)
+        conn.commit()
+
+        # 确保拥有属于自己的默认私密合集
         cursor.execute("SELECT collection_id FROM collections WHERE openid = ?", (openid,))
         if not cursor.fetchone():
             default_col_id = f"col_{uuid.uuid4().hex[:8]}"
@@ -315,18 +325,9 @@ def get_or_create_user(openid: str, session_key: str = "", inviter_code: str = "
                 VALUES (?, ?, '我的精选表情', '专属默认表情小抽屉，随时收集喜爱的动图', '/samples/sample_run.png', 0)
             ''', (default_col_id, openid))
             conn.commit()
-        else:
-            updates = ["last_login = CURRENT_TIMESTAMP"]
-            params = []
-            if session_key:
-                updates.append("session_key = ?")
-                params.append(session_key)
-            params.append(openid)
-            cursor.execute(f"UPDATE users SET {', '.join(updates)} WHERE openid = ?", params)
-            conn.commit()
-            cursor.execute("SELECT * FROM users WHERE openid = ?", (openid,))
-            row = cursor.fetchone()
 
+        cursor.execute("SELECT * FROM users WHERE openid = ?", (openid,))
+        row = cursor.fetchone()
         return dict(row)
 
 def get_user(openid: str) -> Optional[Dict[str, Any]]:

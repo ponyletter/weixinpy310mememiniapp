@@ -69,7 +69,7 @@
         <text class="price-unit">元</text>
       </view>
       <view class="pkg-desc">折合约 ¥{{item.unit_price}} / 次</view>
-      <button class="btn-primary btn-buy" bindtap="buyPackage" data-id="{{item.package_id}}">
+      <button class="btn-primary btn-buy" catchtap="buyPackage" data-id="{{item.package_id}}">
         立即开通
       </button>
     </view>
