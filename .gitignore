@@ -50,3 +50,4 @@ backend/storage/outputs/*
 !backend/storage/outputs/.gitkeep
 # Scratch and temp research
 scratch/
+*.db

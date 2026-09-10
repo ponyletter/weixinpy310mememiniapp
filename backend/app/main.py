@@ -5,8 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app.config import settings
+from app.database import init_db
 from app.api.meme import router as meme_router
 from app.api.wechat import router as wechat_router
+from app.api.auth import router as auth_router
+from app.api.payment import router as payment_router
+
+# 初始化数据库结构与基础种子
+init_db()
 
 app = FastAPI(title=settings.PROJECT_NAME, debug=settings.DEBUG)
 
@@ -22,6 +28,8 @@ app.add_middleware(
 # 挂载 API
 app.include_router(meme_router)
 app.include_router(wechat_router)
+app.include_router(auth_router)
+app.include_router(payment_router)
 
 # 静态文件映射
 app.mount("/static", StaticFiles(directory=str(settings.STATIC_DIR)), name="static")

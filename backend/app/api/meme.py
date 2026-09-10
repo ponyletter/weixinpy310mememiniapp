@@ -9,6 +9,7 @@ from PIL import Image
 from app.config import settings
 from app.core.sprite_processor import SpriteProcessor
 from app.core.prompt_templates import PROMPT_TEMPLATES
+from app.database import check_and_deduct_quota, refund_quota, get_db
 
 router = APIRouter(prefix="/api", tags=["Meme GIF"])
 
@@ -276,6 +277,7 @@ async def run_generate_pipeline(
     make_transparent: bool,
     padding_percent: float,
     is_sketch: bool = False,
+    openid: str = "",
 ):
     """后台异步执行完整的生图、切割与动图合成流水线"""
     import io
@@ -422,7 +424,21 @@ async def run_generate_pipeline(
             }
         }
 
+        # 记录到 SQLite 表情包任务库
+        if openid:
+            try:
+                with get_db() as conn:
+                    conn.execute('''
+                        INSERT INTO meme_tasks (task_id, openid, prompt, preset_key, text_bottom, fps, status, progress, gif_url, sprite_url)
+                        VALUES (?, ?, ?, ?, ?, ?, 'completed', 100, ?, ?)
+                    ''', (task_id, openid, prompt, action_type, custom_caption, fps, f"/outputs/{task_id}/meme_result.gif", f"/outputs/{task_id}/input_sprite.png"))
+                    conn.commit()
+            except Exception:
+                pass
+
     except Exception as e:
+        if openid:
+            refund_quota(openid)
         TASK_STORE[task_id] = {
             "status": "failed",
             "progress": 100,
@@ -441,8 +457,15 @@ async def generate_async(
     make_transparent: bool = Form(True),
     padding_percent: float = Form(2.5),
     is_sketch: bool = Form(False),
+    openid: Optional[str] = Form(""),
 ):
     """【推荐】异步启动 AI 生图任务，前端通过轮询获取实时进度与结果，绝无 HTTP 超时问题"""
+    # 额度扣减审查 (支持游客体验或绑定 openid 扣点)
+    if openid:
+        quota_res = check_and_deduct_quota(openid)
+        if not quota_res.get("allowed"):
+            raise HTTPException(status_code=403, detail=quota_res.get("error", "制作次数已耗尽，请签到或开通尝鲜包！"))
+
     task_id = str(uuid.uuid4())[:8]
 
     ref_image_bytes = None
@@ -466,7 +489,8 @@ async def generate_async(
         fps=fps,
         make_transparent=make_transparent,
         padding_percent=padding_percent,
-        is_sketch=is_sketch
+        is_sketch=is_sketch,
+        openid=openid or ""
     ))
 
     return {
@@ -531,4 +555,16 @@ def list_samples():
                 "thumb_url": f"/samples/{f.name}"
             })
     return {"code": 0, "data": samples}
+
+@router.get("/history")
+def list_history(openid: Optional[str] = None):
+    """获取用户生成表情包历史或全局作品展示"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if openid:
+            cursor.execute("SELECT * FROM meme_tasks WHERE openid = ? ORDER BY created_at DESC LIMIT 30", (openid,))
+        else:
+            cursor.execute("SELECT * FROM meme_tasks WHERE status = 'completed' ORDER BY created_at DESC LIMIT 20")
+        rows = [dict(r) for r in cursor.fetchall()]
+    return {"code": 0, "data": rows}
 

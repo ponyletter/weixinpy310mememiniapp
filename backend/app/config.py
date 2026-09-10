@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     OUTPUT_DIR: Path = BASE_DIR / "storage" / "outputs"
     SAMPLES_DIR: Path = BASE_DIR / "storage" / "samples"
     STATIC_DIR: Path = BASE_DIR / "static"
+    DATABASE_PATH: Path = BASE_DIR / "meme_miniapp.db"
+    JWT_SECRET: str = "meme-secret-key-2026-jwt"
 
     # 域名与外部基础 URL（如果配置了反代或直接访问）
     PUBLIC_BASE_URL: str = "http://204.44.67.184:8290"
