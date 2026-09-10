@@ -24,7 +24,7 @@
     <view wx:if="{{!videoPath}}" class="upload-zone" bindtap="chooseVideo">
       <text class="upload-icon">📹</text>
       <text class="upload-title">点击选择视频 (支持 MP4/MOV)</text>
-      <text class="upload-sub">自动提取前 3 秒精彩动图，微信 <1MB 规范</text>
+      <text class="upload-sub">自动提取前 3 秒精彩动图，微信 1MB 以内规范</text>
     </view>
     <view wx:else class="selected-wrap">
       <video class="preview-video" src="{{videoPath}}" controls></video>
@@ -48,7 +48,7 @@
       <view wx:for="{{multiImages}}" wx:key="*this" class="grid-item">
         <image class="grid-img" src="{{item}}" mode="aspectFill"></image>
       </view>
-      <view wx:if="{{multiImages.length < 9}}" class="grid-add" bindtap="chooseMultiImages">
+      <view wx:if="{{multiImages.length !== 9}}" class="grid-add" bindtap="chooseMultiImages">
         <text class="add-icon">＋</text>
         <text class="add-text">{{multiImages.length === 0 ? '选多图' : '继续添加'}}</text>
       </view>
