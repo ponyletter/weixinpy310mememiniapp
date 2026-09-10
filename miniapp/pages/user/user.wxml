@@ -15,9 +15,13 @@
         <text class="uid-copy-tag">复制</text>
       </view>
       <view class="user-bio-text">{{user.bio || '点击设置个性签名与资料 ✎'}}</view>
+      <view class="user-tags-row" wx:if="{{user.gender || user.birthday}}">
+        <text class="user-meta-tag" wx:if="{{user.gender && user.gender !== '保密'}}">{{user.gender}}</text>
+        <text class="user-meta-tag" wx:if="{{user.birthday}}">🎂 {{user.birthday}}</text>
+      </view>
     </view>
     <view class="hero-actions" catchtap="stopBubble">
-      <button class="btn-xs btn-edit-profile" bindtap="openEditModal">✎ 编辑</button>
+      <button class="btn-xs btn-edit-profile" bindtap="openEditModal">✎ 编辑资料</button>
       <button class="btn-xs btn-config-top" bindtap="openConfigModal">⚙️ 配置</button>
     </view>
   </view>
@@ -35,7 +39,7 @@
       </view>
       <view class="quota-cell" bindtap="openHistoryModal">
         <view class="q-val" style="color: #4f46e5;">{{user.works_count !== undefined ? user.works_count : (user.total_generated || 0)}}</view>
-        <view class="q-label">我的作品库 (点此查看)</view>
+        <view class="q-label">历史创作库 (点此查看)</view>
       </view>
     </view>
     <button class="btn-primary btn-checkin-full" bindtap="handleDailyCheckin">
@@ -98,24 +102,77 @@
     <button class="btn-primary btn-redeem" bindtap="submitRedeem">兑换</button>
   </view>
 
-  <!-- 官方订单中心与服务菜单入口 -->
+  <!-- 官方管理中心与服务菜单 -->
   <view class="card menu-card">
+    <!-- 我的表情合集 -->
+    <view class="menu-item" bindtap="goToCollectionTab">
+      <view class="menu-item-left">
+        <text class="menu-item-icon">📁</text>
+        <text class="menu-text">我的表情合集 (小抽屉分类与分享)</text>
+      </view>
+      <view class="menu-item-right">
+        <text class="menu-tag-blue">查看合集</text>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 历史创作作品库 -->
     <view class="menu-item" bindtap="openHistoryModal">
-      <text class="menu-text">🎨 我的作品相册 (支持保存相册/删除)</text>
-      <text class="menu-arrow">›</text>
+      <view class="menu-item-left">
+        <text class="menu-item-icon">🎨</text>
+        <text class="menu-text">历史创作作品库 (累计已制作)</text>
+      </view>
+      <view class="menu-item-right">
+        <text class="menu-tag-count">{{user.works_count !== undefined ? user.works_count : (user.total_generated || 0)}} 件作品</text>
+        <text class="menu-arrow">›</text>
+      </view>
     </view>
+
+    <!-- 业务合作与专属咨询 (保留微信号 Mykahr) -->
+    <view class="menu-item" bindtap="copyAuthorWechat">
+      <view class="menu-item-left">
+        <text class="menu-item-icon">💼</text>
+        <text class="menu-text">业务合作与专属咨询</text>
+      </view>
+      <view class="menu-item-right">
+        <text class="menu-tag-wechat">微信: Mykahr</text>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 查看充值与开通订单记录 -->
     <view class="menu-item" bindtap="goToOrderCenter">
-      <text class="menu-text">🧾 查看充值与开通订单记录</text>
-      <text class="menu-arrow">›</text>
+      <view class="menu-item-left">
+        <text class="menu-item-icon">🧾</text>
+        <text class="menu-text">查看充值与开通订单记录</text>
+      </view>
+      <view class="menu-item-right">
+        <text class="menu-arrow">›</text>
+      </view>
     </view>
+
+    <!-- 常见问题 FAQ -->
     <view class="menu-item" bindtap="openFaqModal">
-      <text class="menu-text">❓ 常见问题与使用解答 (FAQ)</text>
-      <text class="menu-arrow">›</text>
+      <view class="menu-item-left">
+        <text class="menu-item-icon">❓</text>
+        <text class="menu-text">常见问题与使用解答 (FAQ)</text>
+      </view>
+      <view class="menu-item-right">
+        <text class="menu-arrow">›</text>
+      </view>
     </view>
+
+    <!-- 用户须知与协议 -->
     <view class="menu-item" bindtap="openAgreementModal">
-      <text class="menu-text">📜 用户须知与服务协议</text>
-      <text class="menu-arrow">›</text>
+      <view class="menu-item-left">
+        <text class="menu-item-icon">📜</text>
+        <text class="menu-text">用户须知与服务协议</text>
+      </view>
+      <view class="menu-item-right">
+        <text class="menu-arrow">›</text>
+      </view>
     </view>
+
     <button class="btn-contact-native" open-type="contact">
       💬 微信在线人工客服
     </button>

@@ -284,6 +284,52 @@
   border-bottom: 1rpx solid #f1f5f9;
 }
 
+.menu-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-item-icon {
+  font-size: 28rpx;
+  flex-shrink: 0;
+}
+
+.menu-item-right {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  flex-shrink: 0;
+}
+
+.menu-tag-blue {
+  font-size: 22rpx;
+  color: #3b82f6;
+  background: #eff6ff;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.menu-tag-count {
+  font-size: 22rpx;
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-weight: 600;
+}
+
+.menu-tag-wechat {
+  font-size: 22rpx;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-weight: 600;
+}
+
 .menu-text {
   font-size: 26rpx;
   color: #334155;
@@ -293,6 +339,22 @@
 .menu-arrow {
   font-size: 32rpx;
   color: #94a3b8;
+}
+
+.user-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 6rpx;
+}
+
+.user-meta-tag {
+  font-size: 18rpx;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  border: 1rpx solid #e2e8f0;
 }
 
 .btn-contact-native {

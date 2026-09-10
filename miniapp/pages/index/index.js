@@ -28,7 +28,8 @@ Page({
     showCollectionModal: false,
     userCollections: [],
     selectedColId: '',
-    newColTitle: ''
+    newColTitle: '',
+    showAdvDesc: false
   },
 
   onLoad(options) {
@@ -244,6 +245,18 @@ Page({
     this.setData({ caption: e.detail.value });
   },
 
+  quickPickCaption(e) {
+    const text = e.currentTarget.dataset.text;
+    if (text) {
+      this.setData({ caption: text });
+      wx.showToast({ title: '已填入台词', icon: 'none', duration: 1000 });
+    }
+  },
+
+  toggleShowAdvDesc() {
+    this.setData({ showAdvDesc: !this.data.showAdvDesc });
+  },
+
   getCaptionSuggestions() {
     wx.showLoading({ title: '正在提取灵感...' });
     wx.request({
@@ -253,19 +266,28 @@ Page({
       data: { keyword: this.data.characterDesc || '摸鱼' },
       success: (res) => {
         wx.hideLoading();
-        if (res.data && res.data.suggestions) {
-          const items = res.data.suggestions.map(s => `[${s.style}] ${s.text}`);
+        if (res.data && res.data.suggestions && res.data.suggestions.length > 0) {
+          const suggestions = res.data.suggestions;
+          // 微信 showActionSheet 限制每项文案长度，超长做截断显示，但点击时存入完整原文
+          const items = suggestions.map(s => {
+            const label = `[${s.style}] ${s.text}`;
+            return label.length > 18 ? label.slice(0, 17) + '…' : label;
+          });
           wx.showActionSheet({
             itemList: items,
             success: (aRes) => {
-              const picked = res.data.suggestions[aRes.tapIndex].text;
+              const picked = suggestions[aRes.tapIndex].text;
               this.setData({ caption: picked });
+              wx.showToast({ title: '已套用灵感台词', icon: 'success' });
             }
           });
+        } else {
+          wx.showToast({ title: '暂无更多灵感', icon: 'none' });
         }
       },
       fail: () => {
         wx.hideLoading();
+        wx.showToast({ title: '提取灵感失败', icon: 'none' });
       }
     });
   },
@@ -755,7 +777,7 @@ Page({
     });
   },
 
-  // --- 存入表情合集 (支持自动建合集与抽屉管理) ---
+  // --- 存入表情合集 (支持自动建默认合集与秒级存入) ---
   openAddToCollection() {
     if (!this.data.gifResultUrl) return;
     const openid = app.globalData.openid || wx.getStorageSync('openid');
@@ -764,35 +786,86 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: '获取合集中...' });
+    wx.showLoading({ title: '正在存入合集...' });
+
+    const doSave = (colId, colTitle) => {
+      wx.request({
+        url: `${app.globalData.baseURL}/api/collection/add-item`,
+        method: 'POST',
+        data: {
+          collection_id: colId,
+          gif_url: this.data.gifResultUrl,
+          title: this.data.caption || '动图表情'
+        },
+        success: (sRes) => {
+          wx.hideLoading();
+          if (sRes.data && sRes.data.success) {
+            this.setData({ showCollectionModal: false });
+            wx.showModal({
+              title: '存入成功 🎉',
+              content: `已成功存入表情合集【${colTitle}】！\n随时可在底栏【表情合集】或【个人中心】中查看与批量分享。`,
+              confirmText: '前往查看',
+              cancelText: '留在本页',
+              success: (mRes) => {
+                if (mRes.confirm) {
+                  wx.switchTab({ url: '/pages/collection/collection' });
+                }
+              }
+            });
+          } else {
+            wx.showToast({ title: (sRes.data && sRes.data.detail) || '存入失败', icon: 'none' });
+          }
+        },
+        fail: () => {
+          wx.hideLoading();
+          wx.showToast({ title: '网络异常，存入失败', icon: 'none' });
+        }
+      });
+    };
+
     wx.request({
       url: `${app.globalData.baseURL}/api/collection/my?openid=${openid}`,
       method: 'GET',
       success: (res) => {
-        wx.hideLoading();
         let cols = (res.data && res.data.data) || [];
         if (cols.length === 0) {
-          // 首次使用自动为用户创建“我的精选表情集”
+          // 首次使用自动创建“我的精选表情”默认合集并直接存入
           wx.request({
             url: `${app.globalData.baseURL}/api/collection/create`,
             method: 'POST',
             data: {
               openid: openid,
-              title: '我的精选表情集',
-              description: '默认表情包收纳抽屉'
+              title: '我的精选表情',
+              description: '专属默认表情包收纳抽屉'
             },
             success: (cRes) => {
               if (cRes.data && cRes.data.data) {
                 const defaultCol = cRes.data.data;
                 this.setData({
                   userCollections: [defaultCol],
-                  selectedColId: defaultCol.collection_id,
-                  showCollectionModal: true
+                  selectedColId: defaultCol.collection_id
                 });
+                doSave(defaultCol.collection_id, defaultCol.title || '我的精选表情');
+              } else {
+                wx.hideLoading();
+                wx.showToast({ title: '创建默认合集失败', icon: 'none' });
               }
+            },
+            fail: () => {
+              wx.hideLoading();
+              wx.showToast({ title: '网络连接超时', icon: 'none' });
             }
           });
+        } else if (cols.length === 1) {
+          // 仅有1个合集时直接秒存入，并弹窗提示
+          this.setData({
+            userCollections: cols,
+            selectedColId: cols[0].collection_id
+          });
+          doSave(cols[0].collection_id, cols[0].title);
         } else {
+          // 拥有多个合集时，打开选择浮层供挑选
+          wx.hideLoading();
           this.setData({
             userCollections: cols,
             selectedColId: cols[0].collection_id,

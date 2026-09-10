@@ -100,26 +100,47 @@
       />
     </view>
 
-    <view class="form-item-compact" style="{{selectedTemplate === 'custom' ? 'margin-top: 14rpx;' : ''}}">
+    <!-- 弹幕台词字幕输入区 (大字号、多行自适应、灵感长句完整可见) -->
+    <view class="caption-input-card" style="{{selectedTemplate === 'custom' ? 'margin-top: 14rpx;' : ''}}">
       <view class="form-label-row">
-        <text class="form-label-sm">弹幕台词</text>
-        <text class="btn-xs-inline" bindtap="getCaptionSuggestions">✨ 灵感</text>
+        <view class="label-with-badge">
+          <text class="form-label-sm">弹幕台词字幕</text>
+          <text class="caption-len-badge">{{caption.length || 0}}字</text>
+        </view>
+        <button class="btn-xs-inline btn-idea-pill" bindtap="getCaptionSuggestions">✨ 灵感推荐</button>
       </view>
-      <input
-        class="form-input-compact"
-        placeholder="如: 收到、么么哒、干得漂亮"
+      <textarea
+        class="form-textarea-caption"
+        placeholder="如: 收到、么么哒、老板大气、对方拒收消息..."
         value="{{caption}}"
         bindinput="onInputCaption"
+        auto-height="true"
+        maxlength="60"
       />
+      <!-- 快捷灵感推荐台词胶囊，点击即填 -->
+      <view class="quick-caption-bar">
+        <text class="quick-chip" bindtap="quickPickCaption" data-text="收到！">收到！</text>
+        <text class="quick-chip" bindtap="quickPickCaption" data-text="么么哒">么么哒</text>
+        <text class="quick-chip" bindtap="quickPickCaption" data-text="干得漂亮">干得漂亮</text>
+        <text class="quick-chip" bindtap="quickPickCaption" data-text="打工人摸鱼中">打工人摸鱼中</text>
+        <text class="quick-chip" bindtap="quickPickCaption" data-text="老板大气！">老板大气！</text>
+      </view>
     </view>
-    <view class="form-item-compact" style="margin-top: 14rpx;">
-      <text class="form-label-sm form-label-muted">角色人设 (可选，上传参考图可留空)</text>
-      <input
-        class="form-input-compact"
-        placeholder="可选：补充服饰或细节描述"
-        value="{{characterDesc}}"
-        bindinput="onInputDesc"
-      />
+
+    <!-- 角色人设 (可折叠，默认留空，上传头像自带角色无需填写) -->
+    <view class="advanced-desc-box">
+      <view class="advanced-desc-toggle" bindtap="toggleShowAdvDesc">
+        <text class="toggle-icon">{{showAdvDesc ? '▾' : '▸'}}</text>
+        <text class="toggle-text">补充角色人设细节 (上传头像默认使用原角色，可留空)</text>
+      </view>
+      <view class="advanced-desc-content" wx:if="{{showAdvDesc}}">
+        <input
+          class="form-input-compact"
+          placeholder="可选：额外补充服饰或装扮特征 (留空即使用原头像)"
+          value="{{characterDesc}}"
+          bindinput="onInputDesc"
+        />
+      </view>
     </view>
   </view>
 

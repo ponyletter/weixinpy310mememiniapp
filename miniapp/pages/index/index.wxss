@@ -335,6 +335,105 @@
   box-sizing: border-box;
 }
 
+/* 弹幕台词增强卡片 */
+.caption-input-card {
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  padding: 16rpx 20rpx;
+  margin-top: 14rpx;
+}
+
+.label-with-badge {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.caption-len-badge {
+  font-size: 20rpx;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+}
+
+.btn-idea-pill {
+  background: #eef2ff !important;
+  color: #4f46e5 !important;
+  font-size: 22rpx !important;
+  padding: 6rpx 16rpx !important;
+  border-radius: 20rpx !important;
+  font-weight: 600 !important;
+  border: 1rpx solid #c7d2fe !important;
+}
+
+.form-textarea-caption {
+  width: 100%;
+  min-height: 80rpx;
+  max-height: 180rpx;
+  line-height: 1.45;
+  font-size: 28rpx;
+  color: #0f172a;
+  font-weight: 500;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 12rpx;
+  padding: 14rpx 16rpx;
+  margin-top: 12rpx;
+  box-sizing: border-box;
+}
+
+.quick-caption-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 12rpx;
+}
+
+.quick-chip {
+  font-size: 22rpx;
+  color: #475569;
+  background: #ffffff;
+  border: 1rpx solid #e2e8f0;
+  padding: 6rpx 14rpx;
+  border-radius: 20rpx;
+  white-space: nowrap;
+}
+
+.quick-chip:active {
+  background: #eef2ff;
+  color: #4f46e5;
+  border-color: #a5b4fc;
+}
+
+/* 角色人设折叠区 */
+.advanced-desc-box {
+  margin-top: 14rpx;
+}
+
+.advanced-desc-toggle {
+  display: flex;
+  align-items: center;
+  font-size: 22rpx;
+  color: #64748b;
+  padding: 8rpx 0;
+}
+
+.toggle-icon {
+  margin-right: 6rpx;
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
+.toggle-text {
+  color: #64748b;
+}
+
+.advanced-desc-content {
+  margin-top: 8rpx;
+}
+
 .custom-action-item {
   background: #fdf4ff;
   border: 1rpx solid #f0abfc;

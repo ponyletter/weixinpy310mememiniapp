@@ -269,7 +269,14 @@ Page({
             success: (cRes) => {
               if (cRes.data && cRes.data.data) {
                 saveToCol(cRes.data.data.collection_id);
+              } else {
+                wx.hideLoading();
+                wx.showToast({ title: '初始化合集失败', icon: 'none' });
               }
+            },
+            fail: () => {
+              wx.hideLoading();
+              wx.showToast({ title: '网络连接异常', icon: 'none' });
             }
           });
         } else {

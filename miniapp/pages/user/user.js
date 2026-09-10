@@ -86,7 +86,7 @@ Page({
   },
 
   copyUid() {
-    const openid = this.data.user.openid || '';
+    const openid = this.data.user.openid || app.globalData.openid || wx.getStorageSync('openid') || '';
     if (!openid) {
       wx.showToast({ title: '未获取到有效UID', icon: 'none' });
       return;
@@ -95,6 +95,26 @@ Page({
       data: openid,
       success: () => {
         wx.showToast({ title: 'UID已复制', icon: 'success' });
+      }
+    });
+  },
+
+  goToCollectionTab() {
+    wx.switchTab({
+      url: '/pages/collection/collection'
+    });
+  },
+
+  copyAuthorWechat() {
+    wx.setClipboardData({
+      data: 'Mykahr',
+      success: () => {
+        wx.showModal({
+          title: '复制成功',
+          content: '开发者微信号【Mykahr】已复制到剪贴板，请前往微信搜索添加好友！',
+          showCancel: false,
+          confirmText: '我知道了'
+        });
       }
     });
   },
