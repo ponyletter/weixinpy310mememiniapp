@@ -8,6 +8,7 @@ from app.config import settings
 from app.database import (
     get_package_by_id,
     get_order_by_id,
+    update_order_trade_no,
     create_order_record,
     mark_order_paid,
     get_user_session_key,
@@ -90,6 +91,14 @@ def resume_xpay_order(openid: str, order_id: str) -> Dict[str, Any]:
     amount = order['amount']
     quota = order['quota_reward']
 
+    # 生成 iOS 友好的全新独立支付流水单号 (严格控制在 <= 32 字符安全长度)
+    # 原始 order_id 如 MEME_1789080653_64a74d (22位)，新流水如 MEME_1789080653_64a74d_R8f2a (28位)
+    retry_suffix = uuid.uuid4().hex[:4]
+    pay_trade_no = f"{order_id}_R{retry_suffix}"
+
+    # 记录该待付款订单最新的支付流水号
+    update_order_trade_no(order_id, pay_trade_no)
+
     sign_data_dict = {
         "offerId": settings.XPAY_OFFER_ID,
         "buyQuantity": 1,
@@ -97,8 +106,8 @@ def resume_xpay_order(openid: str, order_id: str) -> Dict[str, Any]:
         "currencyType": "CNY",
         "productId": package_id,
         "goodsPrice": amount,
-        "outTradeNo": order_id,
-        "attach": json.dumps({"openid": openid, "pkg_id": package_id, "quota": quota}, separators=(',', ':'))
+        "outTradeNo": pay_trade_no,
+        "attach": json.dumps({"openid": openid, "order_id": order_id, "pkg_id": package_id, "quota": quota}, separators=(',', ':'))
     }
 
     sign_data_str = json.dumps(sign_data_dict, separators=(',', ':'))
@@ -109,6 +118,7 @@ def resume_xpay_order(openid: str, order_id: str) -> Dict[str, Any]:
 
     return {
         "order_id": order_id,
+        "trade_no": pay_trade_no,
         "title": title,
         "amount": amount,
         "quota": quota,
@@ -123,8 +133,20 @@ def resume_xpay_order(openid: str, order_id: str) -> Dict[str, Any]:
 
 def handle_payment_notify(notify_data: Dict[str, Any]) -> bool:
     """处理微信虚拟支付发货/付款成功回调"""
-    order_id = notify_data.get("outTradeNo")
+    out_trade_no = notify_data.get("outTradeNo", "")
     wx_order_id = notify_data.get("wechatPayOrderId", "")
-    if not order_id:
+    if not out_trade_no:
         return False
-    return mark_order_paid(order_id, wx_order_id)
+
+    # 优先从 attach 解析出关联的主订单号
+    target_id = out_trade_no
+    attach_raw = notify_data.get("attach", "")
+    if attach_raw:
+        try:
+            attach_data = json.loads(attach_raw)
+            if "order_id" in attach_data:
+                target_id = attach_data["order_id"]
+        except Exception:
+            pass
+
+    return mark_order_paid(target_id, wx_order_id)

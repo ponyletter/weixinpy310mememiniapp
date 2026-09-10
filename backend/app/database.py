@@ -72,10 +72,15 @@ def init_db():
                 quota_reward INTEGER NOT NULL,
                 status TEXT DEFAULT 'PENDING',
                 wx_order_id TEXT DEFAULT '',
+                latest_trade_no TEXT DEFAULT '',
                 pay_time TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        try:
+            cursor.execute("ALTER TABLE orders ADD COLUMN latest_trade_no TEXT DEFAULT ''")
+        except Exception:
+            pass
 
         # 4. 兑换码表
         cursor.execute('''
@@ -508,25 +513,46 @@ def create_order_record(order_id: str, openid: str, package_id: str, amount: int
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO orders (order_id, openid, package_id, amount, quota_reward, status)
-            VALUES (?, ?, ?, ?, ?, 'PENDING')
-        ''', (order_id, openid, package_id, amount, quota_reward))
+            INSERT INTO orders (order_id, openid, package_id, amount, quota_reward, status, latest_trade_no)
+            VALUES (?, ?, ?, ?, ?, 'PENDING', ?)
+        ''', (order_id, openid, package_id, amount, quota_reward, order_id))
         conn.commit()
 
-def mark_order_paid(order_id: str, wx_order_id: str = "") -> bool:
+def update_order_trade_no(order_id: str, trade_no: str):
+    """更新待付款订单的最新支付流水单号 (应对 iOS 防重)"""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,))
+        cursor.execute("UPDATE orders SET latest_trade_no = ? WHERE order_id = ?", (trade_no, order_id))
+        conn.commit()
+
+def mark_order_paid(trade_or_order_id: str, wx_order_id: str = "") -> bool:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        # 1. 优先按主订单号查询
+        cursor.execute("SELECT * FROM orders WHERE order_id = ?", (trade_or_order_id,))
         order = cursor.fetchone()
+
+        # 2. 如果未命中，按最新支付流水号查询
+        if not order:
+            cursor.execute("SELECT * FROM orders WHERE latest_trade_no = ?", (trade_or_order_id,))
+            order = cursor.fetchone()
+
+        # 3. 如果带 _R 重试流水后缀，截取原订单号查询
+        if not order and "_R" in trade_or_order_id:
+            base_id = trade_or_order_id.split("_R")[0]
+            cursor.execute("SELECT * FROM orders WHERE order_id = ?", (base_id,))
+            order = cursor.fetchone()
+
         if not order:
             return False
         if order['status'] == 'PAID':
             return True
 
+        real_order_id = order['order_id']
         cursor.execute('''
             UPDATE orders SET status = 'PAID', wx_order_id = ?, pay_time = CURRENT_TIMESTAMP
             WHERE order_id = ?
-        ''', (wx_order_id, order_id))
+        ''', (wx_order_id, real_order_id))
 
         openid = order['openid']
         quota_reward = order['quota_reward']
