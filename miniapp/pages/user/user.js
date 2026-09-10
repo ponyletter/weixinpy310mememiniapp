@@ -3,7 +3,11 @@ const app = getApp();
 Page({
   data: {
     user: {},
-    packages: [],
+    packages: [
+      { package_id: 'item_100', name: '尝鲜包 (20次)', price: 100, price_yuan: '1', quota: 20, unit_price: '0.05', badge_text: '超低破冰' },
+      { package_id: 'item_500', name: '超值包 (120次)', price: 500, price_yuan: '5', quota: 120, unit_price: '0.04', badge_text: '爆款推荐' },
+      { package_id: 'item_990', name: '尊享包 (300次/VIP)', price: 990, price_yuan: '9.9', quota: 300, unit_price: '0.03', badge_text: '年度特惠' }
+    ],
     redeemCode: ''
   },
 
@@ -25,7 +29,10 @@ Page({
 
   fetchData(cb) {
     app.fetchUserProfile(null, (user) => {
-      this.setData({ user });
+      if (user) {
+        user.display_id = user.openid ? user.openid.slice(-8) : '未登录';
+      }
+      this.setData({ user: user || {} });
       if (cb) cb();
     });
   },
@@ -44,7 +51,16 @@ Page({
       method: 'GET',
       success: (res) => {
         if (res.data && res.data.packages) {
-          this.setData({ packages: res.data.packages });
+          const packages = res.data.packages.map(pkg => {
+            const priceYuan = (pkg.price / 100).toString();
+            const unitPrice = (pkg.price / 100 / (pkg.quota || 1)).toFixed(2);
+            return {
+              ...pkg,
+              price_yuan: priceYuan,
+              unit_price: unitPrice
+            };
+          });
+          this.setData({ packages });
         }
       }
     });

@@ -9,7 +9,7 @@
         <text>{{user.nickname || '微信用户'}}</text>
         <text wx:if="{{user.is_vip}}" class="badge badge-gold" style="margin-left: 12rpx;">尊享VIP</text>
       </view>
-      <view class="user-id">UID: {{user.openid ? user.openid.slice(-8) : '未登录'}}</view>
+      <view class="user-id">UID: {{user.display_id || '未登录'}}</view>
     </view>
     <button class="btn-xs btn-refresh-user" bindtap="refreshProfile">刷新</button>
   </view>
@@ -51,10 +51,10 @@
       <view class="pkg-title">{{item.name}}</view>
       <view class="pkg-price">
         <text class="price-symbol">¥</text>
-        <text class="price-val">{{item.price / 100}}</text>
+        <text class="price-val">{{item.price_yuan}}</text>
         <text class="price-unit">元</text>
       </view>
-      <view class="pkg-desc">折合约 ¥{{(item.price / 100 / item.quota).toFixed(2)}} / 次 (同行¥0.6/次)</view>
+      <view class="pkg-desc">折合约 ¥{{item.unit_price}} / 次 (同行¥0.6/次)</view>
       <button class="btn-primary btn-buy" bindtap="buyPackage" data-id="{{item.package_id}}">
         立即开通
       </button>
