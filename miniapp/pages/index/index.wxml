@@ -136,6 +136,8 @@
         <button class="btn-primary action-btn" bindtap="openAddToCollection">📁 存入表情合集</button>
       </view>
     </view>
+  </view>
+
   <!-- 全屏沉浸式草图绘制画板 -->
   <view wx:if="{{showFullScreenSketch}}" class="fullscreen-sketch-mask">
     <view class="fullscreen-sketch-header">
