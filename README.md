@@ -20,7 +20,12 @@
   - AppID / AppSecret / MCHID
   - 虚拟支付 OfferID、现网 AppKey 配置
   - 道具批量配置规范与避坑说明（金额单位：分）
-- [四、环境配置模版](.env.example)
+- [四、16帧网格切割与去白底核心算法及流程详解](docs/ALGORITHM_AND_PIPELINE.md)
+  - ChatGPT Images 2.5 16格连续动作与原生跳动字幕
+  - 多尺度主间隙投影探测算法（解决行错位与字幕断裂）
+  - 内容紧致包络裁剪（解决留白过大，填充率 96.5%）
+  - 固定色差泛洪去底算法（FloodFill Fixed Range 保护镂空字与浅色笔画）
+- [五、环境配置模版](.env.example)
   - 环境变量配置示例
 
 ---
@@ -29,13 +34,14 @@
 
 ### 1. 激活 Conda 环境
 ```bash
-conda activate py310mememiniapp
+conda activate weixinpy310mememiniapp
 ```
 
-### 2. 复制环境配置
+### 2. 启动本地/服务端 H5 测试服务
 ```bash
-cp .env.example .env
-# 编辑 .env 填入实际参数
+cd backend
+python run.py
+# 访问 http://localhost:8290 或公网 IP:8290 测试 GIF 切割与去底预览
 ```
 
 ---
@@ -45,12 +51,21 @@ cp .env.example .env
 ```text
 weixinpy310mememiniapp/
 ├── assets/
-│   └── app_avatar.jpg              # 预生成的高清品牌/小程序头像
+│   └── app_avatar.jpg                # 预生成的高清品牌/小程序头像
+├── backend/
+│   ├── app/
+│   │   ├── api/                      # FastAPI 路由 (表情包切图、转 GIF 接口)
+│   │   ├── core/                     # 核心算法引擎 (sprite_processor, prompt_templates)
+│   │   └── main.py
+│   ├── static/                       # H5 交互测试控制台 (实时 GIF 播放器、16帧检查器)
+│   └── run.py
 ├── docs/
+│   ├── ALGORITHM_AND_PIPELINE.md     # 核心算法剖析与避坑复盘实录
 │   ├── MINIAPP_REGISTRATION_GUIDE.md # 命名、简介、备案与类目指导
 │   ├── DOMAIN_DNS_CONFIG.md          # 域名规划与 DNS 解析
 │   └── PRE_CONFIG_CHECKLIST.md       # 参数凭据与虚拟支付检查清单
-├── templates/                      # 模板文件 (如虚拟支付道具 Excel 导入模板)
-├── .env.example                    # 环境变量模板
-└── README.md                       # 项目说明
+├── templates/                        # 模板文件 (如虚拟支付道具 Excel 导入模板)
+├── .env.example                      # 环境变量模板
+└── README.md                         # 项目说明
 ```
+
