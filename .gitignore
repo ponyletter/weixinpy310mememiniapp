@@ -35,6 +35,7 @@ ENV/
 .idea/
 *.swp
 *.swo
+*project.private.config.json
 
 # OS files
 .DS_Store
