@@ -1,25 +1,16 @@
-brotlipy==0.7.0
-certifi @ file:///croot/certifi_1671487769961/work/certifi
-cffi @ file:///croot/cffi_1670423208954/work
-charset-normalizer @ file:///tmp/build/80754af9/charset-normalizer_1630003229654/work
-conda==23.1.0
-conda-content-trust @ file:///tmp/abs_5952f1c8-355c-4855-ad2e-538535021ba5h26t22e5/croots/recipe/conda-content-trust_1658126371814/work
-conda-package-handling @ file:///croot/conda-package-handling_1672865015732/work
-conda_package_streaming @ file:///croot/conda-package-streaming_1670508151586/work
-cryptography @ file:///croot/cryptography_1673298753778/work
-et_xmlfile==2.0.0
-idna @ file:///croot/idna_1666125576474/work
-openpyxl==3.1.5
-pluggy @ file:///tmp/build/80754af9/pluggy_1648024709248/work
-pycosat @ file:///croot/pycosat_1666805502580/work
-pycparser @ file:///tmp/build/80754af9/pycparser_1636541352034/work
-pyOpenSSL @ file:///opt/conda/conda-bld/pyopenssl_1643788558760/work
-PySocks @ file:///home/builder/ci_310/pysocks_1640793678128/work
-requests @ file:///opt/conda/conda-bld/requests_1657734628632/work
-ruamel.yaml @ file:///croot/ruamel.yaml_1666304550667/work
-ruamel.yaml.clib @ file:///croot/ruamel.yaml.clib_1666302247304/work
-six @ file:///tmp/build/80754af9/six_1644875935023/work
-toolz @ file:///croot/toolz_1667464077321/work
-tqdm @ file:///opt/conda/conda-bld/tqdm_1664392687731/work
-urllib3 @ file:///croot/urllib3_1673575502006/work
-zstandard @ file:///opt/conda/conda-bld/zstandard_1663827383994/work
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.1
+httpx>=0.27.0
+requests>=2.31.0
+pillow>=10.2.0
+imageio>=2.34.0
+opencv-python-headless>=4.9.0
+numpy>=1.26.0
+openpyxl>=3.1.2
+pyyaml>=6.0.1
+watchfiles>=0.21.0
+websockets>=12.0

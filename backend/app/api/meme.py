@@ -277,11 +277,21 @@ TASK_STORE: dict[str, dict] = {}
 
 async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path):
     """
-    异步将新生成的动图与缩略图推送至国内腾讯云节点 /var/www/outputs/{task_id}，
-    彻底消除跨国反向代理隧道传输延迟，国内用户秒级保存与预览！
-    即使推送延迟，国内 Nginx 也会自动通过 proxy_cache 首次回源并自动落盘缓存。
+    确保动图产物在 /var/www/outputs/{task_id} 就绪。
+    如果是本地部署在国内腾讯云，直接本地复制/确保就绪；
+    如果是美区沙箱开发，则通过 scp 异步推送到国内腾讯云。
     """
     try:
+        local_target = Path(f"/var/www/outputs/{task_id}")
+        if Path("/var/www/outputs").exists():
+            local_target.mkdir(parents=True, exist_ok=True)
+            import shutil
+            for f in ["meme_result.gif", "thumb.jpg"]:
+                p = task_dir / f
+                if p.exists() and (local_target / f).resolve() != p.resolve():
+                    shutil.copy2(str(p), str(local_target / f))
+            return
+
         remote_dest = f"81.69.190.161:/var/www/outputs/{task_id}/"
         proc = await asyncio.create_subprocess_exec(
             "ssh", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes",
