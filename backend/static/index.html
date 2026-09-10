@@ -103,17 +103,44 @@
         </div>
       </div>
 
+      <!-- 字幕与字体高级设置 (防遮挡 & 开源商用字库) -->
+      <div class="font-settings-panel">
+        <div class="input-row" style="margin-bottom: 0;">
+          <div class="input-group">
+            <label for="fontSelect">开源商用字体：</label>
+            <select id="fontSelect" class="form-select">
+              <option value="smiley_sans" selected>得意黑 Smiley Sans (潮酷/手绘风格/推荐⭐)</option>
+              <option value="noto_sans">思源黑体 Noto Sans SC (经典加粗/稳重清晰)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="posSelect">字幕防遮挡摆放位置：</label>
+            <select id="posSelect" class="form-select">
+              <option value="bottom" selected>画内居底 (3px纯黑外描边)</option>
+              <option value="outside_bottom">外挂底部留白 (100%不遮挡角色 ⭐)</option>
+              <option value="top">画内居顶 (适合角色脚部动作大)</option>
+              <option value="none">不显示文字 (纯净动图)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <!-- 参数调节 -->
       <div class="params-panel">
+        <div class="param-item">
+          <label for="fontSizeRange">字号大小 (<span id="fontSizeVal">26</span>px):</label>
+          <input type="range" id="fontSizeRange" min="18" max="36" value="26" step="1">
+        </div>
         <div class="param-item">
           <label for="fpsRange">播放速率 (<span id="fpsVal">8</span> 帧/秒):</label>
           <input type="range" id="fpsRange" min="4" max="16" value="8" step="1">
         </div>
         <div class="param-item toggle-item">
-          <label for="chkTransparent">智能去除白底 (Alpha 透明化):</label>
+          <label for="chkTransparent">智能去白底 (Alpha 透明):</label>
           <input type="checkbox" id="chkTransparent" checked>
         </div>
       </div>
+
 
       <div class="action-bar">
         <button class="btn btn-primary btn-lg" id="btnProcess">⚡ 开始智能切帧并合成 GIF</button>

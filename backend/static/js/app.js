@@ -19,8 +19,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const fpsRange = document.getElementById("fpsRange");
   const fpsVal = document.getElementById("fpsVal");
+  const fontSizeRange = document.getElementById("fontSizeRange");
+  const fontSizeVal = document.getElementById("fontSizeVal");
+  const fontSelect = document.getElementById("fontSelect");
+  const posSelect = document.getElementById("posSelect");
   const chkTransparent = document.getElementById("chkTransparent");
   const btnProcess = document.getElementById("btnProcess");
+
 
   const resultCard = document.getElementById("resultCard");
   const gifImage = document.getElementById("gifImage");
@@ -154,9 +159,13 @@ document.addEventListener("DOMContentLoaded", () => {
     btnUseSample.classList.add("btn-primary");
   });
 
-  // FPS 滑动条
+  // 滑动条监听
   fpsRange.addEventListener("input", (e) => {
     fpsVal.textContent = e.target.value;
+  });
+
+  fontSizeRange.addEventListener("input", (e) => {
+    fontSizeVal.textContent = e.target.value;
   });
 
   // 3. 执行切帧与动图合成
@@ -179,6 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("fps", fpsRange.value);
     formData.append("make_transparent", chkTransparent.checked);
     formData.append("caption", captionInput.value);
+    formData.append("font_family", fontSelect.value);
+    formData.append("caption_position", posSelect.value);
+    formData.append("font_size", fontSizeRange.value);
+
 
     try {
       const resp = await fetch("/api/process-sprite", {

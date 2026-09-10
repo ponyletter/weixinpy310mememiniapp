@@ -59,10 +59,13 @@ async def process_sprite_sheet(
     sample_id: Optional[str] = Form(None),
     fps: int = Form(8),
     make_transparent: bool = Form(True),
-    caption: str = Form("")
+    caption: str = Form(""),
+    font_family: str = Form("smiley_sans"),
+    caption_position: str = Form("bottom"),
+    font_size: int = Form(26)
 ):
     """
-    核心接口：接收 4x4 精灵大图，执行切片、去白底、打标、GIF合成与ZIP导出
+    核心接口：接收 4x4 精灵大图，执行切片、去白底、防遮挡字幕叠加、GIF合成与ZIP导出
     """
     task_id = str(uuid.uuid4())[:8]
     task_dir = settings.OUTPUT_DIR / task_id
@@ -71,7 +74,6 @@ async def process_sprite_sheet(
     input_img_path = task_dir / "input_sprite.png"
 
     if file and file.filename:
-        # 用户上传了图片
         with open(input_img_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     elif sample_id:
@@ -90,14 +92,17 @@ async def process_sprite_sheet(
     # 1. 切分为 16 帧
     frames = SpriteProcessor.slice_grid(source_image, rows=4, cols=4)
 
-    # 2. 生成透明/带文字的动图 GIF
+    # 2. 生成透明/带防遮挡字幕的动图 GIF
     gif_path = task_dir / "meme_result.gif"
     stats = SpriteProcessor.assemble_gif(
         frames=frames,
         output_path=str(gif_path),
         fps=fps,
         make_transparent=make_transparent,
-        caption=caption.strip() if caption else None
+        caption=caption.strip() if caption else None,
+        font_family=font_family,
+        font_size=font_size,
+        caption_position=caption_position
     )
 
     # 3. 生成 16 帧独立 PNG ZIP 包
@@ -105,7 +110,10 @@ async def process_sprite_sheet(
     SpriteProcessor.package_zip(
         frames=frames,
         output_path=str(zip_path),
-        caption=caption.strip() if caption else None
+        caption=caption.strip() if caption else None,
+        font_family=font_family,
+        font_size=font_size,
+        caption_position=caption_position
     )
 
     # 4. 保存缩略帧供前端 16 帧画廊预览
@@ -115,8 +123,17 @@ async def process_sprite_sheet(
     for idx, f in enumerate(frames, 1):
         f_thumb_path = frames_dir / f"frame_{idx:02d}.png"
         f_clean = SpriteProcessor.remove_white_bg(f) if make_transparent else f
+        if caption and caption.strip():
+            f_clean = SpriteProcessor.overlay_caption(
+                frame=f_clean,
+                text=caption.strip(),
+                font_family=font_family,
+                font_size=font_size,
+                position=caption_position
+            )
         f_clean.save(f_thumb_path, format="PNG")
         frame_preview_urls.append(f"/outputs/{task_id}/frames/frame_{idx:02d}.png")
+
 
     return {
         "code": 0,

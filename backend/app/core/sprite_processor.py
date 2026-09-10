@@ -3,7 +3,16 @@ import os
 import zipfile
 from pathlib import Path
 from typing import List, Tuple, Optional
+import numpy as np
+import cv2
 from PIL import Image, ImageDraw, ImageFont
+
+FONTS_DIR = Path(__file__).resolve().parent.parent.parent / "static" / "fonts"
+
+FONT_MAP = {
+    "smiley_sans": FONTS_DIR / "SmileySans-Oblique.ttf",
+    "noto_sans": FONTS_DIR / "NotoSansSC-Bold.ttf",
+}
 
 class SpriteProcessor:
     @staticmethod
@@ -24,116 +33,132 @@ class SpriteProcessor:
     @staticmethod
     def remove_white_bg(frame: Image.Image, tolerance: int = 28) -> Image.Image:
         """
-        智能将白色/浅灰背景转为透明。
-        基于外围种子扩散算法 (FloodFill Mask)，只剔除角色外部的白色，
-        完整保留角色内部的眼白、白色衣服或白色高光！
+        超高速 C++ OpenCV 洪水填充去白底算法。
+        仅从 4 个边角向内扩散，剔除外围白色背景，
+        100% 完整保留角色内部眼白、白衣服或亮斑！
         """
-        rgba = frame.convert("RGBA")
-        w, h = rgba.size
-        pixels = rgba.load()
+        rgba = np.array(frame.convert("RGBA"))
+        h, w = rgba.shape[:2]
 
-        # 采样 4 个边角的代表背景色 (默认为 255, 255, 255)
-        corner_colors = [pixels[0, 0], pixels[w - 1, 0], pixels[0, h - 1], pixels[w - 1, h - 1]]
-        # 针对每个角点，检查是否为浅色背景 (R,G,B均接近高亮)
-        is_light_bg = any(c[0] > 200 and c[1] > 200 and c[2] > 200 for c in corner_colors)
-
-        if not is_light_bg:
-            # 如果背景本身不是白色，直接返回原图，避免误伤
-            return rgba
-
-        # 使用 BFS 洪水填充，仅从图像四周边缘向内寻找连续连通的白色区域作为背景
-        visited = bytearray(w * h)
-        queue = []
-
-        def is_bg_pixel(r, g, b):
-            return (255 - r) <= tolerance and (255 - g) <= tolerance and (255 - b) <= tolerance
-
-        # 边缘所有像素作为种子放入队列
-        for x in range(w):
-            for y in (0, h - 1):
-                idx = y * w + x
-                r, g, b, _ = pixels[x, y]
-                if is_bg_pixel(r, g, b):
-                    visited[idx] = 1
-                    queue.append((x, y))
-
-        for y in range(h):
-            for x in (0, w - 1):
-                idx = y * w + x
-                if not visited[idx]:
-                    r, g, b, _ = pixels[x, y]
-                    if is_bg_pixel(r, g, b):
-                        visited[idx] = 1
-                        queue.append((x, y))
-
-        # BFS 扩散
-        head = 0
-        while head < len(queue):
-            cx, cy = queue[head]
-            head += 1
-            for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
-                if 0 <= nx < w and 0 <= ny < h:
-                    n_idx = ny * w + nx
-                    if not visited[n_idx]:
-                        nr, ng, nb, _ = pixels[nx, ny]
-                        if is_bg_pixel(nr, ng, nb):
-                            visited[n_idx] = 1
-                            queue.append((nx, ny))
-
-        # 将外围被标记的背景像素 Alpha 置为 0 (透明)
-        for y in range(h):
-            for x in range(w):
-                if visited[y * w + x]:
-                    r, g, b, _ = pixels[x, y]
-                    pixels[x, y] = (r, g, b, 0)
-
-        return rgba
-
-    @staticmethod
-    def overlay_caption(frame: Image.Image, text: str, font_size: int = 24) -> Image.Image:
-        """在帧底部居中绘制带黑色描边的醒目字幕"""
-        if not text or not text.strip():
+        # 采样 4 角背景色
+        corners = [rgba[0, 0, :3], rgba[0, w - 1, :3], rgba[h - 1, 0, :3], rgba[h - 1, w - 1, :3]]
+        if not any(np.all(c > 190) for c in corners):
             return frame
 
-        canvas = frame.copy().convert("RGBA")
+        bgr = cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGR)
+        mask = np.zeros((h + 2, w + 2), np.uint8)
+
+        # 从 4 个边缘角落进行 FloodFill 遮罩标记
+        tol = int(tolerance)
+        for seed in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]:
+            if mask[seed[1] + 1, seed[0] + 1] == 0:
+                cv2.floodFill(
+                    bgr, mask, seed, 0,
+                    loDiff=(tol, tol, tol),
+                    upDiff=(tol, tol, tol),
+                    flags=4 | (255 << 8) | cv2.FLOODFILL_MASK_ONLY
+                )
+
+        # 将被识别为外围背景的像素 Alpha 置零
+        bg_mask = mask[1:h + 1, 1:w + 1] == 255
+        rgba[bg_mask, 3] = 0
+
+        return Image.fromarray(rgba)
+
+    @classmethod
+    def get_font(cls, font_family: str, font_size: int) -> ImageFont.FreeTypeFont:
+        """加载开源无版权争议商用字体（得意黑 Smiley Sans / 思源黑体 Noto Sans SC）"""
+        target_path = FONT_MAP.get(font_family, FONT_MAP["smiley_sans"])
+        if target_path and target_path.exists():
+            try:
+                return ImageFont.truetype(str(target_path), font_size)
+            except Exception:
+                pass
+
+        # 系统兜底
+        system_noto = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+        if os.path.exists(system_noto):
+            try:
+                return ImageFont.truetype(system_noto, font_size)
+            except Exception:
+                pass
+
+        return ImageFont.load_default()
+
+    @classmethod
+    def overlay_caption(
+        cls,
+        frame: Image.Image,
+        text: str,
+        font_family: str = "smiley_sans",
+        font_size: int = 26,
+        position: str = "bottom",  # bottom, top, outside_bottom (外挂留白 100%防遮挡)
+    ) -> Image.Image:
+        """
+        在帧上绘制防遮挡、高对比度醒目字幕。
+        支持：画内居底、画内居顶、外挂底部留白（100%不遮挡角色主体）
+        """
+        if not text or not text.strip() or position == "none":
+            return frame
+
+        orig_w, orig_h = frame.size
+
+        # 外挂留白模式：在底部拓展一段透明/安全留白区域，专供字幕显示
+        if position == "outside_bottom":
+            extra_h = max(42, font_size + 18)
+            canvas = Image.new("RGBA", (orig_w, orig_h + extra_h), (0, 0, 0, 0))
+            canvas.paste(frame.convert("RGBA"), (0, 0))
+            w, h = canvas.size
+        else:
+            canvas = frame.copy().convert("RGBA")
+            w, h = canvas.size
+
         draw = ImageDraw.Draw(canvas)
-        w, h = canvas.size
 
-        # 尝试加载系统常见中文字体，退化为默认字体
-        font = None
-        font_candidates = [
-            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
-            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        ]
-        for path in font_candidates:
-            if os.path.exists(path):
-                try:
-                    font = ImageFont.truetype(path, font_size)
+        # 动态自适应字号：如果文字字数多，自动递减缩小字号避免截断
+        adjusted_size = font_size
+        font = cls.get_font(font_family, adjusted_size)
+        while adjusted_size > 14:
+            try:
+                bbox = draw.textbbox((0, 0), text, font=font)
+                tw = bbox[2] - bbox[0]
+                if tw <= (w - 20):
                     break
-                except Exception:
-                    continue
+            except Exception:
+                break
+            adjusted_size -= 2
+            font = cls.get_font(font_family, adjusted_size)
 
-        if font is None:
-            font = ImageFont.load_default()
-
-        # 计算文字包围盒以居中
         try:
             bbox = draw.textbbox((0, 0), text, font=font)
             tw = bbox[2] - bbox[0]
             th = bbox[3] - bbox[1]
         except Exception:
-            tw, th = len(text) * font_size // 2, font_size
+            tw, th = len(text) * adjusted_size // 2, adjusted_size
 
         x = (w - tw) // 2
-        y = h - th - int(h * 0.08)  # 距底部留白
 
-        # 绘制黑底描边 (8 方向) 确保在任何背景下均清晰可见
+        # 位置计算
+        if position == "outside_bottom":
+            y = orig_h + (extra_h - th) // 2 - 2
+        elif position == "top":
+            y = int(h * 0.05)
+        else:
+            # 默认：画内居底
+            y = h - th - int(h * 0.06)
+
+        # 8 方向加粗纯黑描边 (3px) + 纯白文字，任何底色下均清晰可见
         outline_color = (0, 0, 0, 255)
         text_color = (255, 255, 255, 255)
-        for dx, dy in ((-2,0), (2,0), (0,-2), (0,2), (-1,-1), (1,-1), (-1,1), (1,1)):
+        stroke_offsets = [
+            (-2, 0), (2, 0), (0, -2), (0, 2),
+            (-2, -2), (2, -2), (-2, 2), (2, 2),
+            (-1, -2), (1, -2), (-1, 2), (1, 2),
+            (-2, -1), (2, -1), (-2, 1), (2, 1)
+        ]
+        for dx, dy in stroke_offsets:
             draw.text((x + dx, y + dy), text, font=font, fill=outline_color)
+
         draw.text((x, y), text, font=font, fill=text_color)
 
         return canvas
@@ -145,10 +170,13 @@ class SpriteProcessor:
         output_path: str,
         fps: int = 8,
         make_transparent: bool = True,
-        caption: Optional[str] = None
+        caption: Optional[str] = None,
+        font_family: str = "smiley_sans",
+        font_size: int = 26,
+        caption_position: str = "bottom"
     ) -> dict:
         """
-        完整工作流：处理每一帧（透明化 + 加字幕）并合成为标准微信表情 GIF
+        完整工作流：处理每一帧（超快去白底 + 防遮挡字幕叠加）并合成为微信标准 GIF
         """
         duration_ms = int(1000 / max(1, min(fps, 30)))
         processed_frames: List[Image.Image] = []
@@ -158,21 +186,23 @@ class SpriteProcessor:
             if make_transparent:
                 f = cls.remove_white_bg(f)
             if caption:
-                f = cls.overlay_caption(f, caption)
+                f = cls.overlay_caption(
+                    frame=f,
+                    text=caption,
+                    font_family=font_family,
+                    font_size=font_size,
+                    position=caption_position
+                )
             processed_frames.append(f)
 
-        # 转换为 GIF 适配模式
         gif_frames = []
         for pf in processed_frames:
-            # 保证带透明调色板
             alpha = pf.split()[-1]
             p_img = pf.convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=255)
-            # 恢复透明通道
             mask = Image.eval(alpha, lambda a: 255 if a <= 128 else 0)
             p_img.paste(255, mask)
             gif_frames.append(p_img)
 
-        # 保存 GIF，设置无限循环 loop=0，并使用 disposal=2 彻底防止上一帧残影
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         gif_frames[0].save(
             output_path,
@@ -186,25 +216,44 @@ class SpriteProcessor:
         )
 
         file_size = os.path.getsize(output_path)
+        out_w, out_h = processed_frames[0].size
         return {
             "output_path": output_path,
             "frame_count": len(frames),
+            "width": out_w,
+            "height": out_h,
             "fps": fps,
             "duration_per_frame_ms": duration_ms,
             "file_size_bytes": file_size,
             "file_size_kb": round(file_size / 1024, 2),
-            "is_wechat_compliant": file_size < (1024 * 1024)  # 微信表情单图 < 1MB
+            "font_family": font_family,
+            "caption_position": caption_position,
+            "is_wechat_compliant": file_size < (1024 * 1024)
         }
 
     @classmethod
-    def package_zip(cls, frames: List[Image.Image], output_path: str, caption: Optional[str] = None) -> str:
+    def package_zip(
+        cls,
+        frames: List[Image.Image],
+        output_path: str,
+        caption: Optional[str] = None,
+        font_family: str = "smiley_sans",
+        font_size: int = 26,
+        caption_position: str = "bottom"
+    ) -> str:
         """打包 16 张独立的透明 PNG 帧为 ZIP"""
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
             for idx, frame in enumerate(frames, 1):
                 f = cls.remove_white_bg(frame)
                 if caption:
-                    f = cls.overlay_caption(f, caption)
+                    f = cls.overlay_caption(
+                        frame=f,
+                        text=caption,
+                        font_family=font_family,
+                        font_size=font_size,
+                        position=caption_position
+                    )
                 buf = io.BytesIO()
                 f.save(buf, format="PNG")
                 zf.writestr(f"frame_{idx:02d}.png", buf.getvalue())
