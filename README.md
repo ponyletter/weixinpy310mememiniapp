@@ -49,11 +49,13 @@ cp .env.example .env
 生产环境保持 `DEBUG=false` 和 `ENABLE_MOCK_PAYMENT=false`。`JWT_SECRET` 可通过
 `openssl rand -hex 32` 生成；缺少关键配置时，服务会拒绝启动，避免以不安全默认值上线。
 
-生产环境请在微信/腾讯云虚拟支付的“基础配置/发货推送”中启用道具发货通知，并将回调地址配置为
-`https://meme.tg-cc755.cn/api/pay/notify`（不要填 `apiwx.tg-cc755.cn`）。Nginx 会注入内部
-`X-XPay-Callback-Token`，后端还会按现网 AppKey 校验官方 `payEventSig`，只有验签通过才会发放额度。
-回调必须返回 `returnCode: "0"`，否则平台会重试且订单会保持待支付。支付弹窗成功后小程序会轮询
-`/api/pay/order-status`，以服务端已确认的订单状态为准。
+生产环境请在微信小程序后台【开发管理 → 开发设置 → 消息推送】中启用道具发货通知，并将 URL 配置为
+`https://meme.tg-cc755.cn/api/wechat/msg_push`（不要填 `apiwx.tg-cc755.cn`，也不要把
+`/api/pay/notify` 当作消息推送地址）。URL 的 Token 对应 `.env` 中的 `WX_MSG_TOKEN`，消息格式选择
+JSON、加密方式选择明文；EncodingAESKey 仍填写后台生成的 43 位值并保存到 `WX_MSG_AES_KEY`。
+消息推送接口完成 GET 握手后，会校验 `xpay_goods_deliver_notify` 并按 `ErrCode: 0` 应答。
+若另有腾讯云 Super App 回调配置，才使用 `/api/pay/notify`；该接口处理的是带 `payload/payEventSig`
+的回调封装。支付弹窗成功后小程序会轮询 `/api/pay/order-status`，以服务端已确认的订单状态为准。
 
 订单表继续使用 UTC 存储；`/api/user/orders` 对外统一转换为中国标准时间（`Asia/Shanghai`，UTC+8），
 并附带 `timezone` 字段，便于前端和客服核对时间。

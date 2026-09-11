@@ -258,3 +258,109 @@ def handle_payment_notify(notify_data: Dict[str, Any]) -> bool:
         return False
 
     return mark_order_paid(target_id, wx_order_id)
+
+
+def handle_wechat_message_notify(notify_data: Dict[str, Any]) -> bool:
+    """Handle the raw JSON/XML event sent by Mini Program Message Push.
+
+    The WeChat Console's message-push channel sends the event fields directly
+    (``Event``, ``OpenId``, ``OutTradeNo`` and so on), unlike the Tencent SAS
+    envelope handled by :func:`handle_payment_notify`.
+    """
+    if not isinstance(notify_data, dict):
+        return False
+    event = str(notify_data.get("Event") or notify_data.get("event") or "")
+    if event != settings.XPAY_CALLBACK_EVENT:
+        return False
+
+    out_trade_no = str(
+        notify_data.get("OutTradeNo")
+        or notify_data.get("outTradeNo")
+        or notify_data.get("out_trade_no")
+        or ""
+    )
+    if not out_trade_no:
+        return False
+
+    def as_dict(value: Any) -> Dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str) and value:
+            try:
+                parsed = json.loads(value)
+                return parsed if isinstance(parsed, dict) else {}
+            except (TypeError, ValueError):
+                return {}
+        return {}
+
+    goods_info = as_dict(notify_data.get("GoodsInfo"))
+    pay_info = as_dict(notify_data.get("WeChatPayInfo"))
+    attach_raw = (
+        notify_data.get("Attach")
+        or notify_data.get("attach")
+        or goods_info.get("Attach")
+        or goods_info.get("attach")
+        or ""
+    )
+
+    target_id = out_trade_no
+    if attach_raw:
+        attach_data = as_dict(attach_raw)
+        if attach_data.get("order_id"):
+            target_id = str(attach_data["order_id"])
+
+    order = get_order_by_id(target_id)
+    if not order:
+        return False
+
+    callback_openid = notify_data.get("OpenId") or notify_data.get("openid") or notify_data.get("FromUserName")
+    if callback_openid and str(callback_openid) != str(order["openid"]):
+        return False
+
+    callback_env = notify_data.get("Env")
+    if callback_env is not None:
+        try:
+            if int(callback_env) != int(settings.XPAY_ENV):
+                return False
+        except (TypeError, ValueError):
+            return False
+
+    product_id = (
+        notify_data.get("ProductId")
+        or notify_data.get("productId")
+        or goods_info.get("ProductId")
+        or goods_info.get("productId")
+    )
+    goods_price = (
+        notify_data.get("ActualPrice")
+        or notify_data.get("actualPrice")
+        or goods_info.get("ActualPrice")
+        or goods_info.get("actualPrice")
+        or notify_data.get("GoodsPrice")
+        or goods_info.get("OrigPrice")
+    )
+    quantity = notify_data.get("Quantity") or goods_info.get("Quantity")
+    if quantity is not None:
+        try:
+            if int(quantity) != 1:
+                return False
+        except (TypeError, ValueError):
+            return False
+    if product_id is not None and str(product_id) != str(order["package_id"]):
+        return False
+    if goods_price is not None:
+        try:
+            if int(goods_price) != int(order["amount"]):
+                return False
+        except (TypeError, ValueError):
+            return False
+
+    wx_order_id = str(
+        pay_info.get("TransactionId")
+        or pay_info.get("transaction_id")
+        or pay_info.get("MchOrderNo")
+        or notify_data.get("TransactionId")
+        or notify_data.get("wechatPayOrderId")
+        or ""
+    )
+    return mark_order_paid(target_id, wx_order_id)

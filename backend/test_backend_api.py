@@ -1,5 +1,6 @@
 import io
 import json
+import hashlib
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,6 +22,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "XPAY_OFFER_ID", "test-offer")
     monkeypatch.setattr(settings, "XPAY_APP_KEY_SANDBOX", "test-payment-app-key")
     monkeypatch.setattr(settings, "XPAY_CALLBACK_TOKEN", "test-callback-token")
+    monkeypatch.setattr(settings, "WX_MSG_TOKEN", "test-message-token")
     monkeypatch.setattr(settings, "UPLOAD_DIR", tmp_path / "uploads")
     monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path / "outputs")
     settings.UPLOAD_DIR.mkdir(parents=True)
@@ -163,6 +165,55 @@ def test_payment_callback_validates_business_fields(client: TestClient):
     orders = client.get("/api/user/orders?openid=user_mock_alice", headers=headers)
     assert orders.status_code == 200
     assert orders.json()["orders"][0]["timezone"] == "Asia/Shanghai"
+
+
+def test_wechat_message_push_handshake_and_delivery(client: TestClient):
+    _, headers = login(client, "message_push")
+    created = client.post(
+        "/api/pay/create-order",
+        json={"openid": "user_mock_message_push", "package_id": "meme_100"},
+        headers=headers,
+    )
+    assert created.status_code == 200
+    order_id = created.json()["data"]["order_id"]
+
+    token, timestamp, nonce = "test-message-token", "1780000000", "nonce"
+    signature = hashlib.sha1("".join(sorted([token, timestamp, nonce])).encode("utf-8")).hexdigest()
+    verify = client.get(
+        "/api/wechat/msg_push",
+        params={"signature": signature, "timestamp": timestamp, "nonce": nonce, "echostr": "challenge"},
+    )
+    assert verify.status_code == 200
+    assert verify.text == "challenge"
+
+    body = {
+        "ToUserName": "gh_test",
+        "FromUserName": "user_mock_message_push",
+        "CreateTime": 1780000000,
+        "MsgType": "event",
+        "Event": "xpay_goods_deliver_notify",
+        "OpenId": "user_mock_message_push",
+        "OutTradeNo": order_id,
+        "Env": 1,
+        "WeChatPayInfo": {"TransactionId": "wx_tx_test"},
+        "GoodsInfo": {
+            "ProductId": "meme_100",
+            "Quantity": 1,
+            "OrigPrice": 100,
+            "ActualPrice": 100,
+            "Attach": json.dumps({"openid": "user_mock_message_push"}, separators=(",", ":")),
+        },
+    }
+    delivered = client.post(
+        "/api/wechat/msg_push",
+        params={"signature": signature, "timestamp": timestamp, "nonce": nonce},
+        json=body,
+    )
+    assert delivered.status_code == 200
+    assert delivered.json() == {"ErrCode": 0, "ErrMsg": "success"}
+
+    status = client.get(f"/api/pay/order-status?order_id={order_id}", headers=headers)
+    assert status.json()["paid"] is True
 
 
 def test_path_traversal_is_rejected(client: TestClient):

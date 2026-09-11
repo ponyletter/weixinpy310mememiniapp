@@ -47,6 +47,7 @@ class Settings(BaseSettings):
 
     WX_APPID: str = ""
     WX_APPSECRET: str = ""
+    WX_MSG_PUSH_URL: str = "https://meme.tg-cc755.cn/api/wechat/msg_push"
 
     XPAY_OFFER_ID: str = ""
     XPAY_APP_KEY_SANDBOX: str = ""

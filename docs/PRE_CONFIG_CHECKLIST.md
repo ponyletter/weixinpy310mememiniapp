@@ -30,12 +30,14 @@
 
 ### 2. 发货回调（额度到账的必要条件）
 
-- 在虚拟支付“基础配置/发货推送”中开启道具发货通知；回调地址填写
-  `https://meme.tg-cc755.cn/api/pay/notify`，不要填写仅提供其他业务的 `apiwx.tg-cc755.cn`。
-- 服务端订单先记录为 `PENDING`，只有收到 `TRANSACTION.SUCCESS` 并通过现网 AppKey 的
-  `payEventSig` 验签后才增加额度；前端支付弹窗的 success 不能直接当作到账凭据。
-- 回调响应必须包含 `{"returnCode":"0","data":"ok"}`，否则平台会认为发货失败并重试。
-- 使用生产 AppKey 计算签名时，`payload` 必须使用平台推送的原始 JSON 字符串，不能先解析后重新序列化。
+- 在小程序后台【开发管理 → 开发设置 → 消息推送】中开启道具发货通知；URL 填写
+  `https://meme.tg-cc755.cn/api/wechat/msg_push`，不要填写仅提供其他业务的 `apiwx.tg-cc755.cn`。
+- Token 填 `.env` 的 `WX_MSG_TOKEN`；EncodingAESKey 使用后台生成的 43 位值并保存到 `WX_MSG_AES_KEY`；
+  消息格式选 **JSON**、加密方式选 **明文**。
+- 服务端订单先记录为 `PENDING`，只有收到 `Event=xpay_goods_deliver_notify` 并通过消息推送签名握手后才增加额度；
+  前端支付弹窗的 success 不能直接当作到账凭据。
+- 消息推送响应必须为 `{"ErrCode":0,"ErrMsg":"success"}`（XML 推送则返回对应 XML），否则微信会重试。
+- `/api/pay/notify` 是另一种腾讯云 Super App `payload/payEventSig` 回调封装，不要填到“消息推送”字段。
 
 ### 3. 授权绑定关键点
 - 登录微信公众平台 ➔ 【支付与交易】 ➔ 【微信支付】 ➔ 【商户号管理】；
