@@ -62,12 +62,17 @@ Page({
       if (cover && cover.startsWith('/')) {
         cover = `${app.globalData.baseURL}${cover}`;
       }
-      let preview_items = (item.preview_items || []).map(p => {
+      let preview_items = (item.preview_items || []).map((p, index) => {
         let thumb = p.thumb_url || p.gif_url || '';
         if (thumb && thumb.startsWith('/')) {
           thumb = `${app.globalData.baseURL}${thumb}`;
         }
-        return { ...p, thumb_url: thumb };
+        return {
+          ...p,
+          thumb_url: thumb,
+          // 后端历史数据可能缺少 id 或存在重复 id，索引保证预览条目不被 WXML 合并。
+          render_key: `${p.id || p.gif_url || 'preview'}-${index}`
+        };
       });
       return { ...item, cover_url: cover, preview_items };
     };

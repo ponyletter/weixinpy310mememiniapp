@@ -78,7 +78,7 @@ Page({
 
           // 处理条目图片绝对路径与极速缩略图 thumb_url
           const items = Array.isArray(col.items) ? col.items : [];
-          col.items = items.map(item => {
+          col.items = items.map((item, index) => {
             let fullUrl = item.gif_url || '';
             if (fullUrl.startsWith('/')) {
               fullUrl = `${app.globalData.baseURL}${fullUrl}`;
@@ -90,7 +90,9 @@ Page({
             return {
               ...item,
               full_url: fullUrl,
-              thumb_url: thumbUrl
+              thumb_url: thumbUrl,
+              // 即使历史条目缺少/重复 id，也必须让每条表情拥有独立的 WXML key。
+              render_key: `${item.id || item.gif_url || 'item'}-${index}`
             };
           });
           // 详情页以实际返回的完整条目为准，避免沿用列表摘要中的旧 item_count。

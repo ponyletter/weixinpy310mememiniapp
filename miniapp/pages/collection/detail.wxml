@@ -39,7 +39,7 @@
   <view wx:if="{{!detailLoading && !detailError}}" class="meme-grid">
     <view 
       wx:for="{{collection.items}}" 
-      wx:key="id" 
+      wx:key="render_key"
       class="meme-item card checkerboard-bg"
     >
       <image class="meme-img" src="{{item.thumb_url || item.full_url || item.gif_url}}" mode="aspectFit" bindtap="previewOrSave" data-url="{{item.full_url || item.gif_url}}" lazy-load="true"></image>

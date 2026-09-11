@@ -63,7 +63,7 @@
 
       <!-- 表情包内容预览条 (直观展示合集内包含的表情条目) -->
       <view class="col-preview-strip" wx:if="{{item.preview_items && item.preview_items.length > 0}}">
-        <view wx:for="{{item.preview_items}}" wx:for-item="p" wx:key="id" class="mini-thumb-pill">
+        <view wx:for="{{item.preview_items}}" wx:for-item="p" wx:key="render_key" class="mini-thumb-pill">
           <image class="mini-thumb-img" src="{{p.thumb_url || p.gif_url}}" mode="aspectFit" lazy-load="true"></image>
           <text class="mini-thumb-label">{{p.title}}</text>
         </view>
@@ -105,7 +105,7 @@
 
       <!-- 表情包内容预览条 (直观展示合集内包含的表情条目) -->
       <view class="col-preview-strip" wx:if="{{item.preview_items && item.preview_items.length > 0}}">
-        <view wx:for="{{item.preview_items}}" wx:for-item="p" wx:key="id" class="mini-thumb-pill">
+        <view wx:for="{{item.preview_items}}" wx:for-item="p" wx:key="render_key" class="mini-thumb-pill">
           <image class="mini-thumb-img" src="{{p.thumb_url || p.gif_url}}" mode="aspectFit" lazy-load="true"></image>
           <text class="mini-thumb-label">{{p.title}}</text>
         </view>
