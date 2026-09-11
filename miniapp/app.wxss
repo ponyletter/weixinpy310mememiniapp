@@ -1,7 +1,7 @@
 /** app.wxss 全局清爽现代白风格 (iOS/微信原生质感) **/
 page {
-  background-color: #f6f8fb;
-  color: #1e293b;
+  background: linear-gradient(180deg, #f7f7ff 0, #f7f9fc 360rpx, #f4f6fa 100%);
+  color: #172033;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
@@ -13,7 +13,7 @@ view, text, image, input, button, scroll-view {
 
 /* 常用主容器 (间距开阔，不拥挤) */
 .container {
-  padding: 24rpx 28rpx;
+  padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom));
   min-height: 100vh;
 }
 
@@ -21,10 +21,90 @@ view, text, image, input, button, scroll-view {
 .card {
   background: #ffffff;
   border: 1rpx solid #edf2f7;
-  border-radius: 24rpx;
+  border-radius: 28rpx;
   padding: 28rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.04);
+  box-shadow: 0 10rpx 32rpx rgba(36, 42, 73, 0.055);
+}
+
+button {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+button::after {
+  border: 0;
+}
+
+.page-heading {
+  padding: 10rpx 4rpx 26rpx;
+}
+
+.page-heading-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.page-eyebrow {
+  display: block;
+  color: #6457d9;
+  font-size: 21rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  margin-bottom: 8rpx;
+}
+
+.page-title {
+  display: block;
+  color: #172033;
+  font-size: 44rpx;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -1rpx;
+}
+
+.page-subtitle {
+  display: block;
+  color: #727b91;
+  font-size: 24rpx;
+  line-height: 1.55;
+  margin-top: 10rpx;
+}
+
+.step-strip {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 22rpx;
+}
+
+.step-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  min-height: 54rpx;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1rpx solid #e8e8f3;
+  border-radius: 16rpx;
+  color: #6b7280;
+  font-size: 21rpx;
+}
+
+.step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30rpx;
+  height: 30rpx;
+  border-radius: 50%;
+  background: #eceaff;
+  color: #5b50c7;
+  font-size: 18rpx;
+  font-weight: 800;
 }
 
 /* Tkinter 风格 CSS Grid 栅格布局系统 */
@@ -48,17 +128,17 @@ view, text, image, input, button, scroll-view {
 
 /* 渐变高亮按钮 (科技蓝紫，清爽克制) */
 .btn-primary {
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  background: linear-gradient(135deg, #6c5ce7 0%, #5145cd 100%);
   color: #ffffff;
   font-weight: 600;
   font-size: 30rpx;
-  border-radius: 18rpx;
+  border-radius: 20rpx;
   border: none;
   padding: 24rpx 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6rpx 20rpx rgba(79, 70, 229, 0.25);
+  box-shadow: 0 10rpx 24rpx rgba(92, 78, 210, 0.24);
   transition: all 0.2s ease;
   white-space: nowrap;
 }
@@ -66,6 +146,11 @@ view, text, image, input, button, scroll-view {
 .btn-primary:active {
   opacity: 0.92;
   transform: scale(0.99);
+}
+
+.btn-primary[disabled], .btn-secondary[disabled] {
+  opacity: 0.55;
+  box-shadow: none;
 }
 
 .btn-secondary {
@@ -108,13 +193,50 @@ input {
 
 /* 通用标题风格 */
 .section-title {
-  font-size: 30rpx;
+  font-size: 31rpx;
   font-weight: 700;
   color: #0f172a;
   margin-bottom: 18rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.section-kicker {
+  display: block;
+  color: #8b93a7;
+  font-size: 21rpx;
+  line-height: 1.5;
+  margin-top: -10rpx;
+  margin-bottom: 20rpx;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 360rpx;
+  padding: 48rpx 32rpx;
+  text-align: center;
+}
+
+.empty-state-icon {
+  font-size: 72rpx;
+  margin-bottom: 18rpx;
+}
+
+.empty-state-title {
+  color: #273149;
+  font-size: 29rpx;
+  font-weight: 700;
+}
+
+.empty-state-desc {
+  color: #8991a4;
+  font-size: 23rpx;
+  line-height: 1.55;
+  margin-top: 8rpx;
 }
 
 .section-sub {
@@ -189,12 +311,16 @@ input {
   max-width: 650rpx;
   max-height: 85vh;
   background: #ffffff;
-  border-radius: 28rpx;
+  border-radius: 32rpx;
   padding: 36rpx;
   box-shadow: 0 20rpx 50rpx rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+input:focus, textarea:focus {
+  border-color: #8d82eb;
 }
 
 .modal-header {
@@ -221,4 +347,3 @@ input {
   display: flex;
   gap: 20rpx;
 }
-

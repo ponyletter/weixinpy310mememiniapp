@@ -5,6 +5,24 @@
   border: 1rpx solid #edf2f7;
 }
 
+.order-notice {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 20rpx 24rpx;
+  color: #526078;
+  font-size: 23rpx;
+}
+
+.notice-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #28b67a;
+  box-shadow: 0 0 0 8rpx rgba(40, 182, 122, 0.12);
+  flex-shrink: 0;
+}
+
 .hero-title {
   font-size: 30rpx;
   font-weight: 700;
@@ -22,6 +40,10 @@
   padding: 28rpx;
   margin-bottom: 20rpx;
   border: 1rpx solid #edf2f7;
+}
+
+.order-card:active {
+  background: #fdfdff;
 }
 
 .order-row {
@@ -51,6 +73,10 @@
 
 .val {
   color: #334155;
+  max-width: 68%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .font-mono {

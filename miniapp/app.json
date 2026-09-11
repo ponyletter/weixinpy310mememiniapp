@@ -11,7 +11,7 @@
   "window": {
     "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#ffffff",
-    "navigationBarTitleText": "GIF表情包制作工具",
+    "navigationBarTitleText": "动态表情工坊",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f8fafc"
   },
@@ -23,11 +23,11 @@
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "创意制作"
+        "text": "制作"
       },
       {
         "pagePath": "pages/remix/remix",
-        "text": "极速二创"
+        "text": "二创"
       },
       {
         "pagePath": "pages/collection/collection",

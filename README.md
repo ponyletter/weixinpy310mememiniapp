@@ -36,17 +36,37 @@
 
 ## 快速开始
 
-### 1. 激活 Conda 环境
+### 1. 安装依赖并配置环境
 ```bash
 conda activate weixinpy310mememiniapp
+python -m pip install -r backend/requirements.txt
+cp .env.example .env
+# 编辑 .env，填入已轮换的真实凭据；.env 已被 Git 忽略
 ```
 
-### 2. 启动本地/服务端 H5 测试服务
+生产环境保持 `DEBUG=false` 和 `ENABLE_MOCK_PAYMENT=false`。`JWT_SECRET` 可通过
+`openssl rand -hex 32` 生成；缺少关键配置时，服务会拒绝启动，避免以不安全默认值上线。
+
+支付回调必须先经过可信网关验证微信平台身份，再由网关添加
+`X-XPay-Callback-Token` 请求头；该值需与 `.env` 中的 `XPAY_CALLBACK_TOKEN` 一致。
+
+### 2. 启动服务
 ```bash
 cd backend
 python run.py
-# 访问 http://localhost:8290 或公网 IP:8290 测试 GIF 切割与去底预览
+# DEBUG=true 时可访问 http://localhost:8290 使用 H5 调试控制台
 ```
+
+### 3. 运行检查
+
+```bash
+cd backend
+python -m pip install -r requirements-dev.txt
+python -m ruff check .
+python -m pytest -q
+```
+
+测试使用临时 SQLite 数据库和临时文件目录，不会修改正式用户数据。
 
 ---
 
@@ -72,4 +92,3 @@ weixinpy310mememiniapp/
 ├── .env.example                      # 环境变量模板
 └── README.md                         # 项目说明
 ```
-

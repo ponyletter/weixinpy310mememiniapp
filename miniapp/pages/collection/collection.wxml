@@ -1,29 +1,37 @@
 <view class="container">
+  <view class="page-heading page-heading-row collection-heading">
+    <view>
+      <text class="page-eyebrow">我的收藏</text>
+      <text class="page-title">表情合集</text>
+      <text class="page-subtitle">分类整理，一次分享一整套。</text>
+    </view>
+    <button class="btn-create" bindtap="openCreateModal">＋ 新建</button>
+  </view>
   <!-- 顶部模式切换与创建按钮 -->
   <view class="header-row">
     <view class="col-tabs">
       <view class="col-tab {{activeTab === 'my' ? 'active' : ''}}" bindtap="switchTab" data-tab="my">
-        📂 我的合集 ({{myCollections.length}})
+        我的合集 {{myCollections.length}}
       </view>
       <view class="col-tab {{activeTab === 'explore' ? 'active' : ''}}" bindtap="switchTab" data-tab="explore">
-        🔥 精选广场
+        精选推荐
       </view>
     </view>
-    <button class="btn-create" bindtap="openCreateModal">＋ 新建合集</button>
   </view>
 
   <!-- 提示条：合集分享价值 -->
   <view class="tip-bar">
     <text class="tip-icon">✨</text>
-    <text class="tip-text">把表情归类成合集，支持以卡片一键打包分享给微信群友！</text>
+    <text class="tip-text">点开合集即可预览、保存或分享给好友。</text>
   </view>
 
   <!-- 我的合集列表 -->
   <view wx:if="{{activeTab === 'my'}}" class="collection-list">
-    <view wx:if="{{myCollections.length === 0}}" class="empty-box card">
-      <text class="empty-icon">🗂️</text>
-      <text class="empty-text">你还没有创建表情包合集</text>
-      <button class="btn-secondary" style="margin-top: 20rpx;" bindtap="openCreateModal">立即创建第一个合集</button>
+    <view wx:if="{{myCollections.length === 0}}" class="empty-state card">
+      <text class="empty-state-icon">🗂️</text>
+      <text class="empty-state-title">还没有合集</text>
+      <text class="empty-state-desc">创建一个分类，把喜欢的表情收进来。</text>
+      <button class="btn-primary empty-action" bindtap="openCreateModal">创建第一个合集</button>
     </view>
 
     <view 
@@ -40,7 +48,7 @@
           <view class="col-desc">{{item.description || '精选表情收纳合集'}}</view>
           <view class="col-meta">
             <text class="badge badge-blue">{{item.item_count}} 个表情</text>
-            <text class="view-num">👁️ {{item.view_count}} 浏览</text>
+            <text class="view-num">{{item.view_count}} 次浏览</text>
           </view>
         </view>
         <view class="col-actions" catchtap="stopBubble">
@@ -65,6 +73,12 @@
 
   <!-- 广场精选合集 -->
   <view wx:if="{{activeTab === 'explore'}}" class="collection-list">
+    <view wx:if="{{exploreCollections.length === 0}}" class="empty-state card">
+      <text class="empty-state-icon">✨</text>
+      <text class="empty-state-title">精选合集正在准备中</text>
+      <text class="empty-state-desc">先去制作一张属于自己的动态表情吧。</text>
+      <button class="btn-primary empty-action" bindtap="goToMake">去制作</button>
+    </view>
     <view 
       wx:for="{{exploreCollections}}" 
       wx:key="collection_id" 
@@ -79,7 +93,7 @@
           <view class="col-desc">{{item.description || '热门推荐合集'}}</view>
           <view class="col-meta">
             <text class="badge badge-green">{{item.item_count}} 个表情</text>
-            <text class="view-num">🔥 推荐</text>
+            <text class="view-num">官方推荐</text>
           </view>
         </view>
         <view class="col-actions" catchtap="stopBubble">
@@ -102,22 +116,22 @@
   <!-- 创建合集弹窗 -->
   <view wx:if="{{showCreateModal}}" class="modal-mask">
     <view class="modal-card card">
-      <view class="modal-title">新建表情包合集</view>
+      <view class="modal-title">新建合集</view>
       <input 
         class="form-input modal-input" 
-        placeholder="如: 打工人周一发疯系列、情侣互怼" 
+        placeholder="给合集起个名字"
         value="{{newTitle}}" 
         bindinput="onInputTitle" 
       />
       <input 
         class="form-input modal-input" 
-        placeholder="合集描述(选填)" 
+        placeholder="简单介绍一下（选填）"
         value="{{newDesc}}" 
         bindinput="onInputDesc" 
       />
       <view class="modal-actions">
         <button class="btn-secondary" style="flex: 1;" bindtap="closeCreateModal">取消</button>
-        <button class="btn-primary" style="flex: 1;" bindtap="submitCreateCollection">确定创建</button>
+        <button class="btn-primary" style="flex: 1;" bindtap="submitCreateCollection">创建</button>
       </view>
     </view>
   </view>

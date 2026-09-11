@@ -4,6 +4,7 @@ App({
     baseURL: 'https://meme.tg-cc755.cn',
     userInfo: null,
     openid: '',
+    accessToken: '',
     quota: 0,
     isVip: false,
     inviterCode: '',
@@ -25,6 +26,19 @@ App({
 
   setGifConfig(cfg) {
     wx.setStorageSync('gif_config', cfg);
+  },
+
+  authHeader(extraHeader) {
+    const token = this.globalData.accessToken || wx.getStorageSync('access_token');
+    return Object.assign({}, extraHeader || {}, token ? { Authorization: `Bearer ${token}` } : {});
+  },
+
+  request(options) {
+    return wx.request(Object.assign({}, options, { header: this.authHeader(options.header) }));
+  },
+
+  uploadFile(options) {
+    return wx.uploadFile(Object.assign({}, options, { header: this.authHeader(options.header) }));
   },
 
   onLaunch(options) {
@@ -54,8 +68,10 @@ App({
     const that = this;
     // 优先从缓存读取 openid
     const cachedOpenid = wx.getStorageSync('openid');
-    if (cachedOpenid) {
+    const cachedToken = wx.getStorageSync('access_token');
+    if (cachedOpenid && cachedToken) {
       that.globalData.openid = cachedOpenid;
+      that.globalData.accessToken = cachedToken;
       that.fetchUserProfile(cachedOpenid, callback);
     }
 
@@ -76,7 +92,9 @@ App({
                 that.globalData.userInfo = user;
                 that.globalData.quota = (user.free_quota || 0) + (user.purchased_quota || 0);
                 that.globalData.isVip = user.is_vip === 1;
+                that.globalData.accessToken = loginRes.data.access_token;
                 wx.setStorageSync('openid', user.openid);
+                wx.setStorageSync('access_token', loginRes.data.access_token);
                 if (callback) callback(user);
               }
             },
@@ -99,7 +117,7 @@ App({
       });
       return;
     }
-    wx.request({
+    that.request({
       url: `${that.globalData.baseURL}/api/user/profile?openid=${targetOpenid}`,
       method: 'GET',
       success: (res) => {
@@ -148,7 +166,7 @@ App({
       });
     } else {
       // 沙箱测试模拟
-      wx.request({
+      that.request({
         url: `${that.globalData.baseURL}/api/pay/mock-pay`,
         method: 'POST',
         data: { order_id: order_id },
@@ -179,7 +197,7 @@ App({
     that.globalData.openid = openid;
 
     wx.showLoading({ title: '创建订单...' });
-    wx.request({
+    that.request({
       url: `${that.globalData.baseURL}/api/pay/create-order`,
       method: 'POST',
       data: {
@@ -212,7 +230,7 @@ App({
     }
 
     wx.showLoading({ title: '唤起收银台...' });
-    wx.request({
+    that.request({
       url: `${that.globalData.baseURL}/api/pay/repay-order`,
       method: 'POST',
       data: {
@@ -246,7 +264,7 @@ App({
     }
 
     wx.showLoading({ title: '正在取消...' });
-    wx.request({
+    that.request({
       url: `${that.globalData.baseURL}/api/pay/cancel-order`,
       method: 'POST',
       data: {

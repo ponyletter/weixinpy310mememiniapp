@@ -1,7 +1,6 @@
 import asyncio
 import io
 import base64
-import os
 import sys
 from pathlib import Path
 from PIL import Image

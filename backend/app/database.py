@@ -1,7 +1,5 @@
-import os
 import sqlite3
 import datetime
-import time
 import uuid
 from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
@@ -373,6 +371,7 @@ def user_daily_checkin(openid: str) -> Dict[str, Any]:
     today_str = datetime.date.today().isoformat()
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("BEGIN IMMEDIATE")
         cursor.execute("SELECT last_checkin_date, free_quota, purchased_quota FROM users WHERE openid = ?", (openid,))
         row = cursor.fetchone()
         if not row:
@@ -403,6 +402,7 @@ def redeem_coupon(openid: str, code: str) -> Dict[str, Any]:
     code = code.strip().upper()
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("BEGIN IMMEDIATE")
 
         # 1. 检查是否输入的是用户自己的邀请码
         cursor.execute("SELECT invite_code, invited_by, free_quota, purchased_quota FROM users WHERE openid = ?", (openid,))
@@ -434,7 +434,7 @@ def redeem_coupon(openid: str, code: str) -> Dict[str, Any]:
             }
 
         # 3. 检查常规活动兑换码
-        cursor.execute("SELECT * FROM coupons WHERE code = ? AND is_active = 1", (code,))
+        cursor.execute("SELECT * FROM coupons WHERE code = ? AND is_active = 1 AND used_count < max_uses", (code,))
         coupon = cursor.fetchone()
         if not coupon:
             return {"success": False, "error": "兑换码或邀请码不存在或已失效"}
@@ -462,36 +462,41 @@ def check_and_deduct_quota(openid: str) -> Dict[str, Any]:
     """扣减 1 次制作额度 (优先扣免费，再扣购买)"""
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("BEGIN IMMEDIATE")
         cursor.execute("SELECT free_quota, purchased_quota, is_vip, total_generated FROM users WHERE openid = ?", (openid,))
         row = cursor.fetchone()
         if not row:
-            # 临时/未登录用户默认允许生成（开发模式兼容）
-            return {"allowed": True, "remaining_quota": 999}
+            return {"allowed": False, "remaining_quota": 0, "error": "用户不存在，请重新登录"}
         
-        free_q, paid_q, is_vip, total_gen = row[0], row[1], row[2], row[3]
+        free_q, paid_q, is_vip = row[0], row[1], row[2]
         if is_vip:
             cursor.execute("UPDATE users SET total_generated = total_generated + 1 WHERE openid = ?", (openid,))
             conn.commit()
-            return {"allowed": True, "is_vip": True, "remaining_quota": 999}
+            return {"allowed": True, "is_vip": True, "remaining_quota": 999, "deducted_from": "vip"}
 
         if free_q > 0:
             cursor.execute("UPDATE users SET free_quota = free_quota - 1, total_generated = total_generated + 1 WHERE openid = ?", (openid,))
             conn.commit()
-            return {"allowed": True, "remaining_quota": (free_q - 1 + paid_q)}
+            return {"allowed": True, "remaining_quota": (free_q - 1 + paid_q), "deducted_from": "free"}
         elif paid_q > 0:
             cursor.execute("UPDATE users SET purchased_quota = purchased_quota - 1, total_generated = total_generated + 1 WHERE openid = ?", (openid,))
             conn.commit()
-            return {"allowed": True, "remaining_quota": (paid_q - 1)}
+            return {"allowed": True, "remaining_quota": (paid_q - 1), "deducted_from": "purchased"}
         else:
             return {"allowed": False, "remaining_quota": 0, "error": "可用制作次数已耗尽，请签到领取或开通超值尝鲜包！"}
 
-def refund_quota(openid: str):
+def refund_quota(openid: str, deducted_from: str = "free"):
     """若生成失败，自动返还 1 次额度"""
     if not openid:
         return
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE users SET free_quota = free_quota + 1 WHERE openid = ?", (openid,))
+        if deducted_from == "vip":
+            cursor.execute("UPDATE users SET total_generated = MAX(0, total_generated - 1) WHERE openid = ?", (openid,))
+        elif deducted_from == "purchased":
+            cursor.execute("UPDATE users SET purchased_quota = purchased_quota + 1, total_generated = MAX(0, total_generated - 1) WHERE openid = ?", (openid,))
+        else:
+            cursor.execute("UPDATE users SET free_quota = free_quota + 1, total_generated = MAX(0, total_generated - 1) WHERE openid = ?", (openid,))
         conn.commit()
 
 # --- 道具与订单 ---
@@ -505,7 +510,7 @@ def get_packages() -> List[Dict[str, Any]]:
 def get_package_by_id(pkg_id: str) -> Optional[Dict[str, Any]]:
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM packages WHERE package_id = ?", (pkg_id,))
+        cursor.execute("SELECT * FROM packages WHERE package_id = ? AND is_active = 1", (pkg_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
 
@@ -528,6 +533,7 @@ def update_order_trade_no(order_id: str, trade_no: str):
 def mark_order_paid(trade_or_order_id: str, wx_order_id: str = "") -> bool:
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("BEGIN IMMEDIATE")
         # 1. 优先按主订单号查询
         cursor.execute("SELECT * FROM orders WHERE order_id = ?", (trade_or_order_id,))
         order = cursor.fetchone()
@@ -547,12 +553,16 @@ def mark_order_paid(trade_or_order_id: str, wx_order_id: str = "") -> bool:
             return False
         if order['status'] == 'PAID':
             return True
+        if order['status'] != 'PENDING':
+            return False
 
         real_order_id = order['order_id']
         cursor.execute('''
             UPDATE orders SET status = 'PAID', wx_order_id = ?, pay_time = CURRENT_TIMESTAMP
-            WHERE order_id = ?
+            WHERE order_id = ? AND status = 'PENDING'
         ''', (wx_order_id, real_order_id))
+        if cursor.rowcount != 1:
+            return False
 
         openid = order['openid']
         quota_reward = order['quota_reward']
@@ -671,9 +681,17 @@ def delete_meme_task(task_id: str, openid: str = "") -> bool:
         conn.commit()
     return True
 
-def add_item_to_collection(collection_id: str, gif_url: str, title: str = "") -> Dict[str, Any]:
+def add_item_to_collection(collection_id: str, gif_url: str, title: str = "", openid: str = "") -> Dict[str, Any]:
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("SELECT openid, is_public FROM collections WHERE collection_id = ?", (collection_id,))
+        collection = cursor.fetchone()
+        if not collection:
+            raise HTTPException(status_code=404, detail="合集不存在")
+        if collection["is_public"] == 1 or collection["openid"] in ("official", "system"):
+            raise HTTPException(status_code=403, detail="不能修改官方合集")
+        if not openid or collection["openid"] != openid:
+            raise HTTPException(status_code=403, detail="无权修改该合集")
         cursor.execute('''
             INSERT INTO collection_items (collection_id, gif_url, title)
             VALUES (?, ?, ?)
@@ -733,7 +751,7 @@ def get_user_collections(openid: str) -> List[Dict[str, Any]]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT c.*
+            SELECT c.*, (SELECT COUNT(*) FROM collection_items ci WHERE ci.collection_id = c.collection_id) AS item_count
             FROM collections c
             WHERE c.openid = ?
             ORDER BY c.created_at ASC
@@ -752,7 +770,6 @@ def get_user_collections(openid: str) -> List[Dict[str, Any]]:
             for it in items:
                 it["thumb_url"] = get_fast_thumb_url(it.get("gif_url") or "")
             c["preview_items"] = items
-            c["item_count"] = len(items)
 
         # 如果用户尚未拥有合集，自动创建默认专属合集并返回，无需手动点击新建
         if not cols and openid:
@@ -780,7 +797,7 @@ def get_public_collections(limit: int = 15) -> List[Dict[str, Any]]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT c.*
+            SELECT c.*, (SELECT COUNT(*) FROM collection_items ci WHERE ci.collection_id = c.collection_id) AS item_count
             FROM collections c
             WHERE c.is_public = 1 AND (c.openid = 'official' OR c.openid = 'system')
             ORDER BY c.view_count DESC, c.created_at DESC
@@ -800,6 +817,4 @@ def get_public_collections(limit: int = 15) -> List[Dict[str, Any]]:
             for it in items:
                 it["thumb_url"] = get_fast_thumb_url(it.get("gif_url") or "")
             c["preview_items"] = items
-            # 严格以数据库中实际关联条目数为准
-            c["item_count"] = len(items)
         return cols

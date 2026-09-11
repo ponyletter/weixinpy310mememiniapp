@@ -2,11 +2,11 @@
   <!-- 顶部精简操作栏 -->
   <view class="editor-nav-bar">
     <view class="nav-left-actions">
-      <view class="action-btn-sm" bindtap="undo">↩ 撤销</view>
-      <view class="action-btn-sm btn-clear" bindtap="clearAll">🗑️ 清空</view>
+      <view class="action-btn-sm" bindtap="undo">撤销</view>
+      <view class="action-btn-sm btn-clear" bindtap="clearAll">清空</view>
     </view>
     <view class="nav-right-actions">
-      <button class="btn-save-apply" bindtap="finishAndApply">✅ 完成并应用</button>
+      <button class="btn-save-apply" bindtap="finishAndApply">完成编辑</button>
     </view>
   </view>
 
@@ -24,8 +24,8 @@
       ></canvas>
     </view>
     <view class="canvas-tip">
-      <text wx:if="{{!isBrushActive}}">💡 点击贴纸可拖动、右下角缩放、右上角红点删除</text>
-      <text wx:else style="color: #ef4444; font-weight: 600;">🖌️ 涂鸦模式已开启：在画布上任意手绘涂鸦</text>
+      <text wx:if="{{!isBrushActive}}">选中元素后可拖动、缩放或旋转</text>
+      <text wx:else style="color: #ef4444; font-weight: 600;">涂鸦模式已开启，直接在画布上绘制</text>
     </view>
   </view>
 
@@ -67,16 +67,16 @@
     <!-- 功能分类 Tab 栏 -->
     <view class="feature-tabs">
       <view class="f-tab {{activeTab === 'sticker' ? 'active' : ''}}" bindtap="switchTab" data-tab="sticker">
-        😀 贴纸
+        <text>😀</text><text>贴纸</text>
       </view>
       <view class="f-tab {{activeTab === 'text' ? 'active' : ''}}" bindtap="switchTab" data-tab="text">
-        🔤 文字
+        <text>文字</text>
       </view>
       <view class="f-tab {{activeTab === 'shape' ? 'active' : ''}}" bindtap="switchTab" data-tab="shape">
-        💬 形状/气泡
+        <text>💬</text><text>气泡</text>
       </view>
       <view class="f-tab {{activeTab === 'brush' ? 'active' : ''}}" bindtap="switchTab" data-tab="brush">
-        🖌️ 涂鸦
+        <text>画笔</text>
       </view>
     </view>
 
@@ -87,7 +87,7 @@
           常用表情
         </view>
         <view class="sub-tab {{stickerCategory === 'badge' ? 'active' : ''}}" bindtap="switchStickerCategory" data-cat="badge">
-          爆笑梗图徽章
+          文字徽章
         </view>
       </view>
 
@@ -125,9 +125,9 @@
     <!-- Tab 内容 2: 文字面板 -->
     <view wx:if="{{activeTab === 'text'}}" class="panel-content">
       <view class="text-panel-header">
-        <button class="btn-primary btn-add-text" bindtap="openTextModal">＋ 输入自定义表情台词</button>
+        <button class="btn-primary btn-add-text" bindtap="openTextModal">＋ 添加文字</button>
       </view>
-      <view class="quick-text-title">快速插入经典金句：</view>
+      <view class="quick-text-title">常用短句</view>
       <scroll-view scroll-x class="quick-text-scroll">
         <view class="quick-text-list">
           <view class="quick-text-chip" bindtap="addBadge" data-text="破防了家人">破防了家人</view>
@@ -166,7 +166,7 @@
     <view wx:if="{{activeTab === 'brush'}}" class="panel-content">
       <view class="brush-toggle-row">
         <button class="btn-brush-state {{isBrushActive ? 'active' : ''}}" bindtap="toggleBrushMode">
-          {{isBrushActive ? '🖌️ 涂鸦中 (点击退出)' : '✏️ 点击开启手绘涂鸦'}}
+          {{isBrushActive ? '正在绘制 · 点击结束' : '开始涂鸦'}}
         </button>
         <button class="btn-xs" bindtap="clearBrush">清空涂鸦</button>
       </view>
@@ -196,14 +196,14 @@
   <view wx:if="{{showTextModal}}" class="modal-mask" bindtap="closeTextModal">
     <view class="modal-card text-modal-card" catchtap="true">
       <view class="modal-header">
-        <text class="modal-title">添加表情包字幕</text>
+        <text class="modal-title">添加文字</text>
         <text class="btn-close-icon" bindtap="closeTextModal">✕</text>
       </view>
 
       <view class="text-input-wrap">
         <input
           class="form-input text-modal-input"
-          placeholder="如: 笑死、安排、老板听我解释"
+          placeholder="输入一句话"
           value="{{textInputVal}}"
           bindinput="onTextInput"
           maxlength="20"
@@ -213,7 +213,7 @@
 
       <!-- 样式选择：字号与描边 -->
       <view class="text-option-row">
-        <text class="opt-label">字号:</text>
+        <text class="opt-label">字号</text>
         <view class="size-group">
           <view class="size-chip {{textSize === 22 ? 'active' : ''}}" bindtap="setTextSize" data-size="22">小</view>
           <view class="size-chip {{textSize === 28 ? 'active' : ''}}" bindtap="setTextSize" data-size="28">中</view>
@@ -223,15 +223,15 @@
       </view>
 
       <view class="text-option-row">
-        <text class="opt-label">效果:</text>
+        <text class="opt-label">描边</text>
         <view class="size-chip {{textHasOutline ? 'active' : ''}}" bindtap="toggleTextOutline">
-          {{textHasOutline ? '✅ 经典黑描边 (清晰)' : '无描边'}}
+          {{textHasOutline ? '黑色描边' : '无描边'}}
         </view>
       </view>
 
       <!-- 字体颜色选择器 -->
       <view class="text-option-row">
-        <text class="opt-label">颜色:</text>
+        <text class="opt-label">颜色</text>
         <view class="brush-colors">
           <view
             wx:for="{{availableColors}}"

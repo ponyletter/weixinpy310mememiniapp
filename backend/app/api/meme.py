@@ -1,4 +1,6 @@
-import os
+import logging
+import re
+import asyncio
 import uuid
 import shutil
 from pathlib import Path
@@ -11,9 +13,12 @@ from app.core.sprite_processor import SpriteProcessor
 from app.core.prompt_templates import PROMPT_TEMPLATES
 from app.core.wechat_service import WeChatService
 from app.database import check_and_deduct_quota, refund_quota, get_db, delete_meme_task
+from app.security import CurrentOpenid, require_same_user
+from app.upload_utils import open_validated_image, read_limited_upload
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api", tags=["Meme GIF"])
+logger = logging.getLogger(__name__)
 
 @router.get("/templates")
 def get_templates():
@@ -59,6 +64,7 @@ def build_prompt(
 
 @router.post("/process-sprite")
 async def process_sprite_sheet(
+    current_openid: CurrentOpenid,
     file: Optional[UploadFile] = File(None),
     sample_id: Optional[str] = Form(None),
     fps: int = Form(8),
@@ -66,18 +72,23 @@ async def process_sprite_sheet(
     padding_percent: float = Form(2.5),
 ):
     """处理已有的 4x4 雪碧图：多尺度间隙切割 + 泛洪去白底 + 微信合规动图合成"""
-    task_id = str(uuid.uuid4())[:8]
+    task_id = uuid.uuid4().hex
     task_dir = settings.OUTPUT_DIR / task_id
     task_dir.mkdir(parents=True, exist_ok=True)
 
     input_path = task_dir / "input_sprite.png"
 
+    if not 1 <= fps <= 30 or not 0 <= padding_percent <= 20:
+        raise HTTPException(status_code=400, detail="fps 或边距参数超出允许范围")
+
     # 获取输入图像
     if file and file.filename:
-        with open(input_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        source_image = Image.open(input_path).convert("RGB")
+        image_bytes = await read_limited_upload(file, settings.MAX_IMAGE_UPLOAD_MB)
+        source_image = open_validated_image(image_bytes, allow_animation=False).convert("RGB")
+        source_image.save(input_path, format="PNG")
     elif sample_id:
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", sample_id):
+            raise HTTPException(status_code=400, detail="样本 ID 不合法")
         sample_path = settings.SAMPLES_DIR / f"{sample_id}.png"
         if not sample_path.exists():
             png_list = list(settings.SAMPLES_DIR.glob("*.png"))
@@ -90,11 +101,18 @@ async def process_sprite_sheet(
         raise HTTPException(status_code=400, detail="请上传文件或选择有效样本")
 
     # 1. 执行多尺度主间隙网格切割与紧致裁剪
-    frames = SpriteProcessor.slice_grid(source_image, rows=4, cols=4, padding_percent=padding_percent)
+    frames = await asyncio.to_thread(
+        SpriteProcessor.slice_grid,
+        source_image,
+        rows=4,
+        cols=4,
+        padding_percent=padding_percent,
+    )
 
     # 2. 生成透明动图 GIF (完美保留原画原生字幕)
     gif_path = task_dir / "meme_result.gif"
-    stats = SpriteProcessor.assemble_gif(
+    stats = await asyncio.to_thread(
+        SpriteProcessor.assemble_gif,
         frames=frames,
         output_path=str(gif_path),
         fps=fps,
@@ -103,7 +121,8 @@ async def process_sprite_sheet(
 
     # 3. 生成 16 帧独立 PNG ZIP 包
     zip_path = task_dir / "frames_pack.zip"
-    SpriteProcessor.package_zip(
+    await asyncio.to_thread(
+        SpriteProcessor.package_zip,
         frames=frames,
         output_path=str(zip_path),
         make_transparent=make_transparent
@@ -137,6 +156,7 @@ async def process_sprite_sheet(
 
 @router.post("/generate-and-process")
 async def generate_and_process(
+    current_openid: CurrentOpenid,
     ref_image: Optional[UploadFile] = File(None),
     action_type: str = Form("kiss"),
     custom_caption: str = Form(""),
@@ -147,6 +167,7 @@ async def generate_and_process(
     padding_percent: float = Form(2.5),
 ):
     """一键调用 ChatGPT Plus (Images 2.5) 生成 16 宫格雪碧图，并直接切片制作成透明 GIF"""
+    raise HTTPException(status_code=410, detail="同步生成接口已停用，请使用 /api/generate-async")
     import io
     import base64
     import httpx
@@ -220,7 +241,7 @@ async def generate_and_process(
         raise HTTPException(status_code=502, detail="未能获取生成的图片数据")
 
     # 4. 初始化任务目录
-    task_id = str(uuid.uuid4())[:8]
+    task_id = uuid.uuid4().hex
     task_dir = settings.OUTPUT_DIR / task_id
     task_dir.mkdir(parents=True, exist_ok=True)
 
@@ -272,7 +293,6 @@ async def generate_and_process(
     }
 
 # 全局异步任务存储
-import asyncio
 TASK_STORE: dict[str, dict] = {}
 
 async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path):
@@ -282,8 +302,9 @@ async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path):
     如果是美区沙箱开发，则通过 scp 异步推送到国内腾讯云。
     """
     try:
-        local_target = Path(f"/var/www/outputs/{task_id}")
-        if Path("/var/www/outputs").exists():
+        local_root = Path(settings.OUTPUT_SYNC_LOCAL_DIR) if settings.OUTPUT_SYNC_LOCAL_DIR else None
+        local_target = local_root / task_id if local_root else None
+        if local_root and local_root.exists():
             local_target.mkdir(parents=True, exist_ok=True)
             import shutil
             for f in ["meme_result.gif", "thumb.jpg"]:
@@ -292,10 +313,13 @@ async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path):
                     shutil.copy2(str(p), str(local_target / f))
             return
 
-        remote_dest = f"81.69.190.161:/var/www/outputs/{task_id}/"
+        if not settings.OUTPUT_SYNC_HOST:
+            return
+        remote_dir = f"{settings.OUTPUT_SYNC_DIR.rstrip('/')}/{task_id}"
+        remote_dest = f"{settings.OUTPUT_SYNC_HOST}:{remote_dir}/"
         proc = await asyncio.create_subprocess_exec(
             "ssh", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes",
-            "81.69.190.161", f"mkdir -p /var/www/outputs/{task_id}"
+            settings.OUTPUT_SYNC_HOST, "mkdir", "-p", remote_dir
         )
         await proc.wait()
         
@@ -325,6 +349,7 @@ async def run_generate_pipeline(
     is_sketch: bool = False,
     openid: str = "",
     custom_action: str = "",
+    deducted_from: str = "free",
 ):
     """后台异步执行完整的生图、切割与动图合成流水线"""
     import io
@@ -335,6 +360,7 @@ async def run_generate_pipeline(
         # 阶段 1：组装提示词
         stage_desc = "阶段 1/4: 结合手绘草图造型与动作语义对齐..." if is_sketch else "阶段 1/4: 组装角色提示词与人设语义对齐..."
         TASK_STORE[task_id] = {
+            "openid": openid,
             "status": "processing",
             "progress": 10,
             "stage": "prompt",
@@ -347,6 +373,7 @@ async def run_generate_pipeline(
 
         # 阶段 2：请求画质渲染引擎出图
         TASK_STORE[task_id] = {
+            "openid": openid,
             "status": "processing",
             "progress": 25,
             "stage": "drawing",
@@ -408,6 +435,7 @@ async def run_generate_pipeline(
 
         # 阶段 3：多尺度主间隙物理网格切割
         TASK_STORE[task_id] = {
+            "openid": openid,
             "status": "processing",
             "progress": 75,
             "stage": "slicing",
@@ -420,10 +448,17 @@ async def run_generate_pipeline(
         input_path = task_dir / "input_sprite.png"
         source_image.save(input_path, format="PNG")
 
-        frames = SpriteProcessor.slice_grid(source_image, rows=4, cols=4, padding_percent=padding_percent)
+        frames = await asyncio.to_thread(
+            SpriteProcessor.slice_grid,
+            source_image,
+            rows=4,
+            cols=4,
+            padding_percent=padding_percent,
+        )
 
         # 阶段 4：固定色差泛洪去底与动图生成
         TASK_STORE[task_id] = {
+            "openid": openid,
             "status": "processing",
             "progress": 90,
             "stage": "assembling",
@@ -431,7 +466,8 @@ async def run_generate_pipeline(
         }
 
         gif_path = task_dir / "meme_result.gif"
-        stats = SpriteProcessor.assemble_gif(
+        stats = await asyncio.to_thread(
+            SpriteProcessor.assemble_gif,
             frames=frames,
             output_path=str(gif_path),
             fps=fps,
@@ -439,7 +475,8 @@ async def run_generate_pipeline(
         )
 
         zip_path = task_dir / "frames_pack.zip"
-        SpriteProcessor.package_zip(
+        await asyncio.to_thread(
+            SpriteProcessor.package_zip,
             frames=frames,
             output_path=str(zip_path),
             make_transparent=make_transparent
@@ -463,6 +500,7 @@ async def run_generate_pipeline(
 
         # 完成
         TASK_STORE[task_id] = {
+            "openid": openid,
             "status": "completed",
             "progress": 100,
             "stage": "done",
@@ -487,9 +525,11 @@ async def run_generate_pipeline(
             try:
                 with get_db() as conn:
                     conn.execute('''
-                        INSERT INTO meme_tasks (task_id, openid, prompt, preset_key, text_bottom, fps, status, progress, gif_url, sprite_url)
-                        VALUES (?, ?, ?, ?, ?, ?, 'completed', 100, ?, ?)
-                    ''', (task_id, openid, prompt, action_type, custom_caption, fps, f"/outputs/{task_id}/meme_result.gif", f"/outputs/{task_id}/input_sprite.png"))
+                        UPDATE meme_tasks
+                        SET prompt = ?, preset_key = ?, text_bottom = ?, fps = ?, status = 'completed',
+                            progress = 100, gif_url = ?, sprite_url = ?, error_message = ''
+                        WHERE task_id = ? AND openid = ?
+                    ''', (prompt, action_type, custom_caption, fps, f"/outputs/{task_id}/meme_result.gif", f"/outputs/{task_id}/input_sprite.png", task_id, openid))
                     conn.commit()
             except Exception:
                 pass
@@ -515,18 +555,30 @@ async def run_generate_pipeline(
                 pass
 
     except Exception as e:
+        logger.exception("Meme generation task %s failed", task_id)
         if openid:
-            refund_quota(openid)
+            refund_quota(openid, deducted_from)
         TASK_STORE[task_id] = {
+            "openid": openid,
             "status": "failed",
             "progress": 100,
             "stage": "error",
             "stage_text": "出图失败",
-            "error": str(e)
+            "error": "生成服务暂时不可用，请稍后重试"
         }
+        try:
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE meme_tasks SET status = 'failed', progress = 100, error_message = ? WHERE task_id = ? AND openid = ?",
+                    (str(e)[:500], task_id, openid),
+                )
+                conn.commit()
+        except Exception:
+            pass
 
 @router.post("/generate-async")
 async def generate_async(
+    current_openid: CurrentOpenid,
     ref_image: Optional[UploadFile] = File(None),
     action_type: str = Form("kiss"),
     custom_caption: str = Form(""),
@@ -542,24 +594,47 @@ async def generate_async(
     loop_count: Optional[int] = Form(0),
 ):
     """【推荐】异步启动动图生图任务，前端通过轮询获取实时进度与结果，绝无 HTTP 超时问题"""
-    # 额度扣减审查 (支持游客体验或绑定 openid 扣点)
-    if openid:
-        quota_res = check_and_deduct_quota(openid)
-        if not quota_res.get("allowed"):
-            raise HTTPException(status_code=403, detail=quota_res.get("error", "制作次数已耗尽，请签到或开通尝鲜包！"))
-
-    task_id = str(uuid.uuid4())[:8]
+    authenticated_openid = require_same_user(openid, current_openid)
+    if not 1 <= fps <= 30 or not 0 <= padding_percent <= 20:
+        raise HTTPException(status_code=400, detail="fps 或边距参数超出允许范围")
+    if len(custom_caption) > 80 or len(character_desc) > 500 or len(custom_action or "") > 300:
+        raise HTTPException(status_code=400, detail="输入文字过长")
 
     ref_image_bytes = None
     if ref_image is not None and getattr(ref_image, "filename", None) not in [None, ""]:
-        ref_image_bytes = await ref_image.read()
+        ref_image_bytes = await read_limited_upload(ref_image, settings.MAX_IMAGE_UPLOAD_MB)
+        open_validated_image(ref_image_bytes, allow_animation=False)
+
+    quota_res = check_and_deduct_quota(authenticated_openid)
+    if not quota_res.get("allowed"):
+        raise HTTPException(status_code=403, detail=quota_res.get("error", "制作次数已耗尽，请签到或开通尝鲜包！"))
+
+    task_id = uuid.uuid4().hex
 
     TASK_STORE[task_id] = {
+        "openid": authenticated_openid,
         "status": "processing",
         "progress": 5,
         "stage": "init",
         "stage_text": "正在初始化任务..."
     }
+    if len(TASK_STORE) > 1000:
+        for old_task_id, old_task in list(TASK_STORE.items()):
+            if old_task_id != task_id and old_task.get("status") in ("completed", "failed"):
+                TASK_STORE.pop(old_task_id, None)
+                break
+
+    try:
+        with get_db() as conn:
+            conn.execute('''
+                INSERT INTO meme_tasks (task_id, openid, preset_key, text_bottom, fps, status, progress)
+                VALUES (?, ?, ?, ?, ?, 'processing', 5)
+            ''', (task_id, authenticated_openid, action_type, custom_caption, fps))
+            conn.commit()
+    except Exception:
+        refund_quota(authenticated_openid, quota_res.get("deducted_from", "free"))
+        TASK_STORE.pop(task_id, None)
+        raise
 
     # 启动后台协程
     asyncio.create_task(run_generate_pipeline(
@@ -572,8 +647,9 @@ async def generate_async(
         make_transparent=make_transparent,
         padding_percent=padding_percent,
         is_sketch=is_sketch,
-        openid=openid or "",
-        custom_action=custom_action or ""
+        openid=authenticated_openid,
+        custom_action=custom_action or "",
+        deducted_from=quota_res.get("deducted_from", "free"),
     ))
 
     return {
@@ -586,17 +662,28 @@ async def generate_async(
     }
 
 @router.get("/task-status/{task_id}")
-def get_task_status(task_id: str):
+def get_task_status(task_id: str, current_openid: CurrentOpenid):
     """查询异步任务的实时执行状态与进度"""
+    if not re.fullmatch(r"(?:[0-9a-f]{8}|[0-9a-f]{32})", task_id):
+        raise HTTPException(status_code=400, detail="任务 ID 不合法")
     # 先查内存
     if task_id in TASK_STORE:
         task_info = TASK_STORE[task_id]
+        if task_info.get("openid") != current_openid:
+            raise HTTPException(status_code=404, detail="任务不存在")
+        public_task_info = {key: value for key, value in task_info.items() if key != "openid"}
         return {
             "code": 0,
-            "data": task_info
+            "data": public_task_info
         }
 
     # 再查磁盘是否已有历史成果 (如 df4492bd 等)
+    with get_db() as conn:
+        owner = conn.execute(
+            "SELECT openid, status, progress FROM meme_tasks WHERE task_id = ?", (task_id,)
+        ).fetchone()
+    if not owner or owner["openid"] != current_openid:
+        raise HTTPException(status_code=404, detail="任务不存在")
     task_dir = settings.OUTPUT_DIR / task_id
     if (task_dir / "meme_result.gif").exists():
         frames_dir = task_dir / "frames"
@@ -621,6 +708,27 @@ def get_task_status(task_id: str):
             }
         }
 
+    if owner["status"] in ("processing", "pending"):
+        return {
+            "code": 0,
+            "data": {
+                "status": "processing",
+                "progress": owner["progress"],
+                "stage": "queued",
+                "stage_text": "任务正在处理中...",
+            },
+        }
+    if owner["status"] == "failed":
+        return {
+            "code": 0,
+            "data": {
+                "status": "failed",
+                "progress": 100,
+                "stage": "error",
+                "stage_text": "生成服务暂时不可用，请稍后重试",
+            },
+        }
+
     return {
         "code": 404,
         "message": "task_not_found"
@@ -641,10 +749,9 @@ def list_samples():
 
 @router.get("/history")
 @router.get("/meme/history")
-def list_history(openid: Optional[str] = None):
+def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
     """获取用户个人历史动图作品（私密个人创作，凭本人 openid 隔离获取）"""
-    if not openid or not openid.strip():
-        return {"code": 0, "data": []}
+    openid = require_same_user(openid, current_openid)
     with get_db() as conn:
         cursor = conn.cursor()
         # 绝不暴露 prompt 字段给前端，保障系统提示词与私密安全性
@@ -696,11 +803,10 @@ class DeleteMemeRequest(BaseModel):
 
 @router.post("/delete")
 @router.post("/meme/delete")
-def delete_meme(req: DeleteMemeRequest):
+def delete_meme(req: DeleteMemeRequest, current_openid: CurrentOpenid):
     """从历史创作库中删除指定动图"""
     if not req.task_id:
         raise HTTPException(status_code=400, detail="任务ID不能为空")
-    delete_meme_task(req.task_id, req.openid or "")
+    openid = require_same_user(req.openid, current_openid)
+    delete_meme_task(req.task_id, openid)
     return {"success": True, "message": "作品已从历史记录中删除"}
-
-

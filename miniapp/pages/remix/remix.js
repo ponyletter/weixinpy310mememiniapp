@@ -58,7 +58,7 @@ Page({
     this.setData({ isConverting: true });
     wx.showLoading({ title: '正在提取精彩动图...' });
 
-    wx.uploadFile({
+    app.uploadFile({
       url: `${app.globalData.baseURL}/api/convert/video-to-gif`,
       filePath: this.data.videoPath,
       name: 'video',
@@ -106,6 +106,13 @@ Page({
     });
   },
 
+  removeMultiImage(e) {
+    if (this.data.isConverting) return;
+    const index = Number(e.currentTarget.dataset.index);
+    const multiImages = this.data.multiImages.filter((_, itemIndex) => itemIndex !== index);
+    this.setData({ multiImages, remixResultUrl: '' });
+  },
+
   convertImagesToGif() {
     if (this.data.multiImages.length < 2) {
       wx.showToast({ title: '至少需要2张图片', icon: 'none' });
@@ -115,31 +122,49 @@ Page({
     this.setData({ isConverting: true });
     wx.showLoading({ title: '正在拼接连续动图...' });
 
-    // 多文件上传
-    wx.uploadFile({
-      url: `${app.globalData.baseURL}/api/convert/images-to-gif`,
-      filePath: this.data.multiImages[0],
-      name: 'files',
-      formData: {
-        caption: this.data.captionText,
-        fps: 4
-      },
-      success: (res) => {
+    // wx.uploadFile 每次只能发送一个本地文件：先并发暂存，再一次性合成。
+    const stageUploads = this.data.multiImages.map(filePath => new Promise((resolve, reject) => {
+      app.uploadFile({
+        url: `${app.globalData.baseURL}/api/convert/images-to-gif/frame`,
+        filePath: filePath,
+        name: 'file',
+        success: (res) => {
+          try {
+            const data = JSON.parse(res.data);
+            if (res.statusCode === 200 && data.upload_id) resolve(data.upload_id);
+            else reject(new Error(data.detail || '图片上传失败'));
+          } catch (err) { reject(err); }
+        },
+        fail: reject
+      });
+    }));
+
+    Promise.all(stageUploads).then(uploadIds => {
+      app.request({
+        url: `${app.globalData.baseURL}/api/convert/images-to-gif/compose`,
+        method: 'POST',
+        data: { upload_ids: uploadIds, caption: this.data.captionText, fps: 4 },
+        success: (res) => {
         wx.hideLoading();
         this.setData({ isConverting: false });
-        let data = res.data;
-        try { data = JSON.parse(data); } catch(e) {}
+        const data = res.data;
         if (data && data.success) {
           this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.gif_url}` });
           wx.showToast({ title: '合成成功！', icon: 'success' });
         } else {
-          wx.showToast({ title: '拼接失败', icon: 'none' });
+          wx.showToast({ title: (data && data.detail) || '拼接失败', icon: 'none' });
         }
-      },
-      fail: () => {
-        wx.hideLoading();
-        this.setData({ isConverting: false });
-      }
+        },
+        fail: () => {
+          wx.hideLoading();
+          this.setData({ isConverting: false });
+          wx.showToast({ title: '合成请求失败', icon: 'none' });
+        }
+      });
+    }).catch((err) => {
+      wx.hideLoading();
+      this.setData({ isConverting: false });
+      wx.showToast({ title: err.message || '图片上传失败', icon: 'none' });
     });
   },
 
@@ -173,7 +198,7 @@ Page({
     this.setData({ isConverting: true });
     wx.showLoading({ title: '正在合成表情包...' });
 
-    wx.uploadFile({
+    app.uploadFile({
       url: `${app.globalData.baseURL}/api/convert/edit-caption`,
       filePath: this.data.srcGifPath,
       name: 'gif_file',
@@ -226,13 +251,13 @@ Page({
     if (!this.data.remixResultUrl) return;
     const openid = app.globalData.openid || wx.getStorageSync('openid');
     wx.showLoading({ title: '正在存入...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/list?openid=${openid}`,
       method: 'GET',
       success: (res) => {
         let cols = (res.data && res.data.data) || [];
         const saveToCol = (colId) => {
-          wx.request({
+          app.request({
             url: `${app.globalData.baseURL}/api/collection/add-item`,
             method: 'POST',
             data: {
@@ -262,7 +287,7 @@ Page({
         };
 
         if (cols.length === 0) {
-          wx.request({
+          app.request({
             url: `${app.globalData.baseURL}/api/collection/create`,
             method: 'POST',
             data: { openid: openid, title: '我的精选表情', description: '默认表情合集' },

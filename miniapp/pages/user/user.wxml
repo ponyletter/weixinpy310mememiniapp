@@ -1,4 +1,9 @@
 <view class="container">
+  <view class="page-heading profile-heading">
+    <text class="page-eyebrow">个人空间</text>
+    <text class="page-title">我的创作中心</text>
+    <text class="page-subtitle">管理额度、作品和常用设置。</text>
+  </view>
   <!-- 个人头像与昵称 -->
   <view class="user-hero card" bindtap="openEditModal">
     <view class="avatar-wrap">
@@ -11,7 +16,7 @@
         <text wx:if="{{user.is_vip}}" class="badge badge-gold" style="margin-left: 12rpx;">尊享会员</text>
       </view>
       <view class="uid-line" catchtap="copyUid">
-        <text class="uid-val">UID: {{user.openid ? user.openid : '游客模式'}}</text>
+        <text class="uid-val">ID {{user.openid ? user.display_id : '登录中'}}</text>
         <text class="uid-copy-tag">复制</text>
       </view>
       <view class="user-bio-text">{{user.bio || '点击设置个性签名与资料 ✎'}}</view>
@@ -21,8 +26,8 @@
       </view>
     </view>
     <view class="hero-actions" catchtap="stopBubble">
-      <button class="btn-xs btn-edit-profile" bindtap="openEditModal">✎ 编辑资料</button>
-      <button class="btn-xs btn-config-top" bindtap="openConfigModal">⚙️ 配置</button>
+      <button class="btn-xs btn-edit-profile" bindtap="openEditModal">编辑资料</button>
+      <button class="btn-xs btn-config-top" bindtap="openConfigModal">生成设置</button>
     </view>
   </view>
 
@@ -31,26 +36,26 @@
     <view class="quota-row grid-3">
       <view class="quota-cell">
         <view class="q-val">{{user.free_quota || 0}}</view>
-        <view class="q-label">体验免费额度</view>
+        <view class="q-label">免费额度</view>
       </view>
       <view class="quota-cell">
         <view class="q-val" style="color: #059669;">{{user.purchased_quota || 0}}</view>
-        <view class="q-label">已开通制作额度</view>
+        <view class="q-label">购买额度</view>
       </view>
       <view class="quota-cell" bindtap="openHistoryModal">
         <view class="q-val" style="color: #4f46e5;">{{user.works_count !== undefined ? user.works_count : (user.total_generated || 0)}}</view>
-        <view class="q-label">历史创作库 (点此查看)</view>
+        <view class="q-label">我的作品</view>
       </view>
     </view>
     <button class="btn-primary btn-checkin-full" bindtap="handleDailyCheckin">
-      🎁 每日签到 +3 次制作额度
+      今日签到 · 领取 3 次额度
     </button>
   </view>
 
-  <!-- 微信虚拟支付 2.0 充值专区 -->
+  <!-- 制作额度充值专区 -->
   <view class="section-title">
-    <text>⚡ 制作额度加量包</text>
-    <text class="section-sub">即时生效 · 自动到账</text>
+    <text>补充制作额度</text>
+    <text class="section-sub">支付后自动到账</text>
   </view>
 
   <view class="package-list grid-3">
@@ -70,32 +75,32 @@
       </view>
       <view class="pkg-desc">折合约 ¥{{item.unit_price}} / 次</view>
       <button class="btn-primary btn-buy" catchtap="buyPackage" data-id="{{item.package_id}}">
-        立即开通
+        选择
       </button>
     </view>
   </view>
 
   <!-- 邀请好友福利 -->
-  <view class="section-title">👥 好友互动福利 (双方各得 5 次)</view>
+  <view class="section-title">邀请好友 <text class="section-sub">双方各得 5 次</text></view>
   <view class="card invite-card">
     <view class="invite-info">
       <view class="invite-meta">
-        <text class="invite-label">专属邀请码:</text>
+        <text class="invite-label">我的邀请码</text>
         <text class="invite-code">{{user.invite_code || '---'}}</text>
       </view>
       <button class="btn-xs btn-copy" bindtap="copyInviteCode">复制口令</button>
     </view>
     <button class="btn-secondary btn-invite-full" open-type="share">
-      🚀 邀请微信好友 (+5次/人)
+      分享给微信好友
     </button>
   </view>
 
   <!-- 兑换码中心 -->
-  <view class="section-title">🎟️ 兑换码中心</view>
+  <view class="section-title">兑换福利码</view>
   <view class="card redeem-card">
     <input 
       class="form-input redeem-input" 
-      placeholder="输入福利兑换码 (如 MEME888)" 
+      placeholder="输入兑换码"
       value="{{redeemCode}}" 
       bindinput="onInputRedeem" 
     />
@@ -108,7 +113,7 @@
     <view class="menu-item" bindtap="goToCollectionTab">
       <view class="menu-item-left">
         <text class="menu-item-icon">📁</text>
-        <text class="menu-text">我的表情合集 (小抽屉分类与分享)</text>
+        <text class="menu-text">我的表情合集</text>
       </view>
       <view class="menu-item-right">
         <text class="menu-tag-blue">查看合集</text>
@@ -120,7 +125,7 @@
     <view class="menu-item" bindtap="openHistoryModal">
       <view class="menu-item-left">
         <text class="menu-item-icon">🎨</text>
-        <text class="menu-text">历史创作作品库 (累计已制作)</text>
+        <text class="menu-text">历史作品</text>
       </view>
       <view class="menu-item-right">
         <text class="menu-tag-count">{{user.works_count !== undefined ? user.works_count : (user.total_generated || 0)}} 件作品</text>
@@ -144,7 +149,7 @@
     <view class="menu-item" bindtap="goToOrderCenter">
       <view class="menu-item-left">
         <text class="menu-item-icon">🧾</text>
-        <text class="menu-text">查看充值与开通订单记录</text>
+        <text class="menu-text">订单记录</text>
       </view>
       <view class="menu-item-right">
         <text class="menu-arrow">›</text>
@@ -155,7 +160,7 @@
     <view class="menu-item" bindtap="openFaqModal">
       <view class="menu-item-left">
         <text class="menu-item-icon">❓</text>
-        <text class="menu-text">常见问题与使用解答 (FAQ)</text>
+        <text class="menu-text">使用帮助</text>
       </view>
       <view class="menu-item-right">
         <text class="menu-arrow">›</text>
@@ -166,7 +171,7 @@
     <view class="menu-item" bindtap="openAgreementModal">
       <view class="menu-item-left">
         <text class="menu-item-icon">📜</text>
-        <text class="menu-text">用户须知与服务协议</text>
+        <text class="menu-text">服务协议与隐私说明</text>
       </view>
       <view class="menu-item-right">
         <text class="menu-arrow">›</text>
@@ -174,12 +179,12 @@
     </view>
 
     <button class="btn-contact-native" open-type="contact">
-      💬 微信在线人工客服
+      联系在线客服
     </button>
   </view>
 
   <view class="copyright-text">
-    GIF表情包制作工具 · 微信虚拟支付 2.0 履约支持
+    动态表情工坊 · 让表达更有趣
   </view>
 
   <!-- 常见问题与使用解答 (FAQ) 弹窗 -->
@@ -192,15 +197,15 @@
       <scroll-view scroll-y class="info-scroll">
         <view class="faq-item">
           <view class="faq-q">Q1: 制作一个动态表情包需要多长时间？</view>
-          <view class="faq-a">通常在 15~35 秒内自动生成完毕。系统采用智能并行渲染引擎与物理网格切片流水线，若高峰期有轻微排队，请稍候片刻或刷新查看。</view>
+          <view class="faq-a">通常需要几十秒，具体时间会受素材大小和当前任务数量影响。高峰期如需排队，请稍后回到制作页查看。</view>
         </view>
         <view class="faq-item">
           <view class="faq-q">Q2: 制作出的动图能直接在微信发给好友吗？</view>
-          <view class="faq-a">完全可以！所有输出的 GIF 均严格按照微信动图规范压缩（体积稳定在 1MB 以内、自动去白底透明化），在制作完成页面长按即可保存到手机相册，或直接在微信聊天框添加为自定义表情。</view>
+          <view class="faq-a">可以。制作完成后可保存到手机相册，再从微信聊天中添加为自定义表情；系统会尽量优化画面尺寸和文件体积。</view>
         </view>
         <view class="faq-item">
           <view class="faq-q">Q3: 免费制作额度每天都会有吗？</view>
-          <view class="faq-a">是的！每天进入个人中心点击【每日签到】即可免费领取 3 次体验额度；此外将小程序分享给好友，双方各能额外获赠 5 次额度，每日可领。</view>
+          <view class="faq-a">每天可在个人中心签到领取 3 次体验额度。新好友首次使用有效邀请码后，双方还可各获得 5 次额度。</view>
         </view>
         <view class="faq-item">
           <view class="faq-q">Q4: 充值开通的制作额度有使用期限吗？</view>
@@ -208,7 +213,7 @@
         </view>
         <view class="faq-item">
           <view class="faq-q">Q5: 如果制作遇到异常会扣除我的额度吗？</view>
-          <view class="faq-a">绝对不会！系统采用严格的交付扣费机制，只有在动图全部切片合成完毕并成功交付预览时才会扣减 1 次额度。若中途因网络中断或异常失败，额度自动原路返还。</view>
+          <view class="faq-a">生成任务开始时会暂扣 1 次额度；如果任务失败，系统会自动返还。遇到额度未恢复的情况，可联系在线客服核查。</view>
         </view>
       </scroll-view>
       <button class="btn-primary" style="margin-top: 24rpx; width: 100%;" bindtap="closeFaqModal">我知道了</button>
@@ -225,11 +230,11 @@
       <scroll-view scroll-y class="info-scroll">
         <view class="agreement-section">
           <view class="agreement-h">一、服务说明与数字化工具性质</view>
-          <view class="agreement-p">本小程序致力于为广大创作者与微信用户提供连贯动态表情包排版、物理切片、画质优化与透明化合成等轻量级在线数字化工具服务。用户可通过上传参考素材或选取模板进行个性化生成。</view>
+          <view class="agreement-p">本小程序提供动态表情制作、图片编辑与合集管理服务。用户可以上传参考素材、选择模板并生成个性化内容。</view>
         </view>
         <view class="agreement-section">
           <view class="agreement-h">二、虚拟商品与交付规范</view>
-          <view class="agreement-p">本平台提供的动图制作额度属于虚拟数字化在线渲染与排版服务。虚拟商品一经开通充值、或动图生成交付完毕即视为履约完成，不支持无理由退款。如因不可抗力或网络故障导致出图失败，系统将自动补还相应制作额度。</view>
+          <view class="agreement-p">制作额度属于在线数字服务。额度到账或动图成功生成后即视为服务已交付；如任务失败，系统会自动返还本次使用的额度。退款与售后按页面公示规则处理。</view>
         </view>
         <view class="agreement-section">
           <view class="agreement-h">三、合规承诺与内容准则</view>
@@ -237,7 +242,7 @@
         </view>
         <view class="agreement-section">
           <view class="agreement-h">四、隐私保护与数据存储</view>
-          <view class="agreement-p">我们高度尊重并保护用户个人隐私。平台仅基于微信开放平台提供的匿名标识（OpenID）用于记录用户的制作额度余额及订单状态，不收集任何用户姓名、手机号等私密身份信息。生成素材经加密隔离保存，仅供用户本人下载与管理。</view>
+          <view class="agreement-p">平台使用微信开放平台提供的账号标识记录制作额度、订单和作品信息，并保存用户主动提交的头像、昵称及生成素材。请勿上传敏感或未经授权的内容，也不要向他人转发表情素材的管理链接。</view>
         </view>
         <view class="agreement-section">
           <view class="agreement-h">五、官方客服与售后咨询</view>
@@ -259,8 +264,8 @@
       <!-- 极速制作模式 -->
       <view class="config-row">
         <view class="config-info">
-          <view class="config-name">⚡ 极速制作模式</view>
-          <view class="config-tip">开启后通过并行渲染加速，缩短制作时间</view>
+          <view class="config-name">快速生成</view>
+          <view class="config-tip">优先缩短等待时间</view>
         </view>
         <switch checked="{{config.fastMode}}" bindchange="onToggleFastMode" color="#4f46e5" />
       </view>
@@ -324,8 +329,8 @@
       <!-- 智能体积压缩 -->
       <view class="config-row">
         <view class="config-info">
-          <view class="config-name">🗜️ 智能压缩 (微信规范)</view>
-          <view class="config-tip">自动将动图体积优化至 1MB 以内</view>
+          <view class="config-name">智能压缩</view>
+          <view class="config-tip">自动平衡动图画质与文件体积</view>
         </view>
         <switch checked="{{config.smartCompress}}" bindchange="onToggleSmartCompress" color="#4f46e5" />
       </view>
@@ -548,4 +553,3 @@
     </view>
   </view>
 </view>
-

@@ -3,26 +3,27 @@
   <view class="col-hero card">
     <view class="hero-top-row">
       <view class="hero-title">{{collection.title}}</view>
-      <button wx:if="{{isOwner}}" class="btn-xs btn-del-col-top" bindtap="deleteCurrentCollection">🗑️ 删除此合集</button>
-      <view wx:else class="badge badge-featured">✨ 官方精选模板</view>
+      <button wx:if="{{isOwner}}" class="btn-xs btn-del-col-top" bindtap="deleteCurrentCollection">删除合集</button>
+      <view wx:elif="{{collection.is_public}}" class="badge badge-featured">官方精选</view>
+      <view wx:else class="badge badge-shared">好友分享</view>
     </view>
-    <view class="hero-desc">{{collection.description || '精选表情包小抽屉'}}</view>
+    <view class="hero-desc">{{collection.description || '把喜欢的表情收在一起'}}</view>
     <view class="hero-stats">
       <text class="badge badge-gold">{{collection.item_count || 0}} 个表情</text>
-      <text class="stat-text">👁️ {{collection.view_count || 1}} 次围观</text>
+      <text class="stat-text">{{collection.view_count || 1}} 次浏览</text>
     </view>
     <view class="hero-btns">
       <button class="btn-primary btn-hero-action" style="flex: 1;" open-type="share">
-        🚀 分享合集
+        分享合集
       </button>
       <button class="btn-secondary btn-hero-action" style="flex: 1;" bindtap="goToMake">
-        🎨 制作新表情
+        制作新表情
       </button>
     </view>
   </view>
 
   <!-- 表情包列表瀑布流 / 网格 -->
-  <view class="section-title">合集包含表情 ({{collection.items ? collection.items.length : 0}})</view>
+  <view class="section-title">全部表情 <text class="section-sub">{{collection.items ? collection.items.length : 0}} 个</text></view>
   <view class="meme-grid">
     <view 
       wx:for="{{collection.items}}" 
@@ -32,14 +33,17 @@
       <image class="meme-img" src="{{item.thumb_url || item.full_url || item.gif_url}}" mode="aspectFit" bindtap="previewOrSave" data-url="{{item.full_url || item.gif_url}}" lazy-load="true"></image>
       <view class="meme-title text-ellipsis">{{item.title || 'GIF动图'}}</view>
       <view class="meme-card-actions">
-        <button class="btn-xs-meme btn-save-action" catchtap="saveMemeDirect" data-url="{{item.full_url || item.gif_url}}">💾 保存相册</button>
-        <button wx:if="{{isOwner}}" class="btn-xs-meme btn-del-action" catchtap="deleteItem" data-id="{{item.id}}">🗑️ 删除</button>
-        <button wx:else class="btn-xs-meme btn-make-same" catchtap="goToMakeSame" data-item="{{item}}">🎨 做同款</button>
+        <button class="btn-xs-meme btn-save-action" catchtap="saveMemeDirect" data-url="{{item.full_url || item.gif_url}}">保存</button>
+        <button wx:if="{{isOwner}}" class="btn-xs-meme btn-del-action" catchtap="deleteItem" data-id="{{item.id}}">删除</button>
+        <button wx:else class="btn-xs-meme btn-make-same" catchtap="goToMakeSame" data-item="{{item}}">做同款</button>
       </view>
     </view>
   </view>
 
-  <view wx:if="{{!collection.items || collection.items.length === 0}}" class="empty-hint">
-    这个合集还是空的，点击下方按钮去制作并存入表情包吧~
+  <view wx:if="{{!collection.items || collection.items.length === 0}}" class="empty-state card">
+    <text class="empty-state-icon">🌱</text>
+    <text class="empty-state-title">这个合集还是空的</text>
+    <text class="empty-state-desc">制作第一张表情并把它存进来吧。</text>
+    <button class="btn-primary empty-action" bindtap="goToMake">去制作</button>
   </view>
 </view>

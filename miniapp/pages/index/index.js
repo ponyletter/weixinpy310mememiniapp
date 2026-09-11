@@ -119,7 +119,7 @@ Page({
   },
 
   fetchTemplates() {
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/templates`,
       method: 'GET',
       success: (res) => {
@@ -259,7 +259,7 @@ Page({
 
   getCaptionSuggestions() {
     wx.showLoading({ title: '正在提取灵感...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/convert/caption-suggest`,
       method: 'POST',
       header: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -523,7 +523,7 @@ Page({
     const uploadUrl = `${app.globalData.baseURL}/api/generate-async`;
 
     if (this.data.mode === 'upload' && this.data.refImagePath) {
-      wx.uploadFile({
+      app.uploadFile({
         url: uploadUrl,
         filePath: this.data.refImagePath,
         name: 'ref_image',
@@ -538,7 +538,7 @@ Page({
     } else if (this.data.mode === 'sketch') {
       const sketchFile = this.data.sketchTempPath;
       if (sketchFile) {
-        wx.uploadFile({
+        app.uploadFile({
           url: uploadUrl,
           filePath: sketchFile,
           name: 'ref_image',
@@ -554,7 +554,7 @@ Page({
         wx.canvasToTempFilePath({
           canvas: this.sketchCanvas,
           success: (cRes) => {
-            wx.uploadFile({
+            app.uploadFile({
               url: uploadUrl,
               filePath: cRes.tempFilePath,
               name: 'ref_image',
@@ -580,7 +580,7 @@ Page({
   },
 
   postFormGenerate(url, formData) {
-    wx.request({
+    app.request({
       url: url,
       method: 'POST',
       header: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -645,7 +645,7 @@ Page({
 
       this._isRequestingStatus = true;
 
-      wx.request({
+      app.request({
         url: `${app.globalData.baseURL}/api/task-status/${taskId}`,
         method: 'GET',
         success: (res) => {
@@ -789,7 +789,7 @@ Page({
     wx.showLoading({ title: '正在存入合集...' });
 
     const doSave = (colId, colTitle) => {
-      wx.request({
+      app.request({
         url: `${app.globalData.baseURL}/api/collection/add-item`,
         method: 'POST',
         data: {
@@ -823,14 +823,14 @@ Page({
       });
     };
 
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/my?openid=${openid}`,
       method: 'GET',
       success: (res) => {
         let cols = (res.data && res.data.data) || [];
         if (cols.length === 0) {
           // 首次使用自动创建“我的精选表情”默认合集并直接存入
-          wx.request({
+          app.request({
             url: `${app.globalData.baseURL}/api/collection/create`,
             method: 'POST',
             data: {
@@ -901,7 +901,7 @@ Page({
     }
     const openid = app.globalData.openid || wx.getStorageSync('openid');
     wx.showLoading({ title: '正在创建...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/create`,
       method: 'POST',
       data: {
@@ -935,7 +935,7 @@ Page({
       return;
     }
     wx.showLoading({ title: '正在存入...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/add-item`,
       method: 'POST',
       data: {
@@ -973,7 +973,7 @@ Page({
 
   handleCheckin() {
     if (!app.globalData.openid) return;
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/user/checkin`,
       method: 'POST',
       data: { openid: app.globalData.openid },

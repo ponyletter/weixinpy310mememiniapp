@@ -1,8 +1,8 @@
 /* 极速二创页面样式 (对齐 index 现代清爽白风格) */
 .remix-tabs {
   display: flex;
-  background: #f1f5f9;
-  border-radius: 18rpx;
+  background: #ececf4;
+  border-radius: 22rpx;
   padding: 6rpx;
   margin-bottom: 20rpx;
 }
@@ -10,13 +10,17 @@
 .remix-tab {
   flex: 1;
   text-align: center;
-  padding: 18rpx 0;
-  font-size: 26rpx;
+  padding: 14rpx 4rpx;
+  font-size: 23rpx;
   color: #64748b;
   font-weight: 500;
   border-radius: 14rpx;
   transition: all 0.2s ease;
   white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5rpx;
 }
 
 .remix-tab.active {
@@ -24,6 +28,18 @@
   color: #4f46e5;
   font-weight: 700;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.06);
+}
+
+.remix-tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 12rpx;
+  background: rgba(255, 255, 255, 0.58);
+  font-size: 21rpx;
+  font-weight: 800;
 }
 
 .tip-bar {
@@ -50,21 +66,28 @@
 
 .action-box {
   padding: 28rpx;
-  border-radius: 24rpx;
+  border-radius: 28rpx;
   margin-bottom: 24rpx;
 }
 
 .upload-zone {
-  border: 3rpx dashed #a5b4fc;
+  border: 2rpx dashed #aaa3e8;
   border-radius: 24rpx;
   padding: 50rpx 24rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  background: linear-gradient(145deg, #fbfbff 0%, #f1efff 100%);
   margin-bottom: 24rpx;
   transition: all 0.2s;
+}
+
+.optional-label {
+  margin-left: 8rpx;
+  color: #9aa1b1;
+  font-size: 21rpx;
+  font-weight: 400;
 }
 
 .upload-icon {
@@ -124,6 +147,7 @@
 }
 
 .grid-item {
+  position: relative;
   width: 100%;
   height: 190rpx;
   border-radius: 16rpx;
@@ -135,6 +159,32 @@
 .grid-img {
   width: 100%;
   height: 100%;
+}
+
+.grid-index,
+.grid-remove {
+  position: absolute;
+  top: 10rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38rpx;
+  min-width: 38rpx;
+  border-radius: 19rpx;
+  color: #ffffff;
+  font-size: 21rpx;
+  line-height: 1;
+}
+
+.grid-index {
+  left: 10rpx;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+.grid-remove {
+  right: 10rpx;
+  background: rgba(15, 23, 42, 0.78);
+  font-size: 30rpx;
 }
 
 .grid-add {
@@ -194,8 +244,8 @@
 .btn-convert {
   width: 100% !important;
   font-size: 28rpx;
-  height: 88rpx;
-  line-height: 88rpx;
+  height: 94rpx;
+  line-height: 94rpx;
   padding: 0;
 }
 
@@ -310,4 +360,3 @@
   color: #64748b;
   line-height: 1.55;
 }
-

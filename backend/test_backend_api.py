@@ -1,197 +1,127 @@
-import hashlib
-import time
-import requests
+import io
 
-BASE_URL = "http://127.0.0.1:8290"
+import pytest
+from fastapi.testclient import TestClient
+from PIL import Image
 
-def test_all():
-    print("=" * 60)
-    print("🧪 开始微信小程序 AI 表情包制作全栈后端 API 自动化全链路测试")
-    print("=" * 60)
-    
-    # 1. 探活
-    r = requests.get(f"{BASE_URL}/health")
-    assert r.status_code == 200, f"Health failed: {r.text}"
-    print("✅ 1. 基础探活接口 /health 测试通过")
+from app.config import settings
+from app.database import init_db
+from app.main import app
 
-    # 2. 模版列表
-    r = requests.get(f"{BASE_URL}/api/templates")
-    assert r.status_code == 200
-    templates = r.json()["data"]
-    assert len(templates) > 0
-    print(f"✅ 2. 预设动作模版列表 /api/templates 测试通过，加载 {len(templates)} 个动作模版")
 
-    # 3. 提示词组装器
-    r = requests.post(f"{BASE_URL}/api/prompt-builder", data={
-        "character_desc": "可爱的白色萨摩耶",
-        "action_type": "kiss",
-        "custom_caption": "么么哒",
-        "has_image": "false",
-        "is_sketch": "false"
-    })
-    assert r.status_code == 200
-    prompt_res = r.json()["data"]
-    assert "么么哒" in prompt_res["generated_prompt"]
-    print("✅ 3. AI 提示词智能组装器 /api/prompt-builder 测试通过")
+@pytest.fixture()
+def client(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "DATABASE_PATH", tmp_path / "test.db")
+    monkeypatch.setattr(settings, "DEBUG", True)
+    monkeypatch.setattr(settings, "JWT_SECRET", "test-secret-with-at-least-thirty-two-characters")
+    monkeypatch.setattr(settings, "ENABLE_MOCK_PAYMENT", False)
+    monkeypatch.setattr(settings, "XPAY_ENV", 1)
+    monkeypatch.setattr(settings, "XPAY_OFFER_ID", "test-offer")
+    monkeypatch.setattr(settings, "XPAY_APP_KEY_SANDBOX", "test-payment-app-key")
+    monkeypatch.setattr(settings, "XPAY_CALLBACK_TOKEN", "test-callback-token")
+    monkeypatch.setattr(settings, "UPLOAD_DIR", tmp_path / "uploads")
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path / "outputs")
+    settings.UPLOAD_DIR.mkdir(parents=True)
+    settings.OUTPUT_DIR.mkdir(parents=True)
+    init_db()
+    with TestClient(app) as test_client:
+        yield test_client
 
-    # 4. 微信公开配置接口
-    r = requests.get(f"{BASE_URL}/api/wechat/info")
-    assert r.status_code == 200
-    wx_info = r.json()
-    assert wx_info["app_id"] == "wx86e299efa495d1f6"
-    assert wx_info["offer_id"] == "1450644655"
-    assert wx_info["order_center_path"] == "pages/order/order"
-    print("✅ 4. 微信公开参数与资质配置 /api/wechat/info 测试通过")
 
-    # 5. 微信消息推送与服务器握手验证 (GET)
-    token = "memeTokenSecret2026"
-    ts = str(int(time.time()))
-    nonce = "rand9988"
-    echostr = "echostr_test_success_123"
-    sig = hashlib.sha1(''.join(sorted([token, ts, nonce])).encode()).hexdigest()
-    r = requests.get(f"{BASE_URL}/api/wechat/callback?signature={sig}&timestamp={ts}&nonce={nonce}&echostr={echostr}")
-    assert r.status_code == 200
-    assert r.text == echostr
-    print("✅ 5. 微信公众平台服务器配置/消息推送握手验证 /api/wechat/callback (GET) 测试通过")
+def login(client: TestClient, name: str = "alice") -> tuple[str, dict[str, str]]:
+    response = client.post("/api/user/login", json={"code": f"mock_{name}"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "session_key" not in data["user"]
+    return data["user"]["openid"], {"Authorization": f"Bearer {data['access_token']}"}
 
-    # 6. 小程序订单中心 Path
-    r = requests.get(f"{BASE_URL}/pages/order/order")
-    assert r.status_code == 200
-    assert r.json()["path"] == "pages/order/order"
-    print("✅ 6. 小程序订单中心直达端点 /pages/order/order 测试通过")
 
-    # 7. 用户登录 (code2session / mock)
-    test_code = f"mock_tester_{int(time.time())}"
-    r = requests.post(f"{BASE_URL}/api/user/login", json={"code": test_code})
-    assert r.status_code == 200
-    login_data = r.json()
-    openid = login_data["openid"]
-    user = login_data["user"]
-    assert user["free_quota"] == 10  # 新用户赠送 10 次
-    print(f"✅ 7. 用户静默登录 /api/user/login 测试通过，获得 openid={openid}，新用户赠送 {user['free_quota']} 次免费额度")
+def png_bytes(color: str = "red") -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (32, 32), color).save(buffer, "PNG")
+    return buffer.getvalue()
 
-    # 8. 用户资料查询
-    r = requests.get(f"{BASE_URL}/api/user/profile?openid={openid}")
-    assert r.status_code == 200
-    assert r.json()["user"]["total_quota"] >= 10
-    print("✅ 8. 用户资料与实时额度资产查询 /api/user/profile 测试通过")
 
-    # 9. 每日签到
-    r = requests.post(f"{BASE_URL}/api/user/checkin", json={"openid": openid})
-    assert r.status_code == 200
-    checkin_res = r.json()
-    assert checkin_res["success"] is True
-    assert checkin_res["reward"] == 3
-    print(f"✅ 9. 每日签到领取额度 /api/user/checkin 测试通过，额外到账 {checkin_res['reward']} 次，当前剩余: {checkin_res['remaining_quota']} 次")
+def test_authentication_and_user_isolation(client: TestClient):
+    alice, alice_headers = login(client, "alice")
+    bob, _ = login(client, "bob")
+    assert client.get(f"/api/user/profile?openid={alice}").status_code == 401
+    assert client.get(f"/api/user/profile?openid={alice}", headers=alice_headers).status_code == 200
+    assert client.get(f"/api/user/profile?openid={bob}", headers=alice_headers).status_code == 403
+    forged = {"Authorization": alice_headers["Authorization"] + "tampered"}
+    assert client.get(f"/api/user/profile?openid={alice}", headers=forged).status_code == 401
 
-    # 10. 兑换码兑换
-    r = requests.post(f"{BASE_URL}/api/user/redeem", json={"openid": openid, "code": "MEME888"})
-    assert r.status_code == 200
-    redeem_res = r.json()
-    assert redeem_res["success"] is True
-    print(f"✅ 10. 私域兑换码兑换 /api/user/redeem (MEME888) 测试通过，到账 {redeem_res['reward_quota']} 次，当前剩余: {redeem_res['remaining_quota']} 次")
 
-    # 11. 虚拟支付道具列表查询
-    r = requests.get(f"{BASE_URL}/api/pay/goods")
-    assert r.status_code == 200
-    goods = r.json()["packages"]
-    assert len(goods) == 3
-    print(f"✅ 11. 虚拟支付 2.0 道具档位列表 /api/pay/goods 测试通过，包含 1元(20次), 5元(120次), 9.9元(300次/VIP)")
+def test_collection_ownership(client: TestClient):
+    alice, alice_headers = login(client, "alice")
+    _, bob_headers = login(client, "bob")
+    response = client.post("/api/collection/create", json={"openid": alice, "title": "private"}, headers=alice_headers)
+    collection_id = response.json()["data"]["collection_id"]
+    denied = client.post(
+        "/api/collection/add-item",
+        json={"collection_id": collection_id, "gif_url": "/outputs/test.gif"},
+        headers=bob_headers,
+    )
+    assert denied.status_code == 403
 
-    # 12. 虚拟支付 2.0 下单与 paySig/signature 计算
-    r = requests.post(f"{BASE_URL}/api/pay/create-order", json={"openid": openid, "package_id": "item_100"})
-    assert r.status_code == 200
-    pay_order = r.json()["data"]
-    order_id = pay_order["order_id"]
-    pay_params = pay_order["payment_params"]
-    assert "paySig" in pay_params
-    assert "signature" in pay_params
-    assert "signData" in pay_params
-    assert pay_params["mode"] == "short_series_goods"
-    print(f"✅ 12. 微信虚拟支付 2.0 下单与核心双签名计算 /api/pay/create-order 测试通过 (订单号: {order_id})")
 
-    # 13. 模拟支付履约与发货
-    r = requests.post(f"{BASE_URL}/api/pay/mock-pay", json={"order_id": order_id})
-    assert r.status_code == 200
-    print("✅ 13. 虚拟支付订单履约发货 /api/pay/mock-pay 测试通过，额度已自动划转至用户账户")
+def test_mock_payment_and_callback_are_closed_by_default(client: TestClient):
+    _, headers = login(client)
+    assert client.post("/api/pay/mock-pay", json={"order_id": "unknown"}, headers=headers).status_code == 404
+    assert client.post("/api/pay/notify", json={"outTradeNo": "unknown"}).status_code == 401
 
-    # 14. 查询订单记录
-    r = requests.get(f"{BASE_URL}/api/user/orders?openid={openid}")
-    assert r.status_code == 200
-    orders = r.json()["orders"]
-    assert len(orders) >= 1
-    assert orders[0]["status"] == "PAID"
-    print(f"✅ 14. 订单历史流水与订单中心 /api/user/orders 测试通过，状态: {orders[0]['status']}")
 
-    # 15. 制作表情包额度审查与扣减启动任务
-    r = requests.post(f"{BASE_URL}/api/generate-async", data={
-        "action_type": "run_cheer",
-        "custom_caption": "冲鸭",
-        "character_desc": "测试小柴犬",
-        "fps": 8,
-        "openid": openid
-    })
-    assert r.status_code == 200
-    task_res = r.json()
-    task_id = task_res["data"]["task_id"]
-    print(f"✅ 15. 异步生成任务启动与额度动态扣减 /api/generate-async 测试通过 (任务ID: {task_id})")
+def test_payment_callback_validates_business_fields(client: TestClient):
+    _, headers = login(client)
+    created = client.post(
+        "/api/pay/create-order",
+        json={"openid": "user_mock_alice", "package_id": "meme_100"},
+        headers=headers,
+    )
+    assert created.status_code == 200
+    order_id = created.json()["data"]["order_id"]
+    callback_headers = {"X-XPay-Callback-Token": "test-callback-token"}
 
-    # 16. 任务状态轮询查询
-    r = requests.get(f"{BASE_URL}/api/task-status/{task_id}")
-    assert r.status_code == 200
-    status_info = r.json()["data"]
-    assert status_info["status"] in ["processing", "completed"]
-    print(f"✅ 16. 异步任务进度与状态轮询 /api/task-status/{task_id} 测试通过 (当前进度: {status_info.get('progress')}%)")
+    rejected = client.post(
+        "/api/pay/notify",
+        json={"outTradeNo": order_id, "productId": "meme_100", "goodsPrice": 1, "offerId": "test-offer"},
+        headers=callback_headers,
+    )
+    assert rejected.status_code == 400
 
-    # 17. 历史作品查询
-    r = requests.get(f"{BASE_URL}/api/history?openid={openid}")
-    assert r.status_code == 200
-    print("✅ 17. 用户生成历史与作品展示 /api/history 测试通过")
+    accepted = client.post(
+        "/api/pay/notify",
+        json={"outTradeNo": order_id, "productId": "meme_100", "goodsPrice": 100, "offerId": "test-offer"},
+        headers=callback_headers,
+    )
+    assert accepted.status_code == 200
 
-    # 18. 创建表情包合集
-    r = requests.post(f"{BASE_URL}/api/collection/create", json={
-        "openid": openid,
-        "title": "打工人周一发疯合集",
-        "description": "每周一专用摸鱼吐槽表情包"
-    })
-    assert r.status_code == 200
-    col_data = r.json()["data"]
-    col_id = col_data["collection_id"]
-    print(f"✅ 18. 表情包合集创建 /api/collection/create 测试通过 (合集ID: {col_id})")
 
-    # 19. 添加表情包至合集
-    r = requests.post(f"{BASE_URL}/api/collection/add-item", json={
-        "collection_id": col_id,
-        "gif_url": "/samples/sample_run.png",
-        "title": "冲鸭"
-    })
-    assert r.status_code == 200
-    print("✅ 19. 添加表情包至合集 /api/collection/add-item 测试通过")
+def test_path_traversal_is_rejected(client: TestClient):
+    _, headers = login(client)
+    response = client.post(
+        "/api/convert/edit-caption",
+        data={"gif_url": "/outputs/../../app/config.py", "caption": "test"},
+        headers=headers,
+    )
+    assert response.status_code == 400
 
-    # 20. 查询合集详情 (模拟微信群友点击卡片打开查看)
-    r = requests.get(f"{BASE_URL}/api/collection/detail?collection_id={col_id}")
-    assert r.status_code == 200
-    detail = r.json()["data"]
-    assert detail["item_count"] >= 1
-    print(f"✅ 20. 微信群分享打开合集详情 /api/collection/detail 测试通过 (包含 {detail['item_count']} 个表情包)")
 
-    # 21. 查询我的合集列表与探索广场
-    r = requests.get(f"{BASE_URL}/api/collection/my?openid={openid}")
-    assert r.status_code == 200
-    r_exp = requests.get(f"{BASE_URL}/api/collection/explore")
-    assert r_exp.status_code == 200
-    print("✅ 21. 我的合集列表与广场探索 /api/collection/my & /explore 测试通过")
-
-    # 22. AI 爆笑文案/台词推荐
-    r = requests.post(f"{BASE_URL}/api/convert/caption-suggest", data={"keyword": "摸鱼", "style": "all"})
-    assert r.status_code == 200
-    suggs = r.json()["suggestions"]
-    assert len(suggs) >= 3
-    print(f"✅ 22. AI 爆笑文案推荐 /api/convert/caption-suggest 测试通过 (生成 {len(suggs)} 条候选台词)")
-
-    print("=" * 60)
-    print("🎉 恭喜！全套 22 个微信小程序核心后端接口自动化测试 100% 全部通过！")
-    print("=" * 60)
-
-if __name__ == "__main__":
-    test_all()
+def test_staged_multi_image_composition(client: TestClient):
+    _, headers = login(client)
+    upload_ids = []
+    for color in ("red", "blue"):
+        response = client.post(
+            "/api/convert/images-to-gif/frame",
+            files={"file": (f"{color}.png", png_bytes(color), "image/png")},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        upload_ids.append(response.json()["upload_id"])
+    response = client.post(
+        "/api/convert/images-to-gif/compose",
+        json={"upload_ids": upload_ids, "fps": 4, "caption": "测试"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["success"] is True

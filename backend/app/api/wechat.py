@@ -1,6 +1,10 @@
 import hashlib
-from fastapi import APIRouter, Request, Query, Response
+from fastapi import APIRouter, HTTPException, Request, Query, Response
+from pydantic import BaseModel
+from typing import Optional
 from app.config import settings
+from app.security import CurrentOpenid, require_same_user
+from app.core.wechat_service import WeChatService
 
 router = APIRouter(tags=["wechat"])
 
@@ -22,8 +26,16 @@ async def wechat_verify(
     return Response(content="Invalid signature", status_code=403, media_type="text/plain")
 
 @router.post("/api/wechat/callback")
-async def wechat_msg_receive(request: Request):
+async def wechat_msg_receive(
+    request: Request,
+    signature: str = Query(default=""),
+    timestamp: str = Query(default=""),
+    nonce: str = Query(default=""),
+):
     """微信公众平台消息推送接收 (POST)"""
+    expected = hashlib.sha1("".join(sorted([settings.WX_MSG_TOKEN, timestamp, nonce])).encode("utf-8")).hexdigest()
+    if not signature or expected != signature:
+        return Response(content="Invalid signature", status_code=403, media_type="text/plain")
     return Response(content="success", media_type="text/plain")
 
 @router.get("/api/wechat/info")
@@ -51,10 +63,6 @@ def order_center_page():
         "orders": []
     }
 
-from pydantic import BaseModel
-from typing import Optional
-from app.core.wechat_service import WeChatService
-
 class SendSubscribeMsgRequest(BaseModel):
     openid: str
     template_id: Optional[str] = None
@@ -66,10 +74,12 @@ class SendSubscribeMsgRequest(BaseModel):
     miniprogram_state: Optional[str] = None
 
 @router.post("/api/send-subscribe-msg")
-async def send_subscribe_msg_endpoint(req: SendSubscribeMsgRequest):
+async def send_subscribe_msg_endpoint(req: SendSubscribeMsgRequest, current_openid: CurrentOpenid):
     """主动发送微信小程序订阅消息 (服务完成通知)"""
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="接口不存在")
     res = await WeChatService.send_subscribe_message(
-        openid=req.openid,
+        openid=require_same_user(req.openid, current_openid),
         template_id=req.template_id,
         order_no=req.order_no,
         service_type=req.service_type or "动图表情包制作",
@@ -79,4 +89,3 @@ async def send_subscribe_msg_endpoint(req: SendSubscribeMsgRequest):
         miniprogram_state=req.miniprogram_state
     )
     return res
-

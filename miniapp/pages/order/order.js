@@ -25,7 +25,7 @@ Page({
     }
 
     wx.showLoading({ title: '加载订单中...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/user/orders?openid=${openid}`,
       method: 'GET',
       success: (res) => {

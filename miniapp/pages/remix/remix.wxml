@@ -1,30 +1,36 @@
 <view class="container">
+  <view class="page-heading">
+    <text class="page-eyebrow">快速工具</text>
+    <text class="page-title">把现有素材变成动图</text>
+    <text class="page-subtitle">视频、多张照片或旧表情，都能快速加工成适合聊天的 GIF。</text>
+  </view>
   <!-- 顶部模式选择卡片 -->
   <view class="remix-tabs card">
     <view class="remix-tab {{tab === 'video' ? 'active' : ''}}" bindtap="switchTab" data-tab="video">
-      📹 视频转GIF
+      <text class="remix-tab-icon">▶</text><text>视频转 GIF</text>
     </view>
     <view class="remix-tab {{tab === 'images' ? 'active' : ''}}" bindtap="switchTab" data-tab="images">
-      🖼️ 多图拼动图
+      <text class="remix-tab-icon">▦</text><text>多图合成</text>
     </view>
     <view class="remix-tab {{tab === 'caption' ? 'active' : ''}}" bindtap="switchTab" data-tab="caption">
-      🖼️ 图片/动图加字
+      <text class="remix-tab-icon">T</text><text>表情加字</text>
     </view>
   </view>
 
   <!-- 提示条：聊天素材直接打开说明 -->
   <view class="tip-bar">
     <text class="tip-icon">💡</text>
-    <text class="tip-text">在微信聊天长按图片/视频，选【打开方式】也可直接秒进！</text>
+    <text class="tip-text">聊天里的图片或视频，也可以通过「打开方式」直接进入这里。</text>
   </view>
 
   <!-- 模式 1: 视频转动图 -->
   <view wx:if="{{tab === 'video'}}" class="card action-box">
-    <view class="section-title">选择或拍摄短视频 (自动截取精彩片段)</view>
+    <view class="section-title">选择短视频</view>
+    <text class="section-kicker">默认截取前 3 秒，自动压缩为 GIF</text>
     <view wx:if="{{!videoPath}}" class="upload-zone" bindtap="chooseVideo">
       <text class="upload-icon">📹</text>
-      <text class="upload-title">点击选择视频 (支持 MP4/MOV)</text>
-      <text class="upload-sub">自动提取前 3 秒精彩动图，微信 1MB 以内规范</text>
+      <text class="upload-title">选择或拍摄视频</text>
+      <text class="upload-sub">支持 MP4、MOV</text>
     </view>
     <view wx:else class="selected-wrap">
       <video class="preview-video" src="{{videoPath}}" controls></video>
@@ -32,21 +38,24 @@
     </view>
 
     <view class="form-item-remix">
-      <text class="form-label-remix">追加字幕 (可选):</text>
-      <input class="form-input-remix" placeholder="可填字幕 (如: 绝了、哈哈哈哈)" value="{{captionText}}" bindinput="onInputCaption" />
+      <text class="form-label-remix">字幕 <text class="optional-label">选填</text></text>
+      <input class="form-input-remix" placeholder="例如：绝了、哈哈哈哈" value="{{captionText}}" bindinput="onInputCaption" maxlength="80" />
     </view>
 
-    <button class="btn-primary btn-convert" bindtap="convertVideoToGif" loading="{{isConverting}}">
-      ⚡ 一键秒转标准 GIF
+    <button class="btn-primary btn-convert" bindtap="convertVideoToGif" loading="{{isConverting}}" disabled="{{isConverting}}">
+      转为 GIF
     </button>
   </view>
 
   <!-- 模式 2: 多图合成动图 -->
   <view wx:if="{{tab === 'images'}}" class="card action-box">
-    <view class="section-title">选择 2~9 张连续图片合成动图</view>
+    <view class="section-title">添加连续照片</view>
+    <text class="section-kicker">按选择顺序播放，支持 2–9 张</text>
     <view class="image-grid">
       <view wx:for="{{multiImages}}" wx:key="*this" class="grid-item">
         <image class="grid-img" src="{{item}}" mode="aspectFill"></image>
+        <text class="grid-index">{{index + 1}}</text>
+        <text class="grid-remove" data-index="{{index}}" catchtap="removeMultiImage">×</text>
       </view>
       <view wx:if="{{multiImages.length !== 9}}" class="grid-add" bindtap="chooseMultiImages">
         <text class="add-icon">＋</text>
@@ -55,22 +64,23 @@
     </view>
 
     <view class="form-item-remix">
-      <text class="form-label-remix">追加字幕 (可选):</text>
-      <input class="form-input-remix" placeholder="可选填字幕 (如: 摸鱼中、冲鸭)" value="{{captionText}}" bindinput="onInputCaption" />
+      <text class="form-label-remix">字幕 <text class="optional-label">选填</text></text>
+      <input class="form-input-remix" placeholder="例如：摸鱼中、冲鸭" value="{{captionText}}" bindinput="onInputCaption" maxlength="80" />
     </view>
 
-    <button class="btn-primary btn-convert" bindtap="convertImagesToGif" loading="{{isConverting}}">
-      🪄 一键合成连续动图
+    <button class="btn-primary btn-convert" bindtap="convertImagesToGif" loading="{{isConverting}}" disabled="{{isConverting}}">
+      合成动态图片
     </button>
   </view>
 
   <!-- 模式 3: 图片/动图加字与二创 -->
   <view wx:if="{{tab === 'caption'}}" class="card action-box">
-    <view class="section-title">选择图片或表情包添加台词</view>
+    <view class="section-title">给表情添加台词</view>
+    <text class="section-kicker">自动应用清晰的白字黑边样式</text>
     <view wx:if="{{!srcGifPath}}" class="upload-zone" bindtap="chooseGifToEdit">
       <text class="upload-icon">🖼️</text>
-      <text class="upload-title">点击上传图片或动图 (支持 PNG/JPG/GIF)</text>
-      <text class="upload-sub">自动添加微信经典描边神字幕 · 支持保存相册与存入合集</text>
+      <text class="upload-title">选择图片或动图</text>
+      <text class="upload-sub">支持 PNG、JPG、GIF</text>
     </view>
     <view wx:else class="selected-wrap">
       <image class="preview-gif" src="{{srcGifPath}}" mode="aspectFit"></image>
@@ -78,30 +88,30 @@
     </view>
 
     <view class="form-item-remix">
-      <text class="form-label-remix">台词字幕:</text>
-      <input class="form-input-remix" placeholder="输入你想追加的神台词 (如: 听懂掌声、收到)" value="{{captionText}}" bindinput="onInputCaption" />
+      <text class="form-label-remix">台词</text>
+      <input class="form-input-remix" placeholder="例如：听懂掌声、收到" value="{{captionText}}" bindinput="onInputCaption" maxlength="80" />
     </view>
 
-    <button class="btn-primary btn-convert" bindtap="editGifCaption" loading="{{isConverting}}">
-      ⚡ 一键合成表情包
+    <button class="btn-primary btn-convert" bindtap="editGifCaption" loading="{{isConverting}}" disabled="{{isConverting}}">
+      添加台词
     </button>
   </view>
 
   <!-- 转换成功结果卡片 -->
   <view wx:if="{{remixResultUrl}}" class="card result-card checkerboard-bg">
     <view class="result-header">
-      <text class="result-title">🎉 制作完成！</text>
-      <text class="badge badge-green">微信表情尺寸已优化</text>
+      <text class="result-title">制作完成</text>
+      <text class="badge badge-green">已优化尺寸</text>
     </view>
     <image class="remix-result-img" src="{{remixResultUrl}}" mode="aspectFit"></image>
     <view class="remix-actions">
       <!-- 裂变核心入口 -->
       <button class="btn-primary btn-remix-share" open-type="share">
-        🚀 分享给好友 / 微信群斗图
+        分享给好友
       </button>
       <view class="remix-sub-btns">
-        <button class="btn-secondary btn-remix-sub" bindtap="saveRemixGif">💾 保存至相册</button>
-        <button class="btn-secondary btn-remix-sub" bindtap="addToCollection">📁 加入合集</button>
+        <button class="btn-secondary btn-remix-sub" bindtap="saveRemixGif">保存至相册</button>
+        <button class="btn-secondary btn-remix-sub" bindtap="addToCollection">加入合集</button>
       </view>
       <!-- 微信原生表情添加秘籍提示 -->
       <view class="emoticon-guide-card">

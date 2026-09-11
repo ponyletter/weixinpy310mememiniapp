@@ -1165,3 +1165,57 @@
   line-height: 1.4;
   margin: 0;
 }
+
+/* 2026 visual refresh */
+.home-heading {
+  padding-top: 6rpx;
+}
+
+.top-bar-compact {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: #e8e8f3;
+  box-shadow: 0 6rpx 22rpx rgba(36, 42, 73, 0.04);
+}
+
+.template-selector-bar {
+  border-width: 1rpx;
+  border-color: #e7e7f1;
+}
+
+.tpl-current-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 14rpx;
+  background: #f0eeff;
+}
+
+.upload-placeholder-hero {
+  height: 360rpx;
+  border-color: #b8b1ee;
+  background: linear-gradient(145deg, #fbfbff 0%, #f1efff 100%);
+}
+
+.caption-input-card {
+  padding: 20rpx;
+  border-color: #e8e7f0;
+  background: #fafafe;
+}
+
+.form-textarea-caption {
+  min-height: 96rpx;
+  border-color: #dddbe9;
+}
+
+.quick-chip:active {
+  transform: scale(0.97);
+}
+
+.btn-generate {
+  height: 96rpx;
+  line-height: 96rpx;
+  font-size: 30rpx;
+  border-radius: 24rpx;
+}

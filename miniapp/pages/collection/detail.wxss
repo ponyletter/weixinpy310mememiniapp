@@ -1,7 +1,7 @@
 .col-hero {
   padding: 32rpx;
   margin-bottom: 24rpx;
-  background: #ffffff;
+  background: linear-gradient(145deg, #ffffff 0%, #f8f7ff 100%);
   border: 1rpx solid #edf2f7;
 }
 
@@ -14,7 +14,7 @@
 .hero-title {
   font-size: 36rpx;
   font-weight: 800;
-  color: #1e293b;
+  color: #172033;
   flex: 1;
 }
 
@@ -66,6 +66,10 @@
   margin-bottom: 0;
   position: relative;
   border: 1rpx solid #e2e8f0;
+}
+
+.meme-item:active {
+  transform: scale(0.985);
 }
 
 .meme-img {
@@ -135,6 +139,22 @@
   border-radius: 20rpx;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.badge-shared {
+  font-size: 22rpx;
+  color: #5b50c7;
+  background: #eeecff;
+  border: 1rpx solid #d8d4ff;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.empty-action {
+  min-width: 240rpx;
+  margin-top: 28rpx;
 }
 
 .empty-hint {

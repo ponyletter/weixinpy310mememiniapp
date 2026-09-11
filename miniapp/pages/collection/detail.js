@@ -56,7 +56,7 @@ Page({
     if (!hasCached) {
       wx.showLoading({ title: '极速载入中...' });
     }
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/detail?collection_id=${id}`,
       method: 'GET',
       success: (res) => {
@@ -185,7 +185,7 @@ Page({
       success: (mRes) => {
         if (mRes.confirm) {
           wx.showLoading({ title: '正在移除...' });
-          wx.request({
+          app.request({
             url: `${app.globalData.baseURL}/api/collection/item/delete`,
             method: 'POST',
             data: { item_id: itemId, openid: openid },
@@ -226,7 +226,7 @@ Page({
       success: (mRes) => {
         if (mRes.confirm) {
           wx.showLoading({ title: '正在删除...' });
-          wx.request({
+          app.request({
             url: `${app.globalData.baseURL}/api/collection/delete`,
             method: 'POST',
             data: { collection_id: id, openid: openid },

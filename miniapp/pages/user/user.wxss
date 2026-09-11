@@ -1,8 +1,12 @@
 .user-hero {
   display: flex;
   align-items: center;
-  padding: 28rpx;
+  padding: 30rpx 26rpx;
   margin-bottom: 20rpx;
+}
+
+.profile-heading {
+  padding-bottom: 22rpx;
 }
 
 .avatar-wrap {
@@ -57,7 +61,7 @@
 /* 额度资产卡片 */
 .quota-hero {
   padding: 28rpx;
-  background: #ffffff;
+  background: linear-gradient(145deg, #ffffff 0%, #f6f5ff 100%);
   border: 1rpx solid #edf2f7;
 }
 
@@ -81,6 +85,10 @@
   margin-top: 6rpx;
 }
 
+.quota-cell + .quota-cell {
+  border-left: 1rpx solid #e8e8f2;
+}
+
 .section-sub {
   font-size: 20rpx;
   color: #64748b;
@@ -94,7 +102,7 @@
 }
 
 .pkg-card {
-  padding: 24rpx 12rpx;
+  padding: 28rpx 12rpx 18rpx;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -108,7 +116,7 @@
 .pkg-card.featured, .pkg-card.selected {
   border-color: #4f46e5;
   border-width: 3rpx;
-  background: #f8fafc;
+  background: linear-gradient(180deg, #faf9ff 0%, #f1efff 100%);
   box-shadow: 0 6rpx 20rpx rgba(79, 70, 229, 0.16);
   transform: translateY(-2rpx);
 }
@@ -282,6 +290,10 @@
   align-items: center;
   padding: 24rpx 10rpx;
   border-bottom: 1rpx solid #f1f5f9;
+}
+
+.menu-item:active {
+  background: #f7f7fb;
 }
 
 .menu-item-left {
@@ -1105,4 +1117,3 @@
   border-radius: 12rpx;
   border: 1rpx solid #e2e8f0;
 }
-

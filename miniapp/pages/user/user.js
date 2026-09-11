@@ -167,7 +167,7 @@ Page({
 
     // 上传到后端服务器保存
     wx.showLoading({ title: '正在上传头像...' });
-    wx.uploadFile({
+    app.uploadFile({
       url: `${app.globalData.baseURL}/api/user/upload-avatar`,
       filePath: tempUrl,
       name: 'file',
@@ -233,7 +233,7 @@ Page({
     }
 
     this.setData({ savingProfile: true });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/user/update-profile`,
       method: 'POST',
       data: {
@@ -287,7 +287,7 @@ Page({
       this.setData({ historyLoading: false });
       return;
     }
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/meme/history`,
       method: 'GET',
       data: { openid: openid },
@@ -378,7 +378,7 @@ Page({
     const item = e.currentTarget.dataset.item;
     const openid = this.data.user.openid || app.globalData.openid || '';
     wx.showLoading({ title: '加载合集中...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/list`,
       method: 'GET',
       data: { openid: openid },
@@ -387,7 +387,7 @@ Page({
         let cols = (res.data && res.data.data) || [];
         if (cols.length === 0) {
           // 自动新建默认合集
-          wx.request({
+          app.request({
             url: `${app.globalData.baseURL}/api/collection/create`,
             method: 'POST',
             data: { openid: openid, title: '我的精选表情', description: '默认表情合集' },
@@ -436,7 +436,7 @@ Page({
     }
 
     wx.showLoading({ title: '正在存入...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/add-item`,
       method: 'POST',
       data: {
@@ -472,7 +472,7 @@ Page({
       success: (mRes) => {
         if (mRes.confirm) {
           wx.showLoading({ title: '正在删除...' });
-          wx.request({
+          app.request({
             url: `${app.globalData.baseURL}/api/meme/delete`,
             method: 'POST',
             data: { task_id: taskId, openid: openid },
@@ -506,7 +506,7 @@ Page({
 
   // ---------------- 支付与兑换 ----------------
   fetchPackages() {
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/pay/goods`,
       method: 'GET',
       success: (res) => {
@@ -543,7 +543,7 @@ Page({
   handleDailyCheckin() {
     if (!this.data.user.openid) return;
     wx.showLoading({ title: '签到中...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/user/checkin`,
       method: 'POST',
       data: { openid: this.data.user.openid },
@@ -597,7 +597,7 @@ Page({
     }
 
     wx.showLoading({ title: '正在兑换...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/user/redeem`,
       method: 'POST',
       data: {

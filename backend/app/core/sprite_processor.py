@@ -1,7 +1,6 @@
 import io
 import os
 import zipfile
-from pathlib import Path
 from typing import List
 import numpy as np
 import cv2

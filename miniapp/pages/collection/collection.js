@@ -54,7 +54,7 @@ Page({
 
     // 获取我的合集
     if (openid) {
-      wx.request({
+      app.request({
         url: `${app.globalData.baseURL}/api/collection/my?openid=${openid}`,
         method: 'GET',
         success: (res) => {
@@ -67,7 +67,7 @@ Page({
     }
 
     // 获取精选广场
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/explore`,
       method: 'GET',
       success: (res) => {
@@ -109,7 +109,7 @@ Page({
     const openid = app.globalData.openid || wx.getStorageSync('openid');
     wx.showLoading({ title: '创建中...' });
 
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/create`,
       method: 'POST',
       data: {
@@ -157,9 +157,13 @@ Page({
     });
   },
 
+  goToMake() {
+    wx.switchTab({ url: '/pages/index/index' });
+  },
+
   saveItemToCol(colId, gifUrl) {
     wx.showLoading({ title: '正在加入合集...' });
-    wx.request({
+    app.request({
       url: `${app.globalData.baseURL}/api/collection/add-item`,
       method: 'POST',
       data: {
@@ -199,7 +203,7 @@ Page({
       success: (mRes) => {
         if (mRes.confirm) {
           wx.showLoading({ title: '正在删除...' });
-          wx.request({
+          app.request({
             url: `${app.globalData.baseURL}/api/collection/delete`,
             method: 'POST',
             data: { collection_id: id, openid: openid },

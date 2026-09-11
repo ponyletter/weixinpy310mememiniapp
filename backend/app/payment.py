@@ -1,9 +1,8 @@
 import hmac
 import hashlib
 import json
-import time
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from app.config import settings
 from app.database import (
     get_package_by_id,
@@ -11,9 +10,7 @@ from app.database import (
     update_order_trade_no,
     create_order_record,
     mark_order_paid,
-    get_user_session_key,
-    get_user,
-    get_db
+    get_user_session_key
 )
 
 def hmac_sha256(data: str, key: str) -> str:
@@ -35,9 +32,17 @@ def create_xpay_order(openid: str, package_id: str) -> Dict[str, Any]:
     if not pkg:
         raise ValueError(f"道具档位 {package_id} 不存在")
 
-    order_id = f"MEME_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+    # 25 chars, leaving room for a 6-char retry suffix while retaining 96 bits of entropy.
+    order_id = f"M{uuid.uuid4().hex[:24]}"
     amount = pkg['price']  # 单位：分
     quota = pkg['quota']
+
+    active_app_key = settings.XPAY_APP_KEY_LIVE if settings.XPAY_ENV == 0 else (settings.XPAY_APP_KEY_SANDBOX or settings.XPAY_APP_KEY)
+    if not active_app_key:
+        raise ValueError("支付密钥未配置")
+    session_key = get_user_session_key(openid)
+    if not session_key:
+        raise ValueError("微信登录态已失效，请重新登录后支付")
 
     # 1. 记录到订单库
     create_order_record(order_id, openid, package_id, amount, quota)
@@ -56,9 +61,7 @@ def create_xpay_order(openid: str, package_id: str) -> Dict[str, Any]:
 
     sign_data_str = json.dumps(sign_data_dict, separators=(',', ':'))
     # 现网环境严格使用现网正式 AppKey 计算签名
-    active_app_key = settings.XPAY_APP_KEY_LIVE if settings.XPAY_ENV == 0 else (settings.XPAY_APP_KEY_SANDBOX or settings.XPAY_APP_KEY)
     pay_sig = calc_pay_sig("requestVirtualPayment", sign_data_str, active_app_key)
-    session_key = get_user_session_key(openid) or active_app_key
     signature = calc_signature(sign_data_str, session_key)
 
     return {
@@ -112,8 +115,12 @@ def resume_xpay_order(openid: str, order_id: str) -> Dict[str, Any]:
 
     sign_data_str = json.dumps(sign_data_dict, separators=(',', ':'))
     active_app_key = settings.XPAY_APP_KEY_LIVE if settings.XPAY_ENV == 0 else (settings.XPAY_APP_KEY_SANDBOX or settings.XPAY_APP_KEY)
+    if not active_app_key:
+        raise ValueError("支付密钥未配置")
     pay_sig = calc_pay_sig("requestVirtualPayment", sign_data_str, active_app_key)
-    session_key = get_user_session_key(openid) or active_app_key
+    session_key = get_user_session_key(openid)
+    if not session_key:
+        raise ValueError("微信登录态已失效，请重新登录后支付")
     signature = calc_signature(sign_data_str, session_key)
 
     return {
@@ -148,5 +155,24 @@ def handle_payment_notify(notify_data: Dict[str, Any]) -> bool:
                 target_id = attach_data["order_id"]
         except Exception:
             pass
+
+    order = get_order_by_id(target_id)
+    if not order:
+        return False
+
+    # Never trust attach for price, product, or beneficiary. The database is authoritative.
+    product_id = notify_data.get("productId")
+    goods_price = notify_data.get("goodsPrice")
+    offer_id = notify_data.get("offerId")
+    if product_id is not None and str(product_id) != str(order["package_id"]):
+        return False
+    if goods_price is not None:
+        try:
+            if int(goods_price) != int(order["amount"]):
+                return False
+        except (TypeError, ValueError):
+            return False
+    if offer_id is not None and str(offer_id) != str(settings.XPAY_OFFER_ID):
+        return False
 
     return mark_order_paid(target_id, wx_order_id)

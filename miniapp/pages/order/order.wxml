@@ -1,12 +1,18 @@
 <view class="container">
-  <view class="order-hero card">
-    <view class="hero-title">微信虚拟支付 2.0 履约与订单记录</view>
-    <view class="hero-sub">根据微信官方规范，所有虚拟商品与制作额度均自动履约发货到账。</view>
+  <view class="page-heading">
+    <text class="page-eyebrow">账户与支付</text>
+    <text class="page-title">订单记录</text>
+    <text class="page-subtitle">查看额度购买状态和到账明细。</text>
+  </view>
+  <view class="order-notice card">
+    <view class="notice-dot"></view>
+    <text>支付成功后，制作额度会自动加入当前账户。</text>
   </view>
 
-  <view wx:if="{{orders.length === 0}}" class="empty-box card">
-    <text class="empty-icon">🧾</text>
-    <text class="empty-text">暂无充值与支付记录</text>
+  <view wx:if="{{orders.length === 0}}" class="empty-state card">
+    <text class="empty-state-icon">🧾</text>
+    <text class="empty-state-title">还没有订单</text>
+    <text class="empty-state-desc">购买制作额度后，订单会显示在这里。</text>
   </view>
 
   <view class="order-list">
@@ -14,31 +20,31 @@
       <view class="order-row header-row">
         <text class="pkg-name">{{item.package_title || item.package_id}}</text>
         <text class="badge {{item.status === 'PAID' ? 'badge-green' : (item.status === 'PENDING' ? 'badge-gold' : 'badge-gray')}}">
-          {{item.status === 'PAID' ? '已支付·已发货' : (item.status === 'PENDING' ? '待付款' : '已取消')}}
+          {{item.status === 'PAID' ? '已到账' : (item.status === 'PENDING' ? '待支付' : '已取消')}}
         </text>
       </view>
 
       <view class="order-row meta-row">
-        <text class="label">商户订单号:</text>
+        <text class="label">订单号</text>
         <text class="val font-mono">{{item.order_id}}</text>
       </view>
 
       <view wx:if="{{item.wx_order_id}}" class="order-row meta-row">
-        <text class="label">微信支付单号:</text>
+        <text class="label">微信支付单号</text>
         <text class="val font-mono">{{item.wx_order_id}}</text>
       </view>
 
       <view class="order-row meta-row">
-        <text class="label">下单时间:</text>
+        <text class="label">下单时间</text>
         <text class="val">{{item.created_at}}</text>
       </view>
 
       <view class="order-divider"></view>
 
       <view class="order-row footer-row">
-        <text wx:if="{{item.status === 'PAID'}}" class="reward-hint">获得权益: +{{item.quota_reward}} 次制作额度</text>
-        <text wx:elif="{{item.status === 'PENDING'}}" class="pending-hint">待付款生效 (+{{item.quota_reward}} 次额度)</text>
-        <text wx:else class="cancel-hint">订单已取消关闭</text>
+        <text wx:if="{{item.status === 'PAID'}}" class="reward-hint">已到账 {{item.quota_reward}} 次额度</text>
+        <text wx:elif="{{item.status === 'PENDING'}}" class="pending-hint">支付后到账 {{item.quota_reward}} 次</text>
+        <text wx:else class="cancel-hint">订单已关闭</text>
         <view class="amount-wrap">
           <text class="curr">¥</text>
           <text class="amount">{{item.amount / 100}}</text>
@@ -66,7 +72,7 @@
   <!-- 客服支持 -->
   <view class="support-wrap">
     <button class="btn-secondary" style="width: 100%;" open-type="contact">
-      💬 订单有疑问？联系人工在线客服
+      订单有疑问？联系在线客服
     </button>
   </view>
 </view>

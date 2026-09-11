@@ -10,6 +10,25 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedSampleId = null;       // 模式 2：内置测试样本
   let progressInterval = null;
   let pollInterval = null;
+  let accessToken = "";
+
+  // The H5 console is a development tool. The backend only accepts this mock login in DEBUG mode.
+  const authReady = window.fetch("/api/user/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: "mock_h5_console" })
+  }).then(async response => {
+    if (!response.ok) throw new Error("H5 调试登录不可用，请确认后端 DEBUG=true");
+    const data = await response.json();
+    accessToken = data.access_token;
+  });
+
+  async function apiFetch(url, options = {}) {
+    await authReady;
+    const headers = new Headers(options.headers || {});
+    headers.set("Authorization", `Bearer ${accessToken}`);
+    return window.fetch(url, { ...options, headers });
+  }
 
   // ==========================================
   // DOM 元素引用
@@ -332,7 +351,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================
   // 4. 动作模板与提示词处理
   // ==========================================
-  fetch("/api/templates")
+  apiFetch("/api/templates")
     .then(res => res.json())
     .then(data => {
       if (data.code === 0 && data.data) {
@@ -393,7 +412,7 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("has_image", selectedRefImage !== null);
     formData.append("is_sketch", isSketchMode && selectedRefImage !== null);
 
-    fetch("/api/prompt-builder", {
+    apiFetch("/api/prompt-builder", {
       method: "POST",
       body: formData
     })
@@ -484,7 +503,7 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("padding_percent", padSelectSlicer.value);
 
     try {
-      const resp = await fetch("/api/process-sprite", {
+      const resp = await apiFetch("/api/process-sprite", {
         method: "POST",
         body: formData
       });
@@ -532,7 +551,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       // 发起异步任务创建 (仅需 20ms)
-      const startResp = await fetch("/api/generate-async", {
+      const startResp = await apiFetch("/api/generate-async", {
         method: "POST",
         body: formData
       });
@@ -549,7 +568,7 @@ document.addEventListener("DOMContentLoaded", () => {
       clearInterval(pollInterval);
       pollInterval = setInterval(async () => {
         try {
-          const statusResp = await fetch(`/api/task-status/${taskId}?t=${Date.now()}`);
+          const statusResp = await apiFetch(`/api/task-status/${taskId}?t=${Date.now()}`);
           if (!statusResp.ok) return;
           const statusJson = await statusResp.json();
           if (statusJson.code !== 0 || !statusJson.data) return;
