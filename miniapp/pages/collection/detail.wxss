@@ -64,19 +64,26 @@
 }
 
 .meme-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18rpx;
+  /* WXSS 对 CSS Grid 的兼容性不一致，使用 flex 确保第二列不会溢出到屏幕右侧。 */
+  display: flex;
+  flex-wrap: wrap;
+  width: calc(100% + 18rpx);
+  margin: 0 -9rpx;
+  overflow: hidden;
 }
 
 .meme-item {
+  flex: 0 0 calc(50% - 18rpx);
+  width: calc(50% - 18rpx);
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 16rpx;
-  margin-bottom: 0;
+  margin: 0 9rpx 18rpx;
   position: relative;
   border: 1rpx solid #e2e8f0;
+  overflow: hidden;
 }
 
 .meme-item:active {
@@ -84,13 +91,16 @@
 }
 
 .meme-img {
-  width: 280rpx;
+  width: 100%;
+  max-width: 100%;
   height: 280rpx;
   border-radius: 14rpx;
   background: #ffffff;
 }
 
 .meme-title {
+  width: 100%;
+  min-width: 0;
   font-size: 24rpx;
   font-weight: 600;
   color: #334155;
@@ -108,11 +118,13 @@
   display: flex;
   gap: 12rpx;
   width: 100%;
+  min-width: 0;
   margin-top: 14rpx;
 }
 
 .btn-xs-meme {
   flex: 1;
+  min-width: 0 !important;
   font-size: 20rpx !important;
   font-weight: 600 !important;
   padding: 10rpx 0 !important;
