@@ -2,8 +2,38 @@ import sqlite3
 import datetime
 import uuid
 from typing import Optional, List, Dict, Any
+from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from app.config import settings
+
+
+CHINA_TIMEZONE = ZoneInfo("Asia/Shanghai")
+
+
+def format_datetime_china(value: Any) -> Optional[str]:
+    """Format a stored timestamp for users in China Standard Time (UTC+8).
+
+    SQLite's ``CURRENT_TIMESTAMP`` is UTC.  Historical rows are therefore
+    treated as UTC when they contain no offset; timestamps that already carry
+    an explicit offset retain that meaning before conversion.
+    """
+    if value is None or value == "":
+        return value
+    if isinstance(value, datetime.datetime):
+        parsed = value
+    else:
+        raw = str(value).strip()
+        if not raw:
+            return raw
+        try:
+            parsed = datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            # Preserve an unexpected legacy value rather than failing the
+            # entire order list response.
+            return raw
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+    return parsed.astimezone(CHINA_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
 
 def get_db():
     db_path = settings.DATABASE_PATH
@@ -589,7 +619,17 @@ def get_user_orders(openid: str) -> List[Dict[str, Any]]:
             WHERE o.openid = ?
             ORDER BY o.created_at DESC
         ''', (openid,))
-        return [dict(r) for r in cursor.fetchall()]
+        orders = []
+        for row in cursor.fetchall():
+            order = dict(row)
+            # Keep the database in UTC, but expose a stable China-time value
+            # to the mini program.  This also fixes old rows created before
+            # the timezone display was corrected.
+            order["created_at"] = format_datetime_china(order.get("created_at"))
+            order["pay_time"] = format_datetime_china(order.get("pay_time"))
+            order["timezone"] = "Asia/Shanghai"
+            orders.append(order)
+        return orders
 
 def get_order_by_id(order_id: str) -> Optional[Dict[str, Any]]:
     with get_db() as conn:

@@ -137,6 +137,41 @@ App({
     });
   },
 
+  // 支付弹窗成功后，轮询服务端已确认的订单状态。
+  // 只有可信回调落库后才刷新额度，避免把前端 success 当成到账凭据。
+  waitForPayment(orderId, callback) {
+    const that = this;
+    let attempts = 0;
+    const maxAttempts = 10;
+    const poll = () => {
+      attempts += 1;
+      that.request({
+        url: `${that.globalData.baseURL}/api/pay/order-status?order_id=${encodeURIComponent(orderId)}`,
+        method: 'GET',
+        success: (res) => {
+          const data = res.data || {};
+          if (data.success && data.paid) {
+            callback({ paid: true, status: 'PAID', data: data });
+            return;
+          }
+          if (attempts >= maxAttempts) {
+            callback({ paid: false, status: data.status || 'PENDING', data: data });
+            return;
+          }
+          setTimeout(poll, 1200);
+        },
+        fail: () => {
+          if (attempts >= maxAttempts) {
+            callback({ paid: false, status: 'PENDING' });
+            return;
+          }
+          setTimeout(poll, 1200);
+        }
+      });
+    };
+    poll();
+  },
+
   // 微信虚拟支付 2.0 实际拉起收银台核心方法
   executeVirtualPayment(orderInfo, onSuccess, onFail) {
     const that = this;
@@ -149,9 +184,22 @@ App({
         signature: payment_params.signature,
         mode: payment_params.mode,
         success: () => {
-          wx.showToast({ title: '支付成功！', icon: 'success' });
-          that.fetchUserProfile();
-          if (onSuccess) onSuccess();
+          wx.showLoading({ title: '确认支付结果...' });
+          that.waitForPayment(order_id, (result) => {
+            wx.hideLoading();
+            that.fetchUserProfile();
+            if (result && result.paid) {
+              wx.showToast({ title: '支付成功，额度已到账', icon: 'success' });
+            } else {
+              wx.showModal({
+                title: '支付结果确认中',
+                content: '支付平台已返回成功，服务器正在同步订单。请稍后在“订单记录”中刷新查看，额度确认前不会重复扣款。',
+                showCancel: false,
+                confirmText: '知道了'
+              });
+            }
+            if (onSuccess) onSuccess(result);
+          });
         },
         fail: (err) => {
           console.error('wx.requestVirtualPayment 失败详情:', err);
@@ -177,7 +225,7 @@ App({
             showCancel: false
           });
           that.fetchUserProfile();
-          if (onSuccess) onSuccess();
+          if (onSuccess) onSuccess({ paid: true, status: 'PAID' });
         }
       });
     }

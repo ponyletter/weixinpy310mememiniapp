@@ -49,8 +49,14 @@ cp .env.example .env
 生产环境保持 `DEBUG=false` 和 `ENABLE_MOCK_PAYMENT=false`。`JWT_SECRET` 可通过
 `openssl rand -hex 32` 生成；缺少关键配置时，服务会拒绝启动，避免以不安全默认值上线。
 
-支付回调必须先经过可信网关验证微信平台身份，再由网关添加
-`X-XPay-Callback-Token` 请求头；该值需与 `.env` 中的 `XPAY_CALLBACK_TOKEN` 一致。
+生产环境请在微信/腾讯云虚拟支付的“基础配置/发货推送”中启用道具发货通知，并将回调地址配置为
+`https://meme.tg-cc755.cn/api/pay/notify`（不要填 `apiwx.tg-cc755.cn`）。Nginx 会注入内部
+`X-XPay-Callback-Token`，后端还会按现网 AppKey 校验官方 `payEventSig`，只有验签通过才会发放额度。
+回调必须返回 `returnCode: "0"`，否则平台会重试且订单会保持待支付。支付弹窗成功后小程序会轮询
+`/api/pay/order-status`，以服务端已确认的订单状态为准。
+
+订单表继续使用 UTC 存储；`/api/user/orders` 对外统一转换为中国标准时间（`Asia/Shanghai`，UTC+8），
+并附带 `timezone` 字段，便于前端和客服核对时间。
 
 ### 2. 启动服务
 ```bash

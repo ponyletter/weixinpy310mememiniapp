@@ -1,4 +1,5 @@
 import io
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,6 +8,7 @@ from PIL import Image
 from app.config import settings
 from app.database import init_db
 from app.main import app
+from app.payment import calc_pay_event_sig
 
 
 @pytest.fixture()
@@ -115,19 +117,52 @@ def test_payment_callback_validates_business_fields(client: TestClient):
     order_id = created.json()["data"]["order_id"]
     callback_headers = {"X-XPay-Callback-Token": "test-callback-token"}
 
+    def callback(price):
+        payload = json.dumps({
+            "OpenId": "user_mock_alice",
+            "OutTradeNo": order_id,
+            "GoodsInfo": {
+                "ProductId": "meme_100",
+                "Quantity": 1,
+                "OrigPrice": price,
+                "ActualPrice": str(price),
+                "Attach": json.dumps({"openid": "user_mock_alice", "pkg_id": "meme_100"}, separators=(",", ":")),
+                "OrderSource": 10,
+            },
+            "PayInfo": {"TransactionId": "tx_test_001"},
+        }, separators=(",", ":"))
+        event = "xpay_goods_deliver_notify"
+        return {
+            "eventType": "TRANSACTION.SUCCESS",
+            "event": event,
+            "payload": payload,
+            "payEventSig": calc_pay_event_sig(event, payload, "test-payment-app-key"),
+            "transactionId": "tx_test_001",
+            "outTradeNo": order_id,
+        }
+
     rejected = client.post(
         "/api/pay/notify",
-        json={"outTradeNo": order_id, "productId": "meme_100", "goodsPrice": 1, "offerId": "test-offer"},
+        json=callback(1),
         headers=callback_headers,
     )
     assert rejected.status_code == 400
 
     accepted = client.post(
         "/api/pay/notify",
-        json={"outTradeNo": order_id, "productId": "meme_100", "goodsPrice": 100, "offerId": "test-offer"},
+        json=callback(100),
         headers=callback_headers,
     )
     assert accepted.status_code == 200
+    assert accepted.json()["returnCode"] == "0"
+
+    status = client.get(f"/api/pay/order-status?order_id={order_id}", headers=headers)
+    assert status.status_code == 200
+    assert status.json()["paid"] is True
+
+    orders = client.get("/api/user/orders?openid=user_mock_alice", headers=headers)
+    assert orders.status_code == 200
+    assert orders.json()["orders"][0]["timezone"] == "Asia/Shanghai"
 
 
 def test_path_traversal_is_rejected(client: TestClient):

@@ -1,6 +1,6 @@
 import uuid
 import httpx
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query, Response, UploadFile, File
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.config import settings
@@ -91,7 +91,7 @@ async def wechat_login(req: LoginRequest):
     }
 
 @router.get("/profile")
-def get_profile(current_openid: CurrentOpenid, openid: str = Query("")):
+def get_profile(response: Response, current_openid: CurrentOpenid, openid: str = Query("")):
     """获取用户个人资料与剩余额度"""
     clean_openid = require_same_user(openid, current_openid)
     user = get_user(clean_openid)
@@ -111,6 +111,7 @@ def get_profile(current_openid: CurrentOpenid, openid: str = Query("")):
         works_cnt = w_row[0] if w_row else 0
     user_copy["works_count"] = works_cnt
     user_copy["total_generated"] = works_cnt
+    response.headers["Cache-Control"] = "no-store"
     return {"success": True, "user": user_copy}
 
 @router.post("/update-profile")
@@ -158,7 +159,8 @@ def redeem(req: RedeemRequest, current_openid: CurrentOpenid):
     return result
 
 @router.get("/orders")
-def list_orders(current_openid: CurrentOpenid, openid: str = Query("")):
+def list_orders(response: Response, current_openid: CurrentOpenid, openid: str = Query("")):
     """获取用户充值订单记录"""
     orders = get_user_orders(require_same_user(openid, current_openid))
+    response.headers["Cache-Control"] = "no-store"
     return {"success": True, "orders": orders}

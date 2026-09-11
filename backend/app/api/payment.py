@@ -1,6 +1,7 @@
 import hmac
+import logging
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from app.config import settings
 from app.database import (
@@ -8,11 +9,13 @@ from app.database import (
     mark_order_paid,
     cancel_order_record,
     get_order_by_id,
+    format_datetime_china,
 )
 from app.payment import create_xpay_order, resume_xpay_order, handle_payment_notify
 from app.security import CurrentOpenid, require_same_user
 
 router = APIRouter(prefix="/api/pay", tags=["virtual_payment"])
+logger = logging.getLogger(__name__)
 
 class CreateOrderRequest(BaseModel):
     openid: str
@@ -70,6 +73,30 @@ def cancel_order_endpoint(req: CancelOrderRequest, current_openid: CurrentOpenid
         raise HTTPException(status_code=400, detail="订单不存在或当前状态不可取消")
     return {"success": True, "message": "订单已成功取消"}
 
+
+@router.get("/order-status")
+def payment_order_status(response: Response, current_openid: CurrentOpenid, order_id: str = Query(..., min_length=6, max_length=64)):
+    """Return the server-confirmed state of a user's payment order.
+
+    A successful ``wx.requestVirtualPayment`` callback only means the
+    payment UI completed.  The server callback is the source of truth for
+    crediting quota, so the mini program polls this endpoint briefly after
+    the payment UI closes.
+    """
+    order = get_order_by_id(order_id.strip())
+    if not order or order["openid"] != current_openid:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    response.headers["Cache-Control"] = "no-store"
+    return {
+        "success": True,
+        "order_id": order["order_id"],
+        "status": order["status"],
+        "paid": order["status"] == "PAID",
+        "quota_reward": order["quota_reward"],
+        "pay_time": format_datetime_china(order.get("pay_time")),
+        "timezone": "Asia/Shanghai",
+    }
+
 @router.post("/mock-pay")
 def mock_pay_success(req: MockPayRequest, current_openid: CurrentOpenid):
     """开发测试环境模拟支付成功直接结算发放额度"""
@@ -94,5 +121,15 @@ async def payment_notify(request: Request):
     except Exception as exc:
         raise HTTPException(status_code=400, detail="支付回调不是有效 JSON") from exc
     if not handle_payment_notify(body):
+        logger.warning(
+            "payment callback rejected: event=%s event_type=%s out_trade_no=%s",
+            body.get("event"),
+            body.get("eventType"),
+            body.get("outTradeNo"),
+        )
         raise HTTPException(status_code=400, detail="支付回调校验或结算失败")
-    return {"errcode": 0, "errmsg": "OK"}
+    logger.info("payment callback accepted: out_trade_no=%s", body.get("outTradeNo"))
+    # Tencent Super App expects this response shape.  Returning only the
+    # legacy errcode/errmsg pair makes a valid callback look failed and causes
+    # retries, while the order remains pending from the user's perspective.
+    return {"returnCode": "0", "returnMessage": "success", "data": "ok"}

@@ -55,8 +55,10 @@ class Settings(BaseSettings):
     XPAY_ENV: int = 1
     WX_MCH_ID: str = ""
     ENABLE_MOCK_PAYMENT: bool = False
-    # Configure the callback gateway to send this value in X-XPay-Callback-Token.
+    # Internal callback guard injected by the reverse proxy.
     XPAY_CALLBACK_TOKEN: str = ""
+    # Event name sent by the virtual-payment delivery notification.
+    XPAY_CALLBACK_EVENT: str = "xpay_goods_deliver_notify"
 
     WX_KEFU_ADMIN: str = ""
     WX_MSG_TOKEN: str = ""

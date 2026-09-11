@@ -26,6 +26,20 @@ def calc_signature(post_body: str, session_key: str) -> str:
     """计算微信虚拟支付 2.0 用户态 signature: HMAC-SHA256(post_body, session_key)"""
     return hmac_sha256(post_body, session_key)
 
+
+def get_active_app_key() -> str:
+    """Return the payment key for the currently selected environment."""
+    return (
+        settings.XPAY_APP_KEY_LIVE
+        if settings.XPAY_ENV == 0
+        else (settings.XPAY_APP_KEY_SANDBOX or settings.XPAY_APP_KEY)
+    )
+
+
+def calc_pay_event_sig(event: str, payload: str, appkey: str) -> str:
+    """Calculate Tencent Super App virtual-payment callback signature."""
+    return hmac_sha256(f"{event}&{payload}", appkey)
+
 def create_xpay_order(openid: str, package_id: str) -> Dict[str, Any]:
     """生成微信小程序虚拟支付 2.0 下单参数与签名"""
     pkg = get_package_by_id(package_id)
@@ -37,7 +51,7 @@ def create_xpay_order(openid: str, package_id: str) -> Dict[str, Any]:
     amount = pkg['price']  # 单位：分
     quota = pkg['quota']
 
-    active_app_key = settings.XPAY_APP_KEY_LIVE if settings.XPAY_ENV == 0 else (settings.XPAY_APP_KEY_SANDBOX or settings.XPAY_APP_KEY)
+    active_app_key = get_active_app_key()
     if not active_app_key:
         raise ValueError("支付密钥未配置")
     session_key = get_user_session_key(openid)
@@ -114,7 +128,7 @@ def resume_xpay_order(openid: str, order_id: str) -> Dict[str, Any]:
     }
 
     sign_data_str = json.dumps(sign_data_dict, separators=(',', ':'))
-    active_app_key = settings.XPAY_APP_KEY_LIVE if settings.XPAY_ENV == 0 else (settings.XPAY_APP_KEY_SANDBOX or settings.XPAY_APP_KEY)
+    active_app_key = get_active_app_key()
     if not active_app_key:
         raise ValueError("支付密钥未配置")
     pay_sig = calc_pay_sig("requestVirtualPayment", sign_data_str, active_app_key)
@@ -139,18 +153,72 @@ def resume_xpay_order(openid: str, order_id: str) -> Dict[str, Any]:
     }
 
 def handle_payment_notify(notify_data: Dict[str, Any]) -> bool:
-    """处理微信虚拟支付发货/付款成功回调"""
-    out_trade_no = notify_data.get("outTradeNo", "")
-    wx_order_id = notify_data.get("wechatPayOrderId", "")
+    """处理并验签微信虚拟支付发货/付款成功回调。
+
+    Tencent's virtual-payment callback signs the exact payload string with
+    ``HMAC-SHA256(app_key, event + '&' + payload)``.  The payload is kept as
+    a string here intentionally: parsing and re-serialising it before
+    verification could change whitespace/escaping and invalidate the
+    signature.
+    """
+    if not isinstance(notify_data, dict):
+        return False
+    if notify_data.get("eventType") != "TRANSACTION.SUCCESS":
+        return False
+
+    event = str(notify_data.get("event", ""))
+    if event != settings.XPAY_CALLBACK_EVENT:
+        return False
+
+    payload_raw = notify_data.get("payload")
+    if not isinstance(payload_raw, str) or not payload_raw:
+        return False
+    pay_event_sig = str(notify_data.get("payEventSig", ""))
+    active_app_key = get_active_app_key()
+    if not active_app_key or not pay_event_sig:
+        return False
+    expected_sig = calc_pay_event_sig(event, payload_raw, active_app_key)
+    if not hmac.compare_digest(pay_event_sig, expected_sig):
+        return False
+
+    try:
+        payload = json.loads(payload_raw)
+    except (TypeError, ValueError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+
+    goods_info = payload.get("GoodsInfo")
+    if not isinstance(goods_info, dict):
+        goods_info = {}
+    pay_info = payload.get("PayInfo")
+    if not isinstance(pay_info, dict):
+        pay_info = {}
+
+    top_out_trade_no = str(notify_data.get("outTradeNo", "") or "")
+    payload_out_trade_no = str(payload.get("OutTradeNo", "") or "")
+    if top_out_trade_no and payload_out_trade_no and top_out_trade_no != payload_out_trade_no:
+        return False
+    out_trade_no = top_out_trade_no or payload_out_trade_no
     if not out_trade_no:
         return False
 
+    wx_order_id = str(
+        notify_data.get("wechatPayOrderId")
+        or notify_data.get("transactionId")
+        or pay_info.get("TransactionId")
+        or payload.get("TransactionId")
+        or ""
+    )
+
     # 优先从 attach 解析出关联的主订单号
     target_id = out_trade_no
-    attach_raw = notify_data.get("attach", "")
+    attach_raw = notify_data.get("attach") or goods_info.get("Attach") or goods_info.get("attach") or ""
     if attach_raw:
         try:
-            attach_data = json.loads(attach_raw)
+            attach_data = json.loads(attach_raw) if isinstance(attach_raw, str) else attach_raw
+            if not isinstance(attach_data, dict):
+                attach_data = {}
             if "order_id" in attach_data:
                 target_id = attach_data["order_id"]
         except Exception:
@@ -161,9 +229,23 @@ def handle_payment_notify(notify_data: Dict[str, Any]) -> bool:
         return False
 
     # Never trust attach for price, product, or beneficiary. The database is authoritative.
-    product_id = notify_data.get("productId")
+    product_id = notify_data.get("productId") or goods_info.get("ProductId")
     goods_price = notify_data.get("goodsPrice")
+    if goods_price is None:
+        goods_price = goods_info.get("ActualPrice")
+    if goods_price is None:
+        goods_price = goods_info.get("OrigPrice")
     offer_id = notify_data.get("offerId")
+    callback_openid = payload.get("OpenId")
+    if callback_openid and str(callback_openid) != str(order["openid"]):
+        return False
+    quantity = goods_info.get("Quantity")
+    if quantity is not None:
+        try:
+            if int(quantity) != 1:
+                return False
+        except (TypeError, ValueError):
+            return False
     if product_id is not None and str(product_id) != str(order["package_id"]):
         return False
     if goods_price is not None:
