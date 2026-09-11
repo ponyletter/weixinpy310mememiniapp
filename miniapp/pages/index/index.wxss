@@ -564,6 +564,14 @@
   background: #f8fafc;
 }
 
+.result-preview-hint {
+  display: block;
+  margin-top: 14rpx;
+  color: #7c8498;
+  font-size: 22rpx;
+  text-align: center;
+}
+
 .result-gif {
   width: 100%;
   height: 100%;

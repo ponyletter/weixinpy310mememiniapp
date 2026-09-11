@@ -225,6 +225,12 @@ Page({
     });
   },
 
+  previewRemixResult(e) {
+    const url = e.currentTarget.dataset.url || this.data.remixResultUrl;
+    if (!url) return;
+    wx.previewImage({ urls: [url], current: url });
+  },
+
   saveRemixGif() {
     if (!this.data.remixResultUrl) return;
     wx.showLoading({ title: '正在下载...' });

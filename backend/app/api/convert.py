@@ -1,9 +1,11 @@
 import hashlib
 import asyncio
+import shutil
 import subprocess
 import time
 import uuid
 from pathlib import Path
+from textwrap import wrap
 from typing import Optional, List
 from urllib.parse import urlsplit
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
@@ -16,6 +18,18 @@ from app.security import CurrentOpenid
 from app.upload_utils import ensure_within, open_validated_image, read_limited_upload
 
 router = APIRouter(prefix="/api/convert", tags=["conversion_and_remix"])
+
+
+def _resolve_ffmpeg() -> str:
+    """Resolve ffmpeg once per request and return a useful deployment error."""
+    configured = settings.FFMPEG_BIN.strip() or "ffmpeg"
+    executable = configured if Path(configured).is_file() else shutil.which(configured)
+    if not executable:
+        raise HTTPException(
+            status_code=503,
+            detail="服务器未安装 FFmpeg，暂时无法处理视频；请联系管理员安装 ffmpeg。",
+        )
+    return executable
 
 
 class ComposeImagesRequest(BaseModel):
@@ -68,6 +82,7 @@ async def video_to_gif(
         raise HTTPException(status_code=400, detail="fps 或输出宽度超出允许范围")
     if len(caption) > 80:
         raise HTTPException(status_code=400, detail="字幕不能超过 80 个字符")
+    ffmpeg_bin = _resolve_ffmpeg()
     type_suffixes = {"video/mp4": ".mp4", "video/quicktime": ".mov", "video/webm": ".webm", "video/x-m4v": ".m4v"}
     filename_suffix = Path(video.filename or "").suffix.lower()
     if video.content_type not in type_suffixes and not (
@@ -90,7 +105,7 @@ async def video_to_gif(
     vf_filter = f"fps={fps},scale={width}:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer"
 
     cmd = [
-        "ffmpeg", "-y",
+        ffmpeg_bin, "-y",
         "-ss", str(max(0.0, start_time)),
         "-t", str(min(10.0, max(0.5, duration))),
         "-i", str(input_path),
@@ -111,6 +126,8 @@ async def video_to_gif(
         raise HTTPException(status_code=500, detail=f"视频转动图处理失败: {e.stderr.decode('utf-8', errors='ignore')[:200]}")
     except subprocess.TimeoutExpired as exc:
         raise HTTPException(status_code=504, detail="视频处理超时") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail="服务器未安装 FFmpeg，暂时无法处理视频") from exc
 
     # 如果需要加字幕
     if caption.strip() and output_gif_path.exists():
@@ -281,7 +298,7 @@ def caption_suggest(keyword: str = Form(""), style: str = Form("all")):
     }
 
 def _add_caption_to_gif(gif_path: Path, caption: str):
-    """为 GIF 每帧添加文字条"""
+    """在 GIF 每帧下方增加独立的白色文字区，避免覆盖原图内容。"""
     try:
         im = Image.open(gif_path)
         frames = []
@@ -299,29 +316,39 @@ def _add_caption_to_gif(gif_path: Path, caption: str):
             frame_rgba = im.convert("RGBA")
             w, h = frame_rgba.size
 
-            # 动态字体大小
+            # 动态字体大小，并按画布宽度将长文案拆成最多两行。
             text_len = max(1, len(caption))
             font_size = max(16, min(30, int(w / (text_len + 2))))
             if font_path.exists():
                 font = ImageFont.truetype(str(font_path), size=font_size)
 
-            draw = ImageDraw.Draw(frame_rgba)
-            bbox = draw.textbbox((0, 0), caption, font=font)
-            text_w = bbox[2] - bbox[0]
-            text_h = bbox[3] - bbox[1]
+            max_chars = max(6, int((w - 32) / max(font_size * 0.58, 1)))
+            lines = wrap(caption, width=max_chars, break_long_words=True, break_on_hyphens=False) or [caption]
+            if len(lines) > 2:
+                lines = lines[:2]
+                lines[-1] = lines[-1][:-1].rstrip() + "…"
 
-            x = (w - text_w) // 2
-            y = h - text_h - 12
+            line_height = max(font_size + 10, 28)
+            panel_height = line_height * len(lines) + 18
+            canvas = Image.new("RGBA", (w, h + panel_height), (255, 255, 255, 255))
+            canvas.alpha_composite(frame_rgba, (0, 0))
+            draw = ImageDraw.Draw(canvas)
+            for line_idx, line in enumerate(lines):
+                bbox = draw.textbbox((0, 0), line, font=font)
+                text_w = bbox[2] - bbox[0]
+                text_h = bbox[3] - bbox[1]
+                x = (w - text_w) // 2
+                y = h + 9 + line_idx * line_height + max(0, (line_height - text_h) // 2)
+                draw.text(
+                    (x, y),
+                    line,
+                    font=font,
+                    fill=(15, 23, 42, 255),
+                    stroke_width=1,
+                    stroke_fill=(255, 255, 255, 255),
+                )
 
-            # 绘制文字描边 (黑边白字，微信表情包标配)
-            outline_range = 2
-            for dx in range(-outline_range, outline_range + 1):
-                for dy in range(-outline_range, outline_range + 1):
-                    if dx != 0 or dy != 0:
-                        draw.text((x + dx, y + dy), caption, font=font, fill=(0, 0, 0, 255))
-            draw.text((x, y), caption, font=font, fill=(255, 255, 255, 255))
-
-            frames.append(frame_rgba)
+            frames.append(canvas)
             durations.append(im.info.get("duration", 100) / 1000.0)
 
         avg_duration = sum(durations) / max(1, len(durations))

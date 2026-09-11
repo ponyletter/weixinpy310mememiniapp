@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     CPA_API_BASE: str = "http://127.0.0.1:8317/v1"
     CPA_API_KEY: str = ""
     CPA_IMAGE_MODEL: str = "gpt-image-2"
+    FFMPEG_BIN: str = "ffmpeg"
 
     OUTPUT_SYNC_LOCAL_DIR: str = ""
     OUTPUT_SYNC_HOST: str = ""

@@ -22,9 +22,21 @@
     </view>
   </view>
 
-  <!-- 表情包列表瀑布流 / 网格 -->
-  <view class="section-title">全部表情 <text class="section-sub">{{collection.items ? collection.items.length : 0}} 个</text></view>
-  <view class="meme-grid">
+  <view wx:if="{{detailLoading}}" class="detail-loading card">
+    <view class="loading-spinner"></view>
+    <text>正在加载完整合集…</text>
+  </view>
+
+  <view wx:if="{{!detailLoading && detailError}}" class="empty-state card">
+    <text class="empty-state-icon">⚠️</text>
+    <text class="empty-state-title">合集加载失败</text>
+    <text class="empty-state-desc">请检查网络后重试，避免看到不完整的条目。</text>
+    <button class="btn-primary empty-action" bindtap="retryDetail">重新加载</button>
+  </view>
+
+  <!-- 表情包列表瀑布流 / 网格；只使用详情接口返回的完整 items -->
+  <view wx:if="{{!detailLoading && !detailError}}" class="section-title">全部表情 <text class="section-sub">{{collection.items ? collection.items.length : 0}} 个</text></view>
+  <view wx:if="{{!detailLoading && !detailError}}" class="meme-grid">
     <view 
       wx:for="{{collection.items}}" 
       wx:key="id" 
@@ -40,7 +52,7 @@
     </view>
   </view>
 
-  <view wx:if="{{!collection.items || collection.items.length === 0}}" class="empty-state card">
+  <view wx:if="{{!detailLoading && !detailError && (!collection.items || collection.items.length === 0)}}" class="empty-state card">
     <text class="empty-state-icon">🌱</text>
     <text class="empty-state-title">这个合集还是空的</text>
     <text class="empty-state-desc">制作第一张表情并把它存进来吧。</text>

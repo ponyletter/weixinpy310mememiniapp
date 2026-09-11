@@ -326,9 +326,9 @@ def get_or_create_user(openid: str, session_key: str = "", inviter_code: str = "
         # 确保拥有属于自己的默认私密合集
         cursor.execute("SELECT collection_id FROM collections WHERE openid = ?", (openid,))
         if not cursor.fetchone():
-            default_col_id = f"col_{uuid.uuid4().hex[:8]}"
+            default_col_id = f"col_default_{uuid.uuid5(uuid.NAMESPACE_URL, openid).hex[:16]}"
             cursor.execute('''
-                INSERT INTO collections (collection_id, openid, title, description, cover_url, is_public)
+                INSERT OR IGNORE INTO collections (collection_id, openid, title, description, cover_url, is_public)
                 VALUES (?, ?, '我的精选表情', '专属默认表情小抽屉，随时收集喜爱的动图', '/samples/sample_run.png', 0)
             ''', (default_col_id, openid))
             conn.commit()
@@ -773,23 +773,24 @@ def get_user_collections(openid: str) -> List[Dict[str, Any]]:
 
         # 如果用户尚未拥有合集，自动创建默认专属合集并返回，无需手动点击新建
         if not cols and openid:
-            default_col_id = f"col_{uuid.uuid4().hex[:8]}"
+            # Deterministic ID + INSERT OR IGNORE prevents onLoad/onShow races
+            # from creating several empty default collections for one user.
+            default_col_id = f"col_default_{uuid.uuid5(uuid.NAMESPACE_URL, openid).hex[:16]}"
             cursor.execute('''
-                INSERT INTO collections (collection_id, openid, title, description, cover_url, is_public)
+                INSERT OR IGNORE INTO collections (collection_id, openid, title, description, cover_url, is_public)
                 VALUES (?, ?, '我的精选表情', '专属默认表情小抽屉，随时收集喜爱的动图', '/samples/sample_run.png', 0)
             ''', (default_col_id, openid))
             conn.commit()
-            return [{
-                "collection_id": default_col_id,
-                "openid": openid,
-                "title": "我的精选表情",
-                "description": "专属默认表情小抽屉，随时收集喜爱的动图",
-                "cover_url": "/samples/sample_run.png",
-                "is_public": 0,
-                "item_count": 0,
-                "view_count": 0,
-                "preview_items": []
-            }]
+            cursor.execute('''
+                SELECT c.*, (SELECT COUNT(*) FROM collection_items ci WHERE ci.collection_id = c.collection_id) AS item_count
+                FROM collections c WHERE c.collection_id = ?
+            ''', (default_col_id,))
+            created = cursor.fetchone()
+            if created:
+                result = dict(created)
+                result["cover_url"] = get_fast_thumb_url(result.get("cover_url") or "")
+                result["preview_items"] = []
+                return [result]
         return cols
 
 def get_public_collections(limit: int = 15) -> List[Dict[str, Any]]:

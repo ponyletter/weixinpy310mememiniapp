@@ -190,9 +190,12 @@
           class="result-gif {{gifLoaded ? 'loaded' : 'loading'}}" 
           src="{{gifResultUrl}}" 
           mode="aspectFit"
+          bindtap="previewGifResult"
+          data-url="{{gifResultUrl}}"
           bindload="onGifLoaded"
           binderror="onGifLoadError"
         ></image>
+        <text class="result-preview-hint">点击预览，长按可直接转发或保存</text>
       </view>
       <view class="result-actions">
         <!-- 核心裂变入口：一键分享给好友/微信群，携带动态卡片封面与同款制作链接 -->

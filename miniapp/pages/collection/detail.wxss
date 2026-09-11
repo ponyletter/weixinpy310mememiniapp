@@ -5,6 +5,17 @@
   border: 1rpx solid #edf2f7;
 }
 
+.detail-loading {
+  min-height: 180rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  color: #7c8498;
+  font-size: 24rpx;
+}
+
 .hero-top-row {
   display: flex;
   justify-content: space-between;

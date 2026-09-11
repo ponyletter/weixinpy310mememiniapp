@@ -281,6 +281,14 @@
   box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.08);
 }
 
+.result-preview-hint {
+  display: block;
+  margin-top: 14rpx;
+  color: #7c8498;
+  font-size: 22rpx;
+  text-align: center;
+}
+
 .remix-actions {
   display: flex;
   flex-direction: column;

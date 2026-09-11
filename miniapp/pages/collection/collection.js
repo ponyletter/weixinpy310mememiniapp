@@ -35,7 +35,25 @@ Page({
   },
 
   fetchData(cb) {
+    if (this._fetchInFlight) {
+      this._fetchQueued = true;
+      this._queuedCallback = cb || this._queuedCallback;
+      return;
+    }
+    this._fetchInFlight = true;
     const openid = app.globalData.openid || wx.getStorageSync('openid');
+    let pending = openid ? 2 : 1;
+    const finish = () => {
+      pending -= 1;
+      if (pending > 0) return;
+      this._fetchInFlight = false;
+      const queued = this._fetchQueued;
+      const queuedCallback = this._queuedCallback;
+      this._fetchQueued = false;
+      this._queuedCallback = null;
+      if (cb) cb();
+      if (queued) this.fetchData(queuedCallback);
+    };
     
     const formatCol = (item) => {
       let cover = item.cover_url || '';
@@ -62,8 +80,11 @@ Page({
             const list = res.data.data.map(formatCol);
             this.setData({ myCollections: list });
           }
-        }
+        },
+        complete: finish
       });
+    } else {
+      finish();
     }
 
     // 获取精选广场
@@ -75,8 +96,9 @@ Page({
           const list = res.data.data.map(formatCol);
           this.setData({ exploreCollections: list });
         }
-        if (cb) cb();
-      }
+        finish();
+      },
+      fail: finish
     });
   },
 

@@ -4,13 +4,15 @@ Page({
   data: {
     collectionId: '',
     collection: {},
-    isOwner: false
+    isOwner: false,
+    detailLoading: false,
+    detailError: false
   },
 
   onLoad(options) {
     if (options && options.id) {
       const colId = options.id;
-      this.setData({ collectionId: colId });
+      this.setData({ collectionId: colId, detailLoading: true, detailError: false });
 
       // 优先从缓存加载头部信息与预览表情条目，实现 0 毫秒秒开，彻底告别白屏和长时间等待
       const cached = wx.getStorageSync('cached_col_' + colId);
@@ -23,16 +25,14 @@ Page({
           cached.openid !== 'system' && 
           !cached.is_public
         );
-        if (!cached.items && cached.preview_items && cached.preview_items.length > 0) {
-          cached.items = cached.preview_items.map(p => ({
-            ...p,
-            full_url: p.gif_url,
-            thumb_url: p.thumb_url || p.gif_url
-          }));
-        }
+        // 列表接口只返回最多 4 条 preview_items，不能当成详情全集渲染。
+        // 详情页必须等待 /detail 返回完整 items，避免数量与内容不一致。
+        delete cached.items;
         this.setData({
           collection: cached,
-          isOwner: isOwner
+          isOwner: isOwner,
+          detailLoading: true,
+          detailError: false
         });
         if (cached.title) {
           wx.setNavigationBarTitle({ title: cached.title });
@@ -53,6 +53,7 @@ Page({
 
   fetchDetail(id, cb) {
     const hasCached = Boolean(this.data.collection && this.data.collection.title);
+    this.setData({ detailLoading: true, detailError: false });
     if (!hasCached) {
       wx.showLoading({ title: '极速载入中...' });
     }
@@ -92,17 +93,27 @@ Page({
           }
           this.setData({ 
             collection: col,
-            isOwner: isOwner
+            isOwner: isOwner,
+            detailLoading: false,
+            detailError: false
           });
           wx.setNavigationBarTitle({ title: col.title || '表情包合集' });
+        } else {
+          this.setData({ detailLoading: false, detailError: true });
         }
         if (cb) cb();
       },
       fail: () => {
         if (!hasCached) wx.hideLoading();
+        this.setData({ detailLoading: false, detailError: true });
         wx.showToast({ title: '加载失败', icon: 'none' });
+        if (cb) cb();
       }
     });
+  },
+
+  retryDetail() {
+    if (this.data.collectionId) this.fetchDetail(this.data.collectionId);
   },
 
   formatUrl(url) {

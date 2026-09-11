@@ -40,6 +40,8 @@
 ```bash
 conda activate weixinpy310mememiniapp
 python -m pip install -r backend/requirements.txt
+# 视频转 GIF 还需要系统级 FFmpeg（Ubuntu/Debian）
+sudo apt-get update && sudo apt-get install -y ffmpeg
 cp .env.example .env
 # 编辑 .env，填入已轮换的真实凭据；.env 已被 Git 忽略
 ```

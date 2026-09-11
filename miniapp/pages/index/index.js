@@ -750,6 +750,12 @@ Page({
     });
   },
 
+  previewGifResult(e) {
+    const url = e.currentTarget.dataset.url || this.data.gifResultUrl;
+    if (!url) return;
+    wx.previewImage({ urls: [url], current: url });
+  },
+
   // --- 保存相册 ---
   saveGifToAlbum() {
     if (!this.data.gifResultUrl) return;
@@ -1058,4 +1064,3 @@ Page({
     };
   }
 });
-

@@ -103,7 +103,8 @@
       <text class="result-title">制作完成</text>
       <text class="badge badge-green">已优化尺寸</text>
     </view>
-    <image class="remix-result-img" src="{{remixResultUrl}}" mode="aspectFit"></image>
+    <image class="remix-result-img" src="{{remixResultUrl}}" mode="aspectFit" bindtap="previewRemixResult" data-url="{{remixResultUrl}}"></image>
+    <text class="result-preview-hint">点击预览，长按可直接转发或保存</text>
     <view class="remix-actions">
       <!-- 裂变核心入口 -->
       <button class="btn-primary btn-remix-share" open-type="share">
