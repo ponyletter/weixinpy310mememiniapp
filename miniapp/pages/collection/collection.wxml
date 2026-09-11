@@ -51,14 +51,14 @@
             <text class="view-num">{{item.view_count}} 次浏览</text>
           </view>
         </view>
-        <view class="col-actions" catchtap="stopBubble">
-          <button class="btn-xs btn-share-col" open-type="share" catchtap="setShareTarget" data-item="{{item}}">
-            分享
-          </button>
-          <button wx:if="{{!item.is_public && item.openid !== 'official'}}" class="btn-xs btn-delete-col" catchtap="deleteCollection" data-id="{{item.collection_id}}" data-title="{{item.title}}">
-            删除
-          </button>
-        </view>
+      </view>
+      <view class="col-actions" catchtap="stopBubble">
+        <button class="btn-xs btn-share-col" open-type="share" catchtap="setShareTarget" data-item="{{item}}">
+          分享
+        </button>
+        <button wx:if="{{!item.is_public && item.openid !== 'official'}}" class="btn-xs btn-delete-col" catchtap="deleteCollection" data-id="{{item.collection_id}}" data-title="{{item.title}}">
+          删除
+        </button>
       </view>
 
       <!-- 表情包内容预览条 (直观展示合集内包含的表情条目) -->
@@ -96,11 +96,11 @@
             <text class="view-num">官方推荐</text>
           </view>
         </view>
-        <view class="col-actions" catchtap="stopBubble">
-          <button class="btn-xs btn-share-col" catchtap="goToDetail" data-id="{{item.collection_id}}">
-            查看
-          </button>
-        </view>
+      </view>
+      <view class="col-actions" catchtap="stopBubble">
+        <button class="btn-xs btn-share-col" catchtap="goToDetail" data-id="{{item.collection_id}}">
+          查看
+        </button>
       </view>
 
       <!-- 表情包内容预览条 (直观展示合集内包含的表情条目) -->
