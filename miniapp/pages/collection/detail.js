@@ -52,15 +52,18 @@ Page({
   },
 
   fetchDetail(id, cb) {
+    const requestId = (this._detailRequestId || 0) + 1;
+    this._detailRequestId = requestId;
     const hasCached = Boolean(this.data.collection && this.data.collection.title);
     this.setData({ detailLoading: true, detailError: false });
     if (!hasCached) {
       wx.showLoading({ title: '极速载入中...' });
     }
     app.request({
-      url: `${app.globalData.baseURL}/api/collection/detail?collection_id=${id}`,
+      url: `${app.globalData.baseURL}/api/collection/detail?collection_id=${encodeURIComponent(id)}&_ts=${Date.now()}`,
       method: 'GET',
       success: (res) => {
+        if (requestId !== this._detailRequestId) return;
         if (!hasCached) wx.hideLoading();
         if (res.data && res.data.data) {
           const col = res.data.data;
@@ -74,23 +77,24 @@ Page({
           );
 
           // 处理条目图片绝对路径与极速缩略图 thumb_url
-          if (col.items) {
-            col.items = col.items.map(item => {
-              let fullUrl = item.gif_url || '';
-              if (fullUrl.startsWith('/')) {
-                fullUrl = `${app.globalData.baseURL}${fullUrl}`;
-              }
-              let thumbUrl = item.thumb_url || item.gif_url || '';
-              if (thumbUrl.startsWith('/')) {
-                thumbUrl = `${app.globalData.baseURL}${thumbUrl}`;
-              }
-              return { 
-                ...item, 
-                full_url: fullUrl, 
-                thumb_url: thumbUrl 
-              };
-            });
-          }
+          const items = Array.isArray(col.items) ? col.items : [];
+          col.items = items.map(item => {
+            let fullUrl = item.gif_url || '';
+            if (fullUrl.startsWith('/')) {
+              fullUrl = `${app.globalData.baseURL}${fullUrl}`;
+            }
+            let thumbUrl = item.thumb_url || item.gif_url || '';
+            if (thumbUrl.startsWith('/')) {
+              thumbUrl = `${app.globalData.baseURL}${thumbUrl}`;
+            }
+            return {
+              ...item,
+              full_url: fullUrl,
+              thumb_url: thumbUrl
+            };
+          });
+          // 详情页以实际返回的完整条目为准，避免沿用列表摘要中的旧 item_count。
+          col.item_count = col.items.length;
           this.setData({ 
             collection: col,
             isOwner: isOwner,
@@ -104,6 +108,7 @@ Page({
         if (cb) cb();
       },
       fail: () => {
+        if (requestId !== this._detailRequestId) return;
         if (!hasCached) wx.hideLoading();
         this.setData({ detailLoading: false, detailError: true });
         wx.showToast({ title: '加载失败', icon: 'none' });

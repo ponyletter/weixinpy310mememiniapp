@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.database import (
@@ -13,6 +13,12 @@ from app.database import (
 from app.security import CurrentOpenid, require_same_user
 
 router = APIRouter(prefix="/api/collection", tags=["collections"])
+
+
+def _disable_cache(response: Response) -> None:
+    """Collection counts and contents are mutable; never serve a stale GET response."""
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
 
 class CreateCollectionRequest(BaseModel):
     openid: str
@@ -67,8 +73,9 @@ def add_gif_to_collection(req: AddItemRequest, current_openid: CurrentOpenid):
     return {"success": True, "data": res}
 
 @router.get("/detail")
-def get_detail(collection_id: str = Query(...)):
+def get_detail(response: Response, collection_id: str = Query(...)):
     """获取合集详情及其包含的表情包列表 (支持微信分享打开直接查看)"""
+    _disable_cache(response)
     res = get_collection_detail(collection_id)
     if not res:
         raise HTTPException(status_code=404, detail="合集不存在或已被删除")
@@ -76,13 +83,15 @@ def get_detail(collection_id: str = Query(...)):
 
 @router.get("/my")
 @router.get("/list")
-def get_my_collections(current_openid: CurrentOpenid, openid: str = Query("")):
+def get_my_collections(response: Response, current_openid: CurrentOpenid, openid: str = Query("")):
     """获取我创建的所有表情包合集 (兼容 /my 和 /list)"""
+    _disable_cache(response)
     res = get_user_collections(require_same_user(openid, current_openid))
     return {"success": True, "data": res}
 
 @router.get("/explore")
-def explore_collections(limit: int = Query(default=15)):
+def explore_collections(response: Response, limit: int = Query(default=15)):
     """精选热门表情包合集广场 (用于冷启动展示与直接收藏)"""
+    _disable_cache(response)
     res = get_public_collections(limit)
     return {"success": True, "data": res}

@@ -42,6 +42,8 @@ Page({
     }
     this._fetchInFlight = true;
     const openid = app.globalData.openid || wx.getStorageSync('openid');
+    // 合集条目会随用户操作变化，GET 请求也显式带版本参数，避免开发者工具/代理复用旧摘要。
+    const requestVersion = Date.now();
     let pending = openid ? 2 : 1;
     const finish = () => {
       pending -= 1;
@@ -73,7 +75,7 @@ Page({
     // 获取我的合集
     if (openid) {
       app.request({
-        url: `${app.globalData.baseURL}/api/collection/my?openid=${openid}`,
+        url: `${app.globalData.baseURL}/api/collection/my?openid=${encodeURIComponent(openid)}&_ts=${requestVersion}`,
         method: 'GET',
         success: (res) => {
           if (res.data && res.data.data) {
@@ -89,7 +91,7 @@ Page({
 
     // 获取精选广场
     app.request({
-      url: `${app.globalData.baseURL}/api/collection/explore`,
+      url: `${app.globalData.baseURL}/api/collection/explore?_ts=${requestVersion}`,
       method: 'GET',
       success: (res) => {
         if (res.data && res.data.data) {

@@ -65,6 +65,39 @@ def test_collection_ownership(client: TestClient):
     assert denied.status_code == 403
 
 
+def test_collection_list_and_detail_counts_match(client: TestClient):
+    alice, headers = login(client, "collection_counts")
+    created = client.post(
+        "/api/collection/create",
+        json={"openid": alice, "title": "count-check"},
+        headers=headers,
+    )
+    assert created.status_code == 200
+    collection_id = created.json()["data"]["collection_id"]
+
+    for index in range(4):
+        added = client.post(
+            "/api/collection/add-item",
+            json={"collection_id": collection_id, "gif_url": f"/outputs/{index}.gif", "title": str(index)},
+            headers=headers,
+        )
+        assert added.status_code == 200
+
+    listing = client.get(f"/api/collection/my?openid={alice}", headers=headers)
+    assert listing.status_code == 200
+    summary = next(item for item in listing.json()["data"] if item["collection_id"] == collection_id)
+    assert summary["item_count"] == 4
+    assert len(summary["preview_items"]) == 4
+    assert listing.headers["cache-control"].startswith("no-store")
+
+    detail = client.get(f"/api/collection/detail?collection_id={collection_id}", headers=headers)
+    assert detail.status_code == 200
+    body = detail.json()["data"]
+    assert body["item_count"] == 4
+    assert len(body["items"]) == 4
+    assert detail.headers["cache-control"].startswith("no-store")
+
+
 def test_mock_payment_and_callback_are_closed_by_default(client: TestClient):
     _, headers = login(client)
     assert client.post("/api/pay/mock-pay", json={"order_id": "unknown"}, headers=headers).status_code == 404
