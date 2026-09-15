@@ -117,17 +117,37 @@ Page({
 
         if (bgSrc) {
           wx.showLoading({ title: '加载底图中...' });
-          const img = canvas.createImage();
-          img.onload = () => {
-            wx.hideLoading();
-            this.bgImageObj = img;
-            this.renderCanvas();
+          const loadIntoCanvas = (localPath) => {
+            const img = canvas.createImage();
+            img.onload = () => {
+              wx.hideLoading();
+              this.bgImageObj = img;
+              this.renderCanvas();
+            };
+            img.onerror = () => {
+              wx.hideLoading();
+              this.renderCanvas();
+            };
+            img.src = localPath;
           };
-          img.onerror = () => {
-            wx.hideLoading();
-            this.renderCanvas();
-          };
-          img.src = bgSrc;
+
+          if (bgSrc.startsWith('http://') || bgSrc.startsWith('https://')) {
+            wx.downloadFile({
+              url: bgSrc,
+              success: (dRes) => {
+                if (dRes.statusCode === 200 && dRes.tempFilePath) {
+                  loadIntoCanvas(dRes.tempFilePath);
+                } else {
+                  loadIntoCanvas(bgSrc);
+                }
+              },
+              fail: () => {
+                loadIntoCanvas(bgSrc);
+              }
+            });
+          } else {
+            loadIntoCanvas(bgSrc);
+          }
         } else {
           this.renderCanvas();
         }
@@ -156,54 +176,7 @@ Page({
       const drawW = imgW * scale;
       const drawH = imgH * scale;
 
-      // 计算滤镜属性 (曝光、亮度、对比度、饱和度与 Apple 风格滤镜)
-      const expFactor = 1 + (this.data.imgExposure || 0) / 100;
-      const brightFactor = 1 + (this.data.imgBrightness || 0) / 100;
-      const totalBright = Math.max(0, Math.round(expFactor * brightFactor * 100));
-      const contrastFactor = Math.max(0, Math.round((1 + (this.data.imgContrast || 0) / 100) * 100));
-      let satFactor = Math.max(0, Math.round((1 + (this.data.imgSaturation || 0) / 100) * 100));
-
-      let sepia = 0;
-      let hueRotate = 0;
-      let grayscale = 0;
-
-      switch (this.data.imgFilter) {
-        case 'vivid':
-          satFactor = Math.round(satFactor * 1.35);
-          break;
-        case 'warm':
-          sepia = 30;
-          break;
-        case 'cool':
-          hueRotate = 180;
-          break;
-        case 'mono':
-          grayscale = 100;
-          break;
-        case 'film':
-          sepia = 35;
-          satFactor = Math.round(satFactor * 0.85);
-          break;
-        case 'original':
-        default:
-          break;
-      }
-
-      const filters = [];
-      if (totalBright !== 100) filters.push(`brightness(${totalBright}%)`);
-      if (contrastFactor !== 100) filters.push(`contrast(${contrastFactor}%)`);
-      if (satFactor !== 100) filters.push(`saturate(${satFactor}%)`);
-      if (grayscale > 0) filters.push(`grayscale(${grayscale}%)`);
-      if (sepia > 0) filters.push(`sepia(${sepia}%)`);
-      if (hueRotate > 0) filters.push(`hue-rotate(${hueRotate}deg)`);
-
       ctx.save();
-      if (filters.length > 0 && typeof ctx.filter !== 'undefined') {
-        try {
-          ctx.filter = filters.join(' ');
-        } catch (e) {}
-      }
-
       const cx = w / 2 + (this.data.bgOffsetX || 0);
       const cy = h / 2 + (this.data.bgOffsetY || 0);
       ctx.translate(cx, cy);
@@ -217,8 +190,22 @@ Page({
 
       ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
       ctx.restore();
-      if (typeof ctx.filter !== 'undefined') {
-        try { ctx.filter = 'none'; } catch (e) {}
+
+      // 2.1 像素级调色与风格滤镜算法引擎 (完全避开小程序不支持的 ctx.filter，100% 生效且导出高保真)
+      const exp = this.data.imgExposure || 0;
+      const bri = this.data.imgBrightness || 0;
+      const con = this.data.imgContrast || 0;
+      const sat = this.data.imgSaturation || 0;
+      const filterName = this.data.imgFilter || 'original';
+
+      if (exp !== 0 || bri !== 0 || con !== 0 || sat !== 0 || filterName !== 'original') {
+        try {
+          const imgData = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+          this.applyPixelAdjustments(imgData.data, exp, bri, con, sat, filterName);
+          ctx.putImageData(imgData, 0, 0);
+        } catch (err) {
+          console.warn('调色滤镜像素处理跳过:', err);
+        }
       }
     }
 
@@ -967,24 +954,131 @@ Page({
     });
   },
 
+  // --- 像素级色彩调节与风格滤镜算法引擎 (全端兼容、即时渲染) ---
+  applyPixelAdjustments(data, exp, bri, con, sat, filterName) {
+    const size = data.length;
+    let expF = 1 + exp / 100;
+    let briOffset = bri * 1.35;
+    let conF = 1 + con / 50;
+    let satF = 1 + sat / 50;
+
+    let rOffset = 0;
+    let gOffset = 0;
+    let bOffset = 0;
+    let isMono = false;
+    let isFilm = false;
+
+    if (filterName === 'vivid') {
+      satF *= 1.45;
+      conF *= 1.2;
+      expF *= 1.05;
+    } else if (filterName === 'warm') {
+      rOffset += 24;
+      gOffset += 12;
+      bOffset -= 18;
+    } else if (filterName === 'cool') {
+      rOffset -= 18;
+      gOffset += 6;
+      bOffset += 28;
+    } else if (filterName === 'mono') {
+      isMono = true;
+    } else if (filterName === 'film') {
+      isFilm = true;
+      satF *= 0.82;
+      conF *= 1.12;
+    }
+
+    // 构建 256 位阶快速查找表 (LUT)，极大加速像素级处理
+    const lutR = new Uint8ClampedArray(256);
+    const lutG = new Uint8ClampedArray(256);
+    const lutB = new Uint8ClampedArray(256);
+
+    for (let i = 0; i < 256; i++) {
+      const v = i * expF + briOffset;
+      const c = 128 + (v - 128) * conF;
+      lutR[i] = c + rOffset;
+      lutG[i] = c + gOffset;
+      lutB[i] = c + bOffset;
+    }
+
+    if (isMono) {
+      for (let i = 0; i < size; i += 4) {
+        const r = lutR[data[i]];
+        const g = lutG[data[i + 1]];
+        const b = lutB[data[i + 2]];
+        const gray = (r * 77 + g * 150 + b * 29) >> 8;
+        const finalGray = 128 + (gray - 128) * 1.2;
+        data[i] = finalGray;
+        data[i + 1] = finalGray;
+        data[i + 2] = finalGray;
+      }
+    } else if (isFilm) {
+      for (let i = 0; i < size; i += 4) {
+        const r = lutR[data[i]];
+        const g = lutG[data[i + 1]];
+        const b = lutB[data[i + 2]];
+        // 经典复古胶片感棕褐调混色
+        const sr = 0.393 * r + 0.769 * g + 0.189 * b + 14;
+        const sg = 0.349 * r + 0.686 * g + 0.168 * b + 4;
+        const sb = 0.272 * r + 0.534 * g + 0.131 * b - 10;
+        const fr = r * 0.35 + sr * 0.65;
+        const fg = g * 0.35 + sg * 0.65;
+        const fb = b * 0.35 + sb * 0.65;
+        const gray = (fr * 77 + fg * 150 + fb * 29) >> 8;
+        data[i] = gray + (fr - gray) * satF;
+        data[i + 1] = gray + (fg - gray) * satF;
+        data[i + 2] = gray + (fb - gray) * satF;
+      }
+    } else {
+      const needSat = Math.abs(satF - 1.0) > 0.02;
+      for (let i = 0; i < size; i += 4) {
+        let r = lutR[data[i]];
+        let g = lutG[data[i + 1]];
+        let b = lutB[data[i + 2]];
+        if (needSat) {
+          const gray = (r * 77 + g * 150 + b * 29) >> 8;
+          r = gray + (r - gray) * satF;
+          g = gray + (g - gray) * satF;
+          b = gray + (b - gray) * satF;
+        }
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+      }
+    }
+  },
+
+  requestRender() {
+    if (this._renderPending) return;
+    this._renderPending = true;
+    setTimeout(() => {
+      this._renderPending = false;
+      this.renderCanvas();
+    }, 20);
+  },
+
   onExposureChange(e) {
     this.setData({ imgExposure: Number(e.detail.value) });
-    this.renderCanvas();
+    if (e.type === 'changing') this.requestRender();
+    else this.renderCanvas();
   },
 
   onContrastChange(e) {
     this.setData({ imgContrast: Number(e.detail.value) });
-    this.renderCanvas();
+    if (e.type === 'changing') this.requestRender();
+    else this.renderCanvas();
   },
 
   onSaturationChange(e) {
     this.setData({ imgSaturation: Number(e.detail.value) });
-    this.renderCanvas();
+    if (e.type === 'changing') this.requestRender();
+    else this.renderCanvas();
   },
 
   onBrightnessChange(e) {
     this.setData({ imgBrightness: Number(e.detail.value) });
-    this.renderCanvas();
+    if (e.type === 'changing') this.requestRender();
+    else this.renderCanvas();
   },
 
   setImgFilter(e) {
