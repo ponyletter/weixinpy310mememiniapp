@@ -15,8 +15,12 @@ from __future__ import annotations
 import argparse
 import shutil
 import sqlite3
+import sys
 from pathlib import Path
 from urllib.parse import urlsplit
+
+# Allow the documented ``python scripts/...`` invocation from ``backend``.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.config import settings
 from app.r2_storage import (
