@@ -80,6 +80,18 @@ class Settings(BaseSettings):
     OUTPUT_SYNC_HOST: str = ""
     OUTPUT_SYNC_DIR: str = "/var/www/outputs"
 
+    # Cloudflare R2 is used by the backend only. Never put these values in the
+    # mini program bundle or commit them to Git.
+    R2_ENABLED: bool = False
+    R2_ENDPOINT_URL: str = ""
+    R2_REGION: str = "auto"
+    R2_BUCKET: str = "memo"
+    R2_PUBLIC_BASE_URL: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_TASK_PREFIX: str = "tasks"
+    R2_AVATAR_PREFIX: str = "avatars"
+
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
@@ -90,6 +102,7 @@ class Settings(BaseSettings):
             raise ValueError("XPAY_ENV must be 0 (production) or 1 (sandbox)")
         if len(self.JWT_SECRET) < 32:
             raise ValueError("JWT_SECRET must contain at least 32 characters")
+        placeholder_prefixes = ("replace_", "wx_your_")
         if not self.DEBUG:
             required = {
                 "JWT_SECRET": self.JWT_SECRET,
@@ -103,7 +116,6 @@ class Settings(BaseSettings):
                     "XPAY_APP_KEY_LIVE": self.XPAY_APP_KEY_LIVE,
                     "XPAY_CALLBACK_TOKEN": self.XPAY_CALLBACK_TOKEN,
                 })
-            placeholder_prefixes = ("replace_", "wx_your_")
             missing = [
                 name
                 for name, value in required.items()
@@ -111,6 +123,20 @@ class Settings(BaseSettings):
             ]
             if missing:
                 raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+        if self.R2_ENABLED:
+            r2_required = {
+                "R2_ENDPOINT_URL": self.R2_ENDPOINT_URL,
+                "R2_BUCKET": self.R2_BUCKET,
+                "R2_PUBLIC_BASE_URL": self.R2_PUBLIC_BASE_URL,
+                "R2_ACCESS_KEY_ID": self.R2_ACCESS_KEY_ID,
+                "R2_SECRET_ACCESS_KEY": self.R2_SECRET_ACCESS_KEY,
+            }
+            r2_missing = [
+                name for name, value in r2_required.items()
+                if not value or value.lower().startswith(placeholder_prefixes)
+            ]
+            if r2_missing:
+                raise ValueError(f"R2_ENABLED=true but missing environment variables: {', '.join(r2_missing)}")
         return self
 
 

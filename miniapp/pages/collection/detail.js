@@ -89,11 +89,11 @@ Page({
           col.items = items.map((item, index) => {
             let fullUrl = item.gif_url || '';
             if (fullUrl.startsWith('/')) {
-              fullUrl = `${app.globalData.baseURL}${fullUrl}`;
+              fullUrl = app.toAbsoluteUrl(fullUrl);
             }
             let thumbUrl = item.thumb_url || item.gif_url || '';
             if (thumbUrl.startsWith('/')) {
-              thumbUrl = `${app.globalData.baseURL}${thumbUrl}`;
+              thumbUrl = app.toAbsoluteUrl(thumbUrl);
             }
             return {
               ...item,
@@ -349,12 +349,12 @@ Page({
   formatUrl(url) {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    return `${app.globalData.baseURL}${url}`;
+    return app.toAbsoluteUrl(url);
   },
 
   previewOrSave(e) {
     const rawUrl = e.currentTarget.dataset.url;
-    const url = rawUrl.startsWith('http') ? rawUrl : `${app.globalData.baseURL}${rawUrl}`;
+    const url = app.toAbsoluteUrl(rawUrl);
 
     wx.showActionSheet({
       itemList: ['保存到手机相册', '预览大图'],
@@ -495,7 +495,7 @@ Page({
   saveMemeDirect(e) {
     const rawUrl = e.currentTarget.dataset.url;
     if (!rawUrl) return;
-    const url = rawUrl.startsWith('http') ? rawUrl : `${app.globalData.baseURL}${rawUrl}`;
+    const url = app.toAbsoluteUrl(rawUrl);
 
     wx.showLoading({ title: '正在保存到相册...' });
     wx.downloadFile({

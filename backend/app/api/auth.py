@@ -15,6 +15,7 @@ from app.database import (
     redeem_coupon,
     get_user_orders
 )
+from app.r2_storage import publish_avatar
 
 router = APIRouter(prefix="/api/user", tags=["user_and_auth"])
 
@@ -142,7 +143,11 @@ async def upload_avatar(current_openid: CurrentOpenid, file: UploadFile = File(.
     filename = f"{uuid.uuid4().hex}{ext}"
     target_path = avatar_dir / filename
     image.convert("RGB" if ext == ".jpg" else "RGBA").save(target_path)
-    url = f"/static/avatars/{filename}"
+    try:
+        r2_url = await publish_avatar(target_path, filename)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="头像已生成，但上传云存储失败，请稍后重试") from exc
+    url = r2_url or f"/static/avatars/{filename}"
     return {"success": True, "avatar_url": url}
 
 @router.post("/checkin")

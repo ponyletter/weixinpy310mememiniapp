@@ -69,7 +69,7 @@ Page({
       const sharedTitle = decodeQueryValue(options.share_title, '专属动图');
       this.setData({
         taskId: options.share_task,
-        gifResultUrl: `${app.globalData.baseURL}/outputs/${options.share_task}/meme_result.gif`,
+        gifResultUrl: app.toAbsoluteUrl(`/outputs/${options.share_task}/meme_result.gif`),
         caption: sharedTitle,
         sharedFromFriend: true,
         sharedGifTitle: sharedTitle
@@ -949,7 +949,7 @@ Page({
 
               const gifPath = tInfo.data.gif_url;
               const stats = tInfo.data.stats || {};
-              const fullGifUrl = `${app.globalData.baseURL}${gifPath}`;
+              const fullGifUrl = app.toAbsoluteUrl(gifPath);
 
               // 一次性渲染完成状态，进入图片加载阶段，待正常展示后再发提示通知
               this.setData({
@@ -1345,9 +1345,9 @@ Page({
     // 如果当前已有生成好的动图，卡片直出动图封面并携带 share_gif 与 share_title 参数，好友点击后直达动图成品
     if (this.data.gifResultUrl) {
       const titleTag = this.data.caption || this.data.selectedTemplateTitle || '专属';
-      const taskQuery = isValidTaskId(this.data.taskId)
-        ? `&share_task=${this.data.taskId}`
-        : `&share_gif=${encodeURIComponent(this.data.gifResultUrl)}`;
+      // 直接携带已经发布的成品地址；新作品通常来自 R2，避免好友再次拼接旧的
+      // /outputs 路径后看不到成品。share_task 仍由 onLoad 保留，用于兼容旧分享卡片。
+      const taskQuery = `&share_gif=${encodeURIComponent(this.data.gifResultUrl)}`;
       return {
         title: `🔥 快接招！我刚用 AI 做了【${titleTag}】表情包，快来看看！`,
         path: `/pages/index/index?inviter=${encodeURIComponent(inviteCode)}${taskQuery}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`,
@@ -1366,10 +1366,8 @@ Page({
     const titleTag = this.data.caption || this.data.selectedTemplateTitle || 'AI专属表情包';
     return {
       title: `我用 AI 做了【${titleTag}】动态表情包，一键定制超好玩！`,
-      query: this.data.gifResultUrl && isValidTaskId(this.data.taskId)
-        ? `share_task=${this.data.taskId}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`
-        : this.data.gifResultUrl
-          ? `share_gif=${encodeURIComponent(this.data.gifResultUrl)}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`
+      query: this.data.gifResultUrl
+        ? `share_gif=${encodeURIComponent(this.data.gifResultUrl)}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`
         : `ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`,
       imageUrl: this.data.gifResultUrl || ''
     };

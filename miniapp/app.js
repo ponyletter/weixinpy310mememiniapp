@@ -12,6 +12,15 @@ App({
     subscribeTemplateId: 'jsfKx2x1YrKdX600S01pzCcxWe_UjMi_Tx5OtWWfvcs'
   },
 
+  // 后端返回的成品可能来自 Cloudflare R2，也可能是旧的本地 /outputs 地址。
+  // 绝对 HTTPS 地址必须原样使用，不能再次拼接 API 域名。
+  toAbsoluteUrl(url) {
+    if (!url) return '';
+    const value = String(url).trim();
+    if (/^https?:\/\//i.test(value)) return value;
+    return `${this.globalData.baseURL}${value.startsWith('/') ? value : `/${value}`}`;
+  },
+
   getGifConfig() {
     const cfg = wx.getStorageSync('gif_config');
     const defaults = {

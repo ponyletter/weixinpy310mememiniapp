@@ -105,7 +105,7 @@ Page({
       const fileName = options.share_file || 'meme_result.gif';
       const resultTitle = decodeQueryValue(options.share_title, '图片百宝箱作品');
       this.setData({
-        remixResultUrl: `${app.globalData.baseURL}/outputs/${options.share_task}/${fileName}`,
+        remixResultUrl: app.toAbsoluteUrl(`/outputs/${options.share_task}/${fileName}`),
         sharedResultTitle: resultTitle
       });
       wx.showToast({ title: '已打开好友分享的成品', icon: 'success' });
@@ -304,7 +304,7 @@ Page({
           try { data = JSON.parse(data); } catch(e) {}
         }
         if (data && data.success) {
-          this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.gif_url}` });
+          this.setData({ remixResultUrl: app.toAbsoluteUrl(data.gif_url) });
           wx.showToast({ title: '转动图成功！', icon: 'success' });
         } else {
           wx.showToast({ title: (data && data.detail) || '转换失败', icon: 'none' });
@@ -379,7 +379,7 @@ Page({
           try { data = JSON.parse(data); } catch(e) {}
         }
         if (data && data.success) {
-          this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.gif_url}` });
+          this.setData({ remixResultUrl: app.toAbsoluteUrl(data.gif_url) });
           wx.showToast({ title: '水印加字合成成功！', icon: 'success' });
         } else {
           wx.showToast({ title: (data && data.detail) || '合成失败', icon: 'none' });
@@ -499,7 +499,7 @@ Page({
             ratioStr = `-${pct}%`;
           }
           this.setData({
-            remixResultUrl: `${app.globalData.baseURL}${data.output_url}`,
+            remixResultUrl: app.toAbsoluteUrl(data.output_url),
             compressOrigSizeKb: origKb,
             compressNewSizeKb: newKb,
             compressRatioStr: ratioStr
@@ -572,7 +572,7 @@ Page({
           try { data = JSON.parse(data); } catch(e) {}
         }
         if (data && data.success) {
-          const fullUrl = `${app.globalData.baseURL}${data.output_url}`;
+          const fullUrl = app.toAbsoluteUrl(data.output_url);
           this.setData({
             mattingResultUrl: fullUrl,
             remixResultUrl: fullUrl
@@ -768,7 +768,7 @@ Page({
           this.setData({ isConverting: false });
           const data = res.data;
           if (data && data.success) {
-            this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.gif_url}` });
+            this.setData({ remixResultUrl: app.toAbsoluteUrl(data.gif_url) });
             wx.showToast({ title: '合成成功！', icon: 'success' });
           } else {
             wx.showToast({ title: (data && data.detail) || '拼接失败', icon: 'none' });
@@ -868,7 +868,7 @@ Page({
           this.setData({ isConverting: false });
           const data = res.data;
           if (data && data.success) {
-            this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.image_url}` });
+            this.setData({ remixResultUrl: app.toAbsoluteUrl(data.image_url) });
             wx.showToast({ title: '长图拼接完成！', icon: 'success' });
           } else {
             wx.showToast({ title: (data && data.detail) || '拼接失败', icon: 'none' });
@@ -965,7 +965,7 @@ Page({
         this.setData({ isConverting: false });
         const data = res.data;
         if (data && data.success) {
-          this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.image_url}` });
+            this.setData({ remixResultUrl: app.toAbsoluteUrl(data.image_url) });
           wx.showToast({ title: '卡片生成成功！', icon: 'success' });
         } else {
           wx.showToast({ title: (data && data.detail) || '生成失败', icon: 'none' });
@@ -1089,10 +1089,8 @@ Page({
 
     if (this.data.remixResultUrl) {
       const cap = this.data.sharedResultTitle || this.data.captionText || '精彩作品';
-      const output = getShareableOutput(this.data.remixResultUrl);
-      const query = output
-        ? `&share_task=${output.taskId}&share_file=${encodeURIComponent(output.fileName)}`
-        : `&share_result=${encodeURIComponent(this.data.remixResultUrl)}`;
+      // 直接分享最终 URL，R2 成品不再回退到已经迁移前的 /outputs 路径。
+      const query = `&share_result=${encodeURIComponent(this.data.remixResultUrl)}`;
       return {
         title: `🔥 看看我用图片百宝箱制作的【${cap}】，太棒了！`,
         path: `/pages/remix/remix?inviter=${encodeURIComponent(inviteCode)}${query}&share_title=${encodeURIComponent(cap)}`,
@@ -1110,13 +1108,8 @@ Page({
     const cap = this.data.sharedResultTitle || this.data.captionText || '精彩作品';
     return {
       title: `我在图片百宝箱制作了【${cap}】，快来体验！`,
-      query: this.data.remixResultUrl && getShareableOutput(this.data.remixResultUrl)
-        ? (() => {
-            const output = getShareableOutput(this.data.remixResultUrl);
-            return `share_task=${output.taskId}&share_file=${encodeURIComponent(output.fileName)}&share_title=${encodeURIComponent(cap)}`;
-          })()
-        : this.data.remixResultUrl
-          ? `share_result=${encodeURIComponent(this.data.remixResultUrl)}&share_title=${encodeURIComponent(cap)}`
+      query: this.data.remixResultUrl
+        ? `share_result=${encodeURIComponent(this.data.remixResultUrl)}&share_title=${encodeURIComponent(cap)}`
         : '',
       imageUrl: this.data.remixResultUrl || ''
     };

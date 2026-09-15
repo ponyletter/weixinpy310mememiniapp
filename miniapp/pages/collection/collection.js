@@ -60,12 +60,12 @@ Page({
     const formatCol = (item) => {
       let cover = item.cover_url || '';
       if (cover && cover.startsWith('/')) {
-        cover = `${app.globalData.baseURL}${cover}`;
+        cover = app.toAbsoluteUrl(cover);
       }
       let preview_items = (item.preview_items || []).map((p, index) => {
         let thumb = p.thumb_url || p.gif_url || '';
         if (thumb && thumb.startsWith('/')) {
-          thumb = `${app.globalData.baseURL}${thumb}`;
+          thumb = app.toAbsoluteUrl(thumb);
         }
         return {
           ...p,

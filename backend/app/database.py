@@ -3,8 +3,10 @@ import datetime
 import uuid
 from typing import Optional, List, Dict, Any
 from zoneinfo import ZoneInfo
+from urllib.parse import urlsplit
 from fastapi import HTTPException
 from app.config import settings
+from app.r2_storage import is_public_r2_url, task_public_url
 
 
 CHINA_TIMEZONE = ZoneInfo("Asia/Shanghai")
@@ -741,10 +743,15 @@ def delete_meme_task(task_id: str, openid: str = "") -> bool:
 
 def meme_task_output_is_referenced(task_id: str) -> bool:
     """判断作品文件是否仍被合集引用，避免删除历史记录时破坏合集。"""
-    marker = f"%/outputs/{task_id}/%"
+    markers = [f"%/outputs/{task_id}/%"]
+    if settings.R2_TASK_PREFIX:
+        markers.append(f"%/{settings.R2_TASK_PREFIX.strip('/')}/{task_id}/%")
     with get_db() as conn:
         row = conn.execute(
-            "SELECT 1 FROM collection_items WHERE gif_url LIKE ? LIMIT 1", (marker,)
+            "SELECT 1 FROM collection_items WHERE "
+            + " OR ".join("gif_url LIKE ?" for _ in markers)
+            + " LIMIT 1",
+            tuple(markers),
         ).fetchone()
     return row is not None
 
@@ -897,6 +904,14 @@ def get_fast_thumb_url(gif_url: str) -> str:
     """获取表情或封面的极速轻量静态缩略图 (~7KB)，比 500KB 动图提速 50 倍以上"""
     if not gif_url:
         return ""
+    if is_public_r2_url(gif_url):
+        marker = f"/{settings.R2_TASK_PREFIX.strip('/')}/"
+        path = urlsplit(gif_url).path
+        if marker in path:
+            remainder = path.split(marker, 1)[1].split("/", 1)
+            if len(remainder) == 2 and remainder[0] and remainder[1]:
+                return task_public_url(remainder[0], "thumb.jpg")
+        return gif_url
     if "/outputs/" in gif_url:
         try:
             parts = gif_url.split("/outputs/")

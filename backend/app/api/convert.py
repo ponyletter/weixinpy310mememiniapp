@@ -10,6 +10,7 @@ from pathlib import Path
 from textwrap import wrap
 from typing import Optional, List
 from urllib.parse import urlsplit
+import httpx
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel, Field
 from PIL import Image, ImageDraw, ImageFont
@@ -22,6 +23,7 @@ from app.core.sprite_processor import SpriteProcessor
 from app.security import CurrentOpenid
 from app.storage_cleanup import mark_failed_task_dir
 from app.upload_utils import ensure_within, open_validated_image, read_limited_upload
+from app.r2_storage import is_public_r2_url, publish_and_rewrite
 
 router = APIRouter(prefix="/api/convert", tags=["conversion_and_remix"])
 
@@ -112,7 +114,7 @@ def _save_frames_as_gif(frames: list[Image.Image], fps: int, caption: str) -> di
     except Exception as exc:
         mark_failed_task_dir(task_dir, str(exc))
         raise
-    return {
+    result = {
         "success": True,
         "task_id": task_id,
         "gif_url": f"/outputs/{task_id}/meme_result.gif",
@@ -121,6 +123,7 @@ def _save_frames_as_gif(frames: list[Image.Image], fps: int, caption: str) -> di
         "compression_attempts": size_stats["compression_attempts"],
         "warning": _gif_size_warning(size_stats),
     }
+    return result
 
 @router.post("/video-to-gif")
 async def video_to_gif(
@@ -209,7 +212,7 @@ async def video_to_gif(
         mark_failed_task_dir(task_dir, str(exc))
         raise
     file_size_kb = round(output_gif_path.stat().st_size / 1024, 1)
-    return {
+    result = {
         "success": True,
         "task_id": task_id,
         "gif_url": f"/outputs/{task_id}/meme_result.gif",
@@ -219,6 +222,7 @@ async def video_to_gif(
         "caption": caption.strip(),
         "warning": _gif_size_warning(size_stats),
     }
+    return await publish_and_rewrite(task_id, task_dir, result)
 
 @router.post("/images-to-gif")
 async def images_to_gif(
@@ -244,7 +248,8 @@ async def images_to_gif(
         img_resized = img_raw.resize(target_size, Image.Resampling.LANCZOS)
         frames.append(img_resized)
 
-    return _save_frames_as_gif(frames, fps, caption)
+    result = _save_frames_as_gif(frames, fps, caption)
+    return await publish_and_rewrite(result["task_id"], settings.OUTPUT_DIR / result["task_id"], result)
 
 
 @router.post("/images-to-gif/frame")
@@ -258,7 +263,7 @@ async def stage_image_frame(current_openid: CurrentOpenid, file: UploadFile = Fi
 
 
 @router.post("/images-to-gif/compose")
-def compose_staged_images(req: ComposeImagesRequest, current_openid: CurrentOpenid):
+async def compose_staged_images(req: ComposeImagesRequest, current_openid: CurrentOpenid):
     if len(req.upload_ids) > settings.MAX_IMAGES_PER_GIF:
         raise HTTPException(status_code=400, detail=f"最多支持 {settings.MAX_IMAGES_PER_GIF} 张图片")
     if not 1 <= req.fps <= 20 or len(req.caption) > 80:
@@ -276,7 +281,8 @@ def compose_staged_images(req: ComposeImagesRequest, current_openid: CurrentOpen
                 raise HTTPException(status_code=404, detail="暂存图片不存在或已经过期")
             source_paths.append(source)
             frames.append(open_validated_image(source.read_bytes(), allow_animation=False).convert("RGBA").resize((300, 300), Image.Resampling.LANCZOS))
-        return _save_frames_as_gif(frames, req.fps, req.caption)
+        result = _save_frames_as_gif(frames, req.fps, req.caption)
+        return await publish_and_rewrite(result["task_id"], settings.OUTPUT_DIR / result["task_id"], result)
     finally:
         for source in source_paths:
             source.unlink(missing_ok=True)
@@ -309,13 +315,25 @@ async def edit_caption(
         target_gif.write_bytes(gif_bytes)
     elif gif_url:
         clean_path = urlsplit(gif_url).path
-        if not clean_path.startswith("/outputs/"):
-            raise HTTPException(status_code=400, detail="仅支持本站生成的动图 URL")
-        relative_path = clean_path.removeprefix("/outputs/")
-        local_src = ensure_within(settings.OUTPUT_DIR / relative_path, settings.OUTPUT_DIR)
-        if not local_src.is_file():
-            raise HTTPException(status_code=404, detail="源动图文件不存在")
-        source_bytes = local_src.read_bytes()
+        if clean_path.startswith("/outputs/"):
+            relative_path = clean_path.removeprefix("/outputs/")
+            local_src = ensure_within(settings.OUTPUT_DIR / relative_path, settings.OUTPUT_DIR)
+            if not local_src.is_file():
+                raise HTTPException(status_code=404, detail="源动图文件不存在")
+            source_bytes = local_src.read_bytes()
+        elif is_public_r2_url(gif_url):
+            try:
+                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                    source_response = await client.get(gif_url)
+                if source_response.status_code != 200:
+                    raise HTTPException(status_code=404, detail="R2 源动图不存在或暂时不可用")
+                source_bytes = source_response.content
+            except HTTPException:
+                raise
+            except Exception as exc:
+                raise HTTPException(status_code=502, detail="读取 R2 源动图失败") from exc
+        else:
+            raise HTTPException(status_code=400, detail="仅支持本站或 R2 生成的动图 URL")
         open_validated_image(source_bytes, allow_animation=True)
         target_gif.write_bytes(source_bytes)
     else:
@@ -335,7 +353,7 @@ async def edit_caption(
         mark_failed_task_dir(task_dir, str(exc))
         raise
     file_size_kb = round(target_gif.stat().st_size / 1024, 1)
-    return {
+    result = {
         "success": True,
         "task_id": task_id,
         "gif_url": f"/outputs/{task_id}/meme_result.gif",
@@ -346,6 +364,7 @@ async def edit_caption(
         "compression_attempts": size_stats["compression_attempts"],
         "warning": _gif_size_warning(size_stats),
     }
+    return await publish_and_rewrite(task_id, task_dir, result)
 
 @router.post("/caption-suggest")
 def caption_suggest(keyword: str = Form(""), style: str = Form("all")):
@@ -612,7 +631,7 @@ async def stitch_images(
         out_path = task_dir / "stitched.jpg"
         canvas.save(out_path, format="JPEG", quality=90)
         file_size_kb = round(out_path.stat().st_size / 1024, 1)
-        return {
+        result = {
             "success": True,
             "task_id": task_id,
             "image_url": f"/outputs/{task_id}/stitched.jpg",
@@ -621,6 +640,7 @@ async def stitch_images(
             "height": canvas.height,
             "mode": mode
         }
+        return await publish_and_rewrite(task_id, task_dir, result)
     finally:
         for p in source_paths:
             p.unlink(missing_ok=True)
@@ -680,7 +700,7 @@ async def compress_image(
 
         avg_dur = sum(durations) / max(1, len(durations))
         imageio.mimsave(str(out_path), frames, format="GIF", duration=avg_dur, loop=0)
-        gif_stats = _ensure_gif_file_size(
+        _ensure_gif_file_size(
             out_path,
             max_file_size_bytes=gif_target_kb * 1024,
         )
@@ -720,7 +740,7 @@ async def compress_image(
     file_size_bytes = out_path.stat().st_size
     effective_target_kb = gif_target_kb if is_gif else target_kb
     file_size_kb = round(file_size_bytes / 1024, 1)
-    return {
+    result = {
         "success": True,
         "task_id": task_id,
         "output_url": out_url,
@@ -735,6 +755,7 @@ async def compress_image(
             if file_size_bytes > effective_target_kb * 1024 else ""
         )
     }
+    return await publish_and_rewrite(task_id, task_dir, result)
 
 
 def _get_cjk_font(size: int, bold: bool = False, serif: bool = False) -> ImageFont.ImageFont:
@@ -881,7 +902,7 @@ async def text_to_image(
     canvas.save(out_path, format="PNG")
     file_size_kb = round(out_path.stat().st_size / 1024, 1)
 
-    return {
+    result = {
         "success": True,
         "task_id": task_id,
         "image_url": f"/outputs/{task_id}/card.png",
@@ -889,6 +910,7 @@ async def text_to_image(
         "width": card_w,
         "height": card_h
     }
+    return await publish_and_rewrite(task_id, task_dir, result)
 
 
 @router.post("/matting")
@@ -974,10 +996,11 @@ async def image_matting(
         result.save(out_path, format="PNG")
 
     file_size_kb = round(out_path.stat().st_size / 1024, 1)
-    return {
+    result = {
         "success": True,
         "task_id": task_id,
         "output_url": f"/outputs/{task_id}/matting_result.png",
         "file_size_kb": file_size_kb,
         "bg_mode": bg_mode
     }
+    return await publish_and_rewrite(task_id, task_dir, result)

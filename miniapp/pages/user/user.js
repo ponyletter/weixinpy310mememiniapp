@@ -183,7 +183,7 @@ Page({
         try {
           const data = JSON.parse(res.data);
           if (data && data.avatar_url) {
-            const finalUrl = data.avatar_url.startsWith('http') ? data.avatar_url : `${app.globalData.baseURL}${data.avatar_url}`;
+            const finalUrl = app.toAbsoluteUrl(data.avatar_url);
             this.setData({ 'editForm.avatar_url': finalUrl });
             wx.showToast({ title: '头像上传成功', icon: 'success' });
           } else {
@@ -380,11 +380,11 @@ Page({
             .map(item => {
               let fullUrl = item.gif_url;
               if (fullUrl && !fullUrl.startsWith('http')) {
-                fullUrl = `${app.globalData.baseURL}${fullUrl}`;
+                fullUrl = app.toAbsoluteUrl(fullUrl);
               }
               let thumbUrl = item.thumb_url || item.gif_url;
               if (thumbUrl && !thumbUrl.startsWith('http')) {
-                thumbUrl = `${app.globalData.baseURL}${thumbUrl}`;
+                thumbUrl = app.toAbsoluteUrl(thumbUrl);
               }
               return {
                 ...item,

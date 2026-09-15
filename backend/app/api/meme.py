@@ -25,6 +25,7 @@ from app.database import (
 from app.security import CurrentOpenid, require_same_user
 from app.storage_cleanup import mark_failed_task_dir
 from app.upload_utils import open_validated_image, read_limited_upload
+from app.r2_storage import is_public_r2_url, publish_and_rewrite, task_public_url
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api", tags=["Meme GIF"])
@@ -152,7 +153,7 @@ async def process_sprite_sheet(
     if not await sync_task_outputs_with_retry(task_id, task_dir):
         raise HTTPException(status_code=503, detail="动图已生成，但同步到国内节点失败，请稍后重试")
 
-    return {
+    payload = {
         "code": 0,
         "message": "success",
         "data": {
@@ -164,6 +165,7 @@ async def process_sprite_sheet(
             "stats": stats
         }
     }
+    return await publish_and_rewrite(task_id, task_dir, payload)
 
 @router.post("/generate-and-process")
 async def generate_and_process(
@@ -573,8 +575,8 @@ async def run_generate_pipeline(
             except Exception:
                 pass
 
-        # 在返回完成前同步到国内节点；耗时统计也覆盖同步阶段，反映用户真正等待的时间。
-        _set_task_progress(task_id, openid, 96, "syncing", "正在同步成品到国内节点...")
+        # 在返回完成前同步到国内节点与 R2；耗时统计覆盖整个发布阶段。
+        _set_task_progress(task_id, openid, 96, "syncing", "正在同步成品到 R2 与国内节点...")
         if not await sync_task_outputs_with_retry(task_id, task_dir):
             raise RuntimeError("动图已生成，但同步到国内节点失败")
 
@@ -584,6 +586,20 @@ async def run_generate_pipeline(
         stats["frame_count"] = len(frames)
         stats["resolution"] = f"{target_size_px}x{target_size_px}"
 
+        # 只有本地成品、国内节点和 R2 都准备好后，才向小程序报告完成。
+        result_data = {
+            "task_id": task_id,
+            "gif_url": f"/outputs/{task_id}/meme_result.gif",
+            "thumb_url": f"/outputs/{task_id}/thumb.jpg",
+            "zip_url": f"/outputs/{task_id}/frames_pack.zip",
+            "input_url": f"/outputs/{task_id}/input_sprite.png",
+            "caption": custom_caption,
+            "frames": frame_preview_urls,
+            "stats": stats,
+            "duration_seconds": duration_seconds
+        }
+        result_data = await publish_and_rewrite(task_id, task_dir, result_data)
+
         # 完成
         TASK_STORE[task_id] = {
             "openid": openid,
@@ -591,17 +607,7 @@ async def run_generate_pipeline(
             "progress": 100,
             "stage": "done",
             "stage_text": "🎉 制作全部完成！正在导出动图预览...",
-            "data": {
-                "task_id": task_id,
-                "gif_url": f"/outputs/{task_id}/meme_result.gif",
-                "thumb_url": f"/outputs/{task_id}/thumb.jpg",
-                "zip_url": f"/outputs/{task_id}/frames_pack.zip",
-                "input_url": f"/outputs/{task_id}/input_sprite.png",
-                "caption": custom_caption,
-                "frames": frame_preview_urls,
-                "stats": stats,
-                "duration_seconds": duration_seconds
-            }
+            "data": result_data
         }
 
         # 记录到 SQLite 表情包任务库
@@ -614,7 +620,7 @@ async def run_generate_pipeline(
                             progress = 100, gif_url = ?, sprite_url = ?, error_message = '',
                             duration_seconds = ?, frame_count = ?, resolution = ?
                         WHERE task_id = ? AND openid = ?
-                    ''', (prompt, action_type, custom_caption, fps, f"/outputs/{task_id}/meme_result.gif", f"/outputs/{task_id}/input_sprite.png", duration_seconds, frame_count, resolution, task_id, openid))
+                    ''', (prompt, action_type, custom_caption, fps, result_data["gif_url"], result_data["input_url"], duration_seconds, frame_count, resolution, task_id, openid))
                     conn.commit()
             except Exception:
                 pass
@@ -778,14 +784,21 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
     # 再查磁盘是否已有历史成果 (如 df4492bd 等)
     with get_db() as conn:
         owner = conn.execute(
-            "SELECT openid, status, progress, duration_seconds FROM meme_tasks WHERE task_id = ?", (task_id,)
+            "SELECT openid, status, progress, duration_seconds, gif_url, sprite_url FROM meme_tasks WHERE task_id = ?", (task_id,)
         ).fetchone()
     if not owner or owner["openid"] != current_openid:
         raise HTTPException(status_code=404, detail="任务不存在")
     task_dir = settings.OUTPUT_DIR / task_id
     if (task_dir / "meme_result.gif").exists():
         frames_dir = task_dir / "frames"
-        frame_urls = [f"/outputs/{task_id}/frames/{f.name}" for f in sorted(frames_dir.glob("*.png"))]
+        use_r2 = is_public_r2_url(owner["gif_url"] or "")
+        frame_urls = [
+            task_public_url(task_id, f"frames/{f.name}") if use_r2 else f"/outputs/{task_id}/frames/{f.name}"
+            for f in sorted(frames_dir.glob("*.png"))
+        ]
+        gif_url = owner["gif_url"] if use_r2 else f"/outputs/{task_id}/meme_result.gif"
+        zip_url = task_public_url(task_id, "frames_pack.zip") if use_r2 else f"/outputs/{task_id}/frames_pack.zip"
+        input_url = owner["sprite_url"] if use_r2 else f"/outputs/{task_id}/input_sprite.png"
         return {
             "code": 0,
             "data": {
@@ -793,9 +806,9 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
                 "progress": 100,
                 "data": {
                     "task_id": task_id,
-                    "gif_url": f"/outputs/{task_id}/meme_result.gif",
-                    "zip_url": f"/outputs/{task_id}/frames_pack.zip",
-                    "input_url": f"/outputs/{task_id}/input_sprite.png",
+                    "gif_url": gif_url,
+                    "zip_url": zip_url,
+                    "input_url": input_url,
                     "frames": frame_urls,
                     "stats": {
                         "frame_count": len(frame_urls),
@@ -817,7 +830,7 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
             25: ("drawing", "阶段 2/4：智能画质渲染引擎正在绘制动作拆解图..."),
             75: ("slicing", "阶段 3/4：正在切割并整理动图帧..."),
             90: ("assembling", "阶段 4/4：正在封装微信 GIF 动图..."),
-            96: ("syncing", "正在同步成品到国内节点..."),
+            96: ("syncing", "正在同步成品到 R2 与国内节点..."),
         }.get(progress, ("queued", "任务正在处理中..."))
         return {
             "code": 0,
@@ -902,7 +915,9 @@ def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
         task_id = row.get("task_id")
         if task_id:
             thumb_path = settings.OUTPUT_DIR / task_id / "thumb.jpg"
-            if thumb_path.exists():
+            if is_public_r2_url(row.get("gif_url") or ""):
+                row["thumb_url"] = task_public_url(task_id, "thumb.jpg")
+            elif thumb_path.exists():
                 row["thumb_url"] = f"/outputs/{task_id}/thumb.jpg"
             elif (settings.OUTPUT_DIR / task_id / "frames" / "frame_01.png").exists():
                 row["thumb_url"] = f"/outputs/{task_id}/frames/frame_01.png"
