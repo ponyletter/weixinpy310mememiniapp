@@ -18,6 +18,7 @@ from app.config import settings
 
 
 logger = logging.getLogger(__name__)
+R2_EXCLUDED_FILE_NAMES = frozenset({".cleanup_failed"})
 
 
 def is_r2_enabled() -> bool:
@@ -91,7 +92,12 @@ async def publish_task_directory(task_id: str, task_dir: Path) -> dict[str, str]
     if not is_r2_enabled():
         return {}
 
-    files = sorted(path for path in task_dir.rglob("*") if path.is_file())
+    files = sorted(
+        path for path in task_dir.rglob("*")
+        if path.is_file()
+        and path.name not in R2_EXCLUDED_FILE_NAMES
+        and not path.name.startswith("input_video.")
+    )
     if not files:
         raise RuntimeError(f"R2 发布失败：任务目录为空 ({task_id})")
 
@@ -149,4 +155,3 @@ def rewrite_output_urls(value: Any, task_id: str, published: dict[str, str]) -> 
 async def publish_and_rewrite(task_id: str, task_dir: Path, payload: Any) -> Any:
     published = await publish_task_directory(task_id, task_dir)
     return rewrite_output_urls(payload, task_id, published)
-
