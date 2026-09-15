@@ -33,6 +33,7 @@ Page({
     stageText: '',
     gifResultUrl: '',
     gifLoaded: false,
+    gifWarning: '',
     taskId: '',
     showFullScreenSketch: false,
     fsColor: '#1e293b',
@@ -770,6 +771,7 @@ Page({
       stageText: '正在启动极速渲染引擎...',
       gifResultUrl: '',
       gifLoaded: false,
+      gifWarning: '',
       elapsedSeconds: 0
     });
 
@@ -946,6 +948,7 @@ Page({
               wx.removeStorageSync('active_meme_task');
 
               const gifPath = tInfo.data.gif_url;
+              const stats = tInfo.data.stats || {};
               const fullGifUrl = `${app.globalData.baseURL}${gifPath}`;
 
               // 一次性渲染完成状态，进入图片加载阶段，待正常展示后再发提示通知
@@ -953,6 +956,7 @@ Page({
                 isGenerating: false,
                 gifResultUrl: fullGifUrl,
                 gifLoaded: false,
+                gifWarning: stats.warning || '',
                 progress: 100,
                 stageText: '动图渲染就绪，正在呈现...'
               });

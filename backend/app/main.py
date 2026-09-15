@@ -1,5 +1,7 @@
+import asyncio
 import hashlib
 import time
+from contextlib import asynccontextmanager
 from collections import defaultdict, deque
 
 from fastapi import FastAPI
@@ -9,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from app.config import settings
 from app.database import init_db
+from app.storage_cleanup import cleanup_stale_artifacts
 from app.api.meme import router as meme_router
 from app.api.wechat import router as wechat_router
 from app.api.auth import router as auth_router
@@ -19,9 +22,37 @@ from app.api.convert import router as convert_router
 # 初始化数据库结构与基础种子
 init_db()
 
+
+async def _storage_cleanup_loop() -> None:
+    """Run conservative cleanup without blocking request handling."""
+    while True:
+        try:
+            result = await asyncio.to_thread(cleanup_stale_artifacts)
+            if any(result.values()):
+                print(f"[storage-cleanup] {result}")
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            print("[storage-cleanup] cleanup pass failed", flush=True)
+        await asyncio.sleep(max(60, settings.STORAGE_CLEANUP_INTERVAL_SECONDS))
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    cleanup_task = asyncio.create_task(_storage_cleanup_loop())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     debug=settings.DEBUG,
+    lifespan=lifespan,
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
     openapi_url="/openapi.json" if settings.DEBUG else None,

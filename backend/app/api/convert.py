@@ -20,6 +20,7 @@ import numpy as np
 from app.config import settings
 from app.core.sprite_processor import SpriteProcessor
 from app.security import CurrentOpenid
+from app.storage_cleanup import mark_failed_task_dir
 from app.upload_utils import ensure_within, open_validated_image, read_limited_upload
 
 router = APIRouter(prefix="/api/convert", tags=["conversion_and_remix"])
@@ -47,7 +48,7 @@ def _user_stage_dir(openid: str) -> Path:
     user_key = hashlib.sha256(openid.encode("utf-8")).hexdigest()[:24]
     directory = settings.UPLOAD_DIR / "image_staging" / user_key
     directory.mkdir(parents=True, exist_ok=True)
-    cutoff = time.time() - 3600
+    cutoff = time.time() - max(60, settings.TEMP_ARTIFACT_TTL_SECONDS)
     for staged_file in directory.glob("*.png"):
         try:
             if staged_file.stat().st_mtime < cutoff:
@@ -85,18 +86,32 @@ def _ensure_gif_file_size(gif_path: Path, max_file_size_bytes: Optional[int] = N
     )
 
 
+def _gif_size_warning(stats: dict) -> str:
+    if stats.get("is_wechat_compliant", True):
+        return ""
+    size_kb = stats.get("file_size_kb")
+    if size_kb is None and stats.get("file_size_bytes") is not None:
+        size_kb = round(stats["file_size_bytes"] / 1024, 1)
+    return (
+        f"当前 GIF 约 {size_kb or 0}KB，超过微信常用的 "
+        f"{settings.WECHAT_GIF_MAX_BYTES / 1024:.0f}KB 提醒线；仍可下载到本地，"
+        "发送到微信时可能受到平台大小限制。"
+    )
+
+
 def _save_frames_as_gif(frames: list[Image.Image], fps: int, caption: str) -> dict:
     task_id = uuid.uuid4().hex
     task_dir = settings.OUTPUT_DIR / task_id
     task_dir.mkdir(parents=True, exist_ok=True)
     output_gif_path = task_dir / "meme_result.gif"
-    imageio.mimsave(str(output_gif_path), frames, format="GIF", duration=1.0 / fps, loop=0)
-    if caption.strip():
-        _add_caption_to_gif(output_gif_path, caption.strip())
-    size_stats = _ensure_gif_file_size(output_gif_path)
-    if not size_stats["is_wechat_compliant"]:
-        shutil.rmtree(task_dir, ignore_errors=True)
-        raise HTTPException(status_code=422, detail="GIF 体积超过 1MB，请减少图片数量或降低尺寸")
+    try:
+        imageio.mimsave(str(output_gif_path), frames, format="GIF", duration=1.0 / fps, loop=0)
+        if caption.strip():
+            _add_caption_to_gif(output_gif_path, caption.strip())
+        size_stats = _ensure_gif_file_size(output_gif_path)
+    except Exception as exc:
+        mark_failed_task_dir(task_dir, str(exc))
+        raise
     return {
         "success": True,
         "task_id": task_id,
@@ -104,6 +119,7 @@ def _save_frames_as_gif(frames: list[Image.Image], fps: int, caption: str) -> di
         "file_size_kb": round(output_gif_path.stat().st_size / 1024, 1),
         "is_wechat_compliant": size_stats["is_wechat_compliant"],
         "compression_attempts": size_stats["compression_attempts"],
+        "warning": _gif_size_warning(size_stats),
     }
 
 @router.post("/video-to-gif")
@@ -168,27 +184,30 @@ async def video_to_gif(
             timeout=30,
         )
     except subprocess.CalledProcessError as e:
+        mark_failed_task_dir(task_dir, e.stderr.decode("utf-8", errors="ignore")[:500])
         raise HTTPException(status_code=500, detail=f"视频转动图处理失败: {e.stderr.decode('utf-8', errors='ignore')[:200]}")
     except subprocess.TimeoutExpired as exc:
+        mark_failed_task_dir(task_dir, str(exc))
         raise HTTPException(status_code=504, detail="视频处理超时") from exc
     except FileNotFoundError as exc:
+        mark_failed_task_dir(task_dir, str(exc))
         raise HTTPException(status_code=503, detail="服务器未安装 FFmpeg，暂时无法处理视频") from exc
 
-    # 如果需要加字幕或水印
-    if caption.strip() and output_gif_path.exists():
-        _add_caption_to_gif(
-            output_gif_path,
-            caption.strip(),
-            pos=caption_pos,
-            font_size=font_size,
-            opacity=opacity,
-            color=color,
-        )
-
-    size_stats = _ensure_gif_file_size(output_gif_path)
-    if not size_stats["is_wechat_compliant"]:
-        shutil.rmtree(task_dir, ignore_errors=True)
-        raise HTTPException(status_code=422, detail="GIF 体积超过 1MB，请缩短时长或降低输出宽度")
+    try:
+        # 如果需要加字幕或水印
+        if caption.strip() and output_gif_path.exists():
+            _add_caption_to_gif(
+                output_gif_path,
+                caption.strip(),
+                pos=caption_pos,
+                font_size=font_size,
+                opacity=opacity,
+                color=color,
+            )
+        size_stats = _ensure_gif_file_size(output_gif_path)
+    except Exception as exc:
+        mark_failed_task_dir(task_dir, str(exc))
+        raise
     file_size_kb = round(output_gif_path.stat().st_size / 1024, 1)
     return {
         "success": True,
@@ -197,7 +216,8 @@ async def video_to_gif(
         "file_size_kb": file_size_kb,
         "is_wechat_compliant": size_stats["is_wechat_compliant"],
         "compression_attempts": size_stats["compression_attempts"],
-        "caption": caption.strip()
+        "caption": caption.strip(),
+        "warning": _gif_size_warning(size_stats),
     }
 
 @router.post("/images-to-gif")
@@ -301,18 +321,19 @@ async def edit_caption(
     else:
         raise HTTPException(status_code=400, detail="请上传动图或提供动图 URL")
 
-    _add_caption_to_gif(
-        target_gif,
-        caption.strip(),
-        pos=caption_pos,
-        font_size=font_size,
-        opacity=opacity,
-        color=color,
-    )
-    size_stats = _ensure_gif_file_size(target_gif)
-    if not size_stats["is_wechat_compliant"]:
-        shutil.rmtree(task_dir, ignore_errors=True)
-        raise HTTPException(status_code=422, detail="GIF 体积超过 1MB，请降低尺寸或减少文字内容")
+    try:
+        _add_caption_to_gif(
+            target_gif,
+            caption.strip(),
+            pos=caption_pos,
+            font_size=font_size,
+            opacity=opacity,
+            color=color,
+        )
+        size_stats = _ensure_gif_file_size(target_gif)
+    except Exception as exc:
+        mark_failed_task_dir(task_dir, str(exc))
+        raise
     file_size_kb = round(target_gif.stat().st_size / 1024, 1)
     return {
         "success": True,
@@ -322,7 +343,8 @@ async def edit_caption(
         "new_caption": caption.strip(),
         "caption_pos": caption_pos,
         "is_wechat_compliant": size_stats["is_wechat_compliant"],
-        "compression_attempts": size_stats["compression_attempts"]
+        "compression_attempts": size_stats["compression_attempts"],
+        "warning": _gif_size_warning(size_stats),
     }
 
 @router.post("/caption-suggest")
@@ -662,12 +684,6 @@ async def compress_image(
             out_path,
             max_file_size_bytes=gif_target_kb * 1024,
         )
-        if not gif_stats["is_wechat_compliant"]:
-            shutil.rmtree(task_dir, ignore_errors=True)
-            raise HTTPException(
-                status_code=422,
-                detail=f"GIF 无法压缩到 {gif_target_kb}KB 以内，请降低尺寸、帧数或质量",
-            )
         out_url = f"/outputs/{task_id}/compressed.gif"
     else:
         source_im = Image.open(io.BytesIO(file_bytes))
@@ -714,7 +730,10 @@ async def compress_image(
         "target_kb": effective_target_kb,
         "requested_target_kb": target_kb,
         "target_met": file_size_bytes <= effective_target_kb * 1024,
-        "warning": "当前格式内容较复杂，未达到目标大小，请降低尺寸或质量。" if file_size_bytes > effective_target_kb * 1024 else ""
+        "warning": (
+            "当前格式内容较复杂，未达到目标大小，仍已保留成品；可继续下载或降低尺寸/质量后重试。"
+            if file_size_bytes > effective_target_kb * 1024 else ""
+        )
     }
 
 

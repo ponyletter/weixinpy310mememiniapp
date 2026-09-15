@@ -199,7 +199,7 @@
         <view wx:if="{{!gifLoaded}}" class="result-gif-skeleton">
           <view class="skeleton-ring-spinner"></view>
           <text class="skeleton-text">正在加载动图…</text>
-          <text class="skeleton-sub">已就绪 16 帧高清动画序列</text>
+          <text class="skeleton-sub">已就绪 {{currentFrameCount}} 帧动画序列</text>
         </view>
         <image 
           class="result-gif {{gifLoaded ? 'loaded' : 'loading'}}" 
@@ -211,6 +211,10 @@
           binderror="onGifLoadError"
         ></image>
         <text class="result-preview-hint">点击预览，长按可直接转发或保存</text>
+      </view>
+      <view wx:if="{{gifWarning}}" class="gif-size-warning">
+        <text class="gif-size-warning-icon">⚠️</text>
+        <text class="gif-size-warning-text">{{gifWarning}}</text>
       </view>
       <view class="result-actions">
         <!-- 核心裂变入口：一键分享给好友/微信群，携带动态卡片封面与同款制作链接 -->
@@ -379,6 +383,7 @@
             <view class="specs-pill {{currentResolution === '240x240' ? 'active' : ''}}" bindtap="selectResolution" data-res="240x240">标准 240×240 (微信推荐)</view>
             <view class="specs-pill {{currentResolution === '320x320' ? 'active' : ''}}" bindtap="selectResolution" data-res="320x320">高清 320×320</view>
             <view class="specs-pill {{currentResolution === '480x480' ? 'active' : ''}}" bindtap="selectResolution" data-res="480x480">超清 480×480 (大图)</view>
+            <view class="specs-pill specs-pill-large {{currentResolution === '720x720' ? 'active' : ''}}" bindtap="selectResolution" data-res="720x720">超大 720×720 (可能超过1MB)</view>
           </view>
         </view>
       </view>

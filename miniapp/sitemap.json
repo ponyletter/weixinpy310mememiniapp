@@ -1,7 +1,41 @@
 {
   "desc": "关于本小程序配置 sitemap 的规则",
-  "rules": [{
-    "action": "allow",
-    "page": "*"
-  }]
+  "rules": [
+    {
+      "action": "allow",
+      "page": "pages/index/index",
+      "priority": 10
+    },
+    {
+      "action": "allow",
+      "page": "pages/remix/remix",
+      "priority": 10
+    },
+    {
+      "action": "allow",
+      "page": "pages/collection/detail",
+      "priority": 8,
+      "matching": "inclusive"
+    },
+    {
+      "action": "disallow",
+      "page": "pages/collection/collection"
+    },
+    {
+      "action": "disallow",
+      "page": "pages/user/user"
+    },
+    {
+      "action": "disallow",
+      "page": "pages/order/order"
+    },
+    {
+      "action": "disallow",
+      "page": "pages/editor/editor"
+    },
+    {
+      "action": "disallow",
+      "page": "*"
+    }
+  ]
 }

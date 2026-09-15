@@ -23,6 +23,7 @@ from app.database import (
     format_datetime_china,
 )
 from app.security import CurrentOpenid, require_same_user
+from app.storage_cleanup import mark_failed_task_dir
 from app.upload_utils import open_validated_image, read_limited_upload
 from pydantic import BaseModel
 
@@ -147,8 +148,9 @@ async def process_sprite_sheet(
         f_clean.save(f_thumb_path, format="PNG")
         frame_preview_urls.append(f"/outputs/{task_id}/frames/frame_{idx:02d}.png")
 
-    # 异步推送至国内高速节点
-    asyncio.create_task(sync_task_outputs_to_domestic(task_id, task_dir))
+    # 返回成功前确认国内节点已经具备完整产物，避免用户点击后仍看到旧缓存或空目录。
+    if not await sync_task_outputs_with_retry(task_id, task_dir):
+        raise HTTPException(status_code=503, detail="动图已生成，但同步到国内节点失败，请稍后重试")
 
     return {
         "code": 0,
@@ -334,26 +336,29 @@ def _set_task_progress(
         # 数据库记录失败不应中断生成任务，内存状态仍可供当前 worker 使用。
         logger.warning("Unable to persist progress for task %s", task_id, exc_info=True)
 
-async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path):
+async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path) -> bool:
     """
     确保动图产物在 /var/www/outputs/{task_id} 就绪。
     如果是本地部署在国内腾讯云，直接本地复制/确保就绪；
-    如果是美区沙箱开发，则通过 scp 异步推送到国内腾讯云。
+    如果是美区沙箱开发，则通过 scp 推送到国内腾讯云。
+    返回 True 代表目标节点已经同步完成，未配置同步时也视为成功。
     """
     try:
         local_root = Path(settings.OUTPUT_SYNC_LOCAL_DIR) if settings.OUTPUT_SYNC_LOCAL_DIR else None
         local_target = local_root / task_id if local_root else None
-        if local_root and local_root.exists():
-            local_target.mkdir(parents=True, exist_ok=True)
-            import shutil
-            for f in ["meme_result.gif", "thumb.jpg"]:
-                p = task_dir / f
-                if p.exists() and (local_target / f).resolve() != p.resolve():
-                    shutil.copy2(str(p), str(local_target / f))
-            return
+        if local_root:
+            local_root.mkdir(parents=True, exist_ok=True)
+            if local_target.resolve() != task_dir.resolve():
+                for source in task_dir.rglob("*"):
+                    if not source.is_file():
+                        continue
+                    destination = local_target / source.relative_to(task_dir)
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(str(source), str(destination))
+            return True
 
         if not settings.OUTPUT_SYNC_HOST:
-            return
+            return True
         remote_dir = f"{settings.OUTPUT_SYNC_DIR.rstrip('/')}/{task_id}"
         remote_dest = f"{settings.OUTPUT_SYNC_HOST}:{remote_dir}/"
         proc = await asyncio.create_subprocess_exec(
@@ -361,20 +366,30 @@ async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path):
             settings.OUTPUT_SYNC_HOST, "mkdir", "-p", remote_dir
         )
         await proc.wait()
-        
-        files_to_sync = []
-        for f in ["meme_result.gif", "thumb.jpg"]:
-            p = task_dir / f
-            if p.exists():
-                files_to_sync.append(str(p))
-        if files_to_sync:
-            proc2 = await asyncio.create_subprocess_exec(
-                "scp", "-q", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes",
-                *files_to_sync, remote_dest
-            )
-            await proc2.wait()
+        if proc.returncode != 0:
+            return False
+
+        # 同步 GIF、缩略图、原始雪碧图、ZIP 和逐帧预览，保证国内节点
+        # 与当前任务目录一致，而不是只同步其中两个文件。
+        proc2 = await asyncio.create_subprocess_exec(
+            "scp", "-q", "-r", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes",
+            str(task_dir / "."), remote_dest
+        )
+        await proc2.wait()
+        return proc2.returncode == 0
     except Exception as e:
-        print(f"[{task_id}] Warning: Failed to sync output to domestic node: {e}")
+        logger.warning("[%s] failed to sync output to domestic node: %s", task_id, e)
+        return False
+
+
+async def sync_task_outputs_with_retry(task_id: str, task_dir: Path, attempts: int = 3) -> bool:
+    """Retry short-lived SSH/network failures before exposing completion."""
+    for attempt in range(max(1, attempts)):
+        if await sync_task_outputs_to_domestic(task_id, task_dir):
+            return True
+        if attempt + 1 < attempts:
+            await asyncio.sleep(2 ** attempt)
+    return False
 
 async def run_generate_pipeline(
     task_id: str,
@@ -528,7 +543,11 @@ async def run_generate_pipeline(
             max_file_size_bytes=settings.WECHAT_GIF_MAX_BYTES,
         )
         if not stats.get("is_wechat_compliant"):
-            raise RuntimeError("生成的 GIF 体积仍超过 1MB，请降低帧数或尺寸后重试")
+            stats["warning"] = (
+                f"当前 GIF 为 {stats.get('file_size_kb', 0):.1f}KB，超过微信常用的 "
+                f"{settings.WECHAT_GIF_MAX_BYTES / 1024:.0f}KB 提醒线；仍可下载到本地，"
+                "发送到微信时可能受到平台大小限制。"
+            )
 
         zip_path = task_dir / "frames_pack.zip"
         await asyncio.to_thread(
@@ -553,6 +572,11 @@ async def run_generate_pipeline(
                 frames[0].convert("RGB").resize((160, 160), Image.Resampling.LANCZOS).save(task_dir / "thumb.jpg", format="JPEG", quality=80)
             except Exception:
                 pass
+
+        # 在返回完成前同步到国内节点；耗时统计也覆盖同步阶段，反映用户真正等待的时间。
+        _set_task_progress(task_id, openid, 96, "syncing", "正在同步成品到国内节点...")
+        if not await sync_task_outputs_with_retry(task_id, task_dir):
+            raise RuntimeError("动图已生成，但同步到国内节点失败")
 
         # 计算并保存实际完成总耗时 (秒)
         duration_seconds = round(time.time() - start_time, 1)
@@ -579,9 +603,6 @@ async def run_generate_pipeline(
                 "duration_seconds": duration_seconds
             }
         }
-
-        # 异步推送至国内腾讯云节点，国内用户即时享受本地高速加载与保存相册
-        asyncio.create_task(sync_task_outputs_to_domestic(task_id, task_dir))
 
         # 记录到 SQLite 表情包任务库
         if openid:
@@ -623,8 +644,8 @@ async def run_generate_pipeline(
         if openid:
             refund_quota(openid, deducted_from)
         failed_task_dir = settings.OUTPUT_DIR / task_id
-        if failed_task_dir.is_dir():
-            shutil.rmtree(failed_task_dir, ignore_errors=True)
+        # 保留失败现场一段时间，便于排错；后台任务会延迟清理。
+        mark_failed_task_dir(failed_task_dir, str(e))
         TASK_STORE[task_id] = {
             "openid": openid,
             "status": "failed",
@@ -780,7 +801,10 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
                         "frame_count": len(frame_urls),
                         "file_size_kb": round((task_dir / "meme_result.gif").stat().st_size / 1024, 1),
                         "duration_per_frame_ms": 125,
-                        "duration_seconds": owner["duration_seconds"] or 0.0
+                        "duration_seconds": owner["duration_seconds"] or 0.0,
+                        "is_wechat_compliant": (task_dir / "meme_result.gif").stat().st_size <= settings.WECHAT_GIF_MAX_BYTES,
+                        "warning": "当前 GIF 超过微信常用的 1MB 提醒线，仍可下载到本地；发送到微信时可能受到大小限制。"
+                        if (task_dir / "meme_result.gif").stat().st_size > settings.WECHAT_GIF_MAX_BYTES else "",
                     }
                 }
             }
@@ -793,6 +817,7 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
             25: ("drawing", "阶段 2/4：智能画质渲染引擎正在绘制动作拆解图..."),
             75: ("slicing", "阶段 3/4：正在切割并整理动图帧..."),
             90: ("assembling", "阶段 4/4：正在封装微信 GIF 动图..."),
+            96: ("syncing", "正在同步成品到国内节点..."),
         }.get(progress, ("queued", "任务正在处理中..."))
         return {
             "code": 0,

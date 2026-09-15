@@ -27,7 +27,7 @@
     </scroll-view>
   </view>
 
-  <!-- 6大工具导航网格 (3列x2行规整布局) -->
+  <!-- 7大工具导航网格，最后一项居中显示 -->
   <view class="remix-tabs card">
     <view class="remix-tab {{tab === 'video' ? 'active' : ''}}" bindtap="switchTab" data-tab="video">
       <text class="remix-tab-icon">📹</text><text>视频转GIF</text>
@@ -135,7 +135,7 @@
         </view>
       </view>
       <view class="caption-option-row">
-        <text class="caption-option-label">透明度 {{captionOpacity}}</text>
+        <text class="caption-option-label">透明度 {{captionOpacity * 100}}%</text>
         <slider class="caption-option-slider" min="0.2" max="1" step="0.1" value="{{captionOpacity}}" bindchanging="onCaptionOpacityChange" bindchange="onCaptionOpacityChange" block-size="14" activeColor="#4f46e5" />
       </view>
     </view>
@@ -385,7 +385,7 @@
       <text class="form-label-remix">金句内容</text>
       <textarea
         class="form-textarea-card"
-        placeholder="输入名言、金句或打工人语录，例如：&#10;今天的不开心就到此为止吧，明天依然光芒万丈。"
+        placeholder="输入名言、金句或打工人语录，例如：今天的不开心就到此为止吧，明天依然光芒万丈。"
         value="{{cardText}}"
         bindinput="onInputCardText"
         maxlength="200"

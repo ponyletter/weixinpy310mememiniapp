@@ -59,7 +59,7 @@
   font-size: 24rpx;
 }
 
-/* 6大百宝箱工具导航网格 (3列x2行规整布局) */
+/* 7大百宝箱工具导航网格，最后一项居中 */
 .remix-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -83,6 +83,10 @@
   flex-direction: column;
   align-items: center;
   gap: 8rpx;
+}
+
+.remix-tab:last-child {
+  grid-column: 2;
 }
 
 .remix-tab.active {
