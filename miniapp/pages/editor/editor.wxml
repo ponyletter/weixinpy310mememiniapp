@@ -2,31 +2,76 @@
   <!-- 顶部精简操作栏 -->
   <view class="editor-nav-bar">
     <view class="nav-left-actions">
-      <view class="action-btn-sm" bindtap="undo">↩ 撤销</view>
-      <view class="action-btn-sm" bindtap="redo">↪ 前进</view>
-      <view class="action-btn-sm btn-clear" bindtap="clearAll">清空</view>
+      <view class="icon-nav-btn" bindtap="undo" title="撤销">↩</view>
+      <view class="icon-nav-btn" bindtap="redo" title="前进">↪</view>
+      <view class="text-nav-btn btn-clear-text" bindtap="clearAll">清空</view>
     </view>
     <view class="nav-right-actions">
-      <view class="action-btn-sm btn-save-album" bindtap="saveToAlbum">保存相册</view>
-      <button class="btn-save-apply" bindtap="finishAndApply">完成编辑</button>
+      <view class="text-nav-btn" bindtap="saveToAlbum">存相册</view>
+      <button class="btn-save-apply" bindtap="finishAndApply">完成</button>
     </view>
   </view>
 
   <!-- 中间画布工作区 (1:1 沉浸式画布) -->
   <view class="canvas-workspace">
     <view class="canvas-card" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;">
+      <!-- 当文字弹窗开启时使用高保真快照占位，同时将原生 Canvas 移至离屏，从根本上解决 Canvas 原生层级穿透遮挡输入框问题 -->
+      <image
+        wx:if="{{showTextModal && modalCanvasSnapshot}}"
+        src="{{modalCanvasSnapshot}}"
+        class="editor-canvas-snapshot"
+        style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"
+      />
       <canvas
         type="2d"
         id="editorCanvas"
         class="editor-canvas"
-        style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"
+        style="width: {{canvasWidth}}px; height: {{canvasHeight}}px; {{showTextModal ? 'position: absolute; left: -9999px; opacity: 0;' : ''}}"
         catchtouchstart="onTouchStart"
         catchtouchmove="onTouchMove"
         catchtouchend="onTouchEnd"
       ></canvas>
+
+      <!-- 苹果风格交互式裁剪框浮层 (仅在构图与裁剪模式下呈现) -->
+      <view wx:if="{{activeTab === 'crop' && cropSubTab === 'crop' && bgImageSrc}}" class="crop-overlay-wrap">
+        <!-- 暗色半透明遮罩 (上、下、左、右) -->
+        <view class="crop-mask-top" style="height: {{cropBox.y}}px;"></view>
+        <view class="crop-mask-bottom" style="top: {{cropBox.y + cropBox.h}}px; height: {{canvasHeight - cropBox.y - cropBox.h}}px;"></view>
+        <view class="crop-mask-left" style="top: {{cropBox.y}}px; height: {{cropBox.h}}px; width: {{cropBox.x}}px;"></view>
+        <view class="crop-mask-right" style="top: {{cropBox.y}}px; height: {{cropBox.h}}px; left: {{cropBox.x + cropBox.w}}px; width: {{canvasWidth - cropBox.x - cropBox.w}}px;"></view>
+
+        <!-- 裁剪控制框 (支持内框拖拽与四角/四边自由拉伸) -->
+        <view
+          class="crop-box"
+          style="left: {{cropBox.x}}px; top: {{cropBox.y}}px; width: {{cropBox.w}}px; height: {{cropBox.h}}px;"
+          catchtouchstart="onCropTouchStart"
+          catchtouchmove="onCropTouchMove"
+          catchtouchend="onCropTouchEnd"
+          data-handle="body"
+        >
+          <!-- 经典九宫格三分辅助线 -->
+          <view class="crop-grid-h line1"></view>
+          <view class="crop-grid-h line2"></view>
+          <view class="crop-grid-v line1"></view>
+          <view class="crop-grid-v line2"></view>
+
+          <!-- 四角高亮控制直角 (苹果风格白色加粗边角) -->
+          <view class="crop-handle handle-tl" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd" data-handle="tl"></view>
+          <view class="crop-handle handle-tr" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd" data-handle="tr"></view>
+          <view class="crop-handle handle-bl" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd" data-handle="bl"></view>
+          <view class="crop-handle handle-br" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd" data-handle="br"></view>
+
+          <!-- 四边居中控制刻度手柄 -->
+          <view class="crop-edge-handle edge-t" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd" data-handle="t"></view>
+          <view class="crop-edge-handle edge-b" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd" data-handle="b"></view>
+          <view class="crop-edge-handle edge-l" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd" data-handle="l"></view>
+          <view class="crop-edge-handle edge-r" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd" data-handle="r"></view>
+        </view>
+      </view>
     </view>
     <view class="canvas-tip">
       <text wx:if="{{isBrushActive}}" style="color: #ef4444; font-weight: 600;">涂鸦模式已开启，直接在画布上手绘涂鸦</text>
+      <text wx:elif="{{activeTab === 'crop' && cropSubTab === 'crop'}}" style="color: #4f46e5; font-weight: 600;">拖拽白框调整裁剪区域，点击“确认裁剪”生效</text>
       <text wx:elif="{{activeTab === 'crop'}}" style="color: #4f46e5; font-weight: 600;">单指可拖拽底图平移，搭配滑块缩放与调色</text>
       <text wx:else>选中贴纸/文字后可拖动、缩放或旋转</text>
     </view>
@@ -103,15 +148,24 @@
 
       <!-- 子面板 1: 构图与裁剪 -->
       <view wx:if="{{cropSubTab === 'crop'}}" class="crop-sub-panel">
-        <view class="crop-mode-row">
-          <view class="crop-chip {{bgFitMode === 'cover' ? 'active' : ''}}" bindtap="setBgFitMode" data-mode="cover">
-            1:1 满幅
+        <!-- 比例预设 -->
+        <view class="crop-ratio-row">
+          <text class="ratio-label">裁剪比例:</text>
+          <view class="ratio-chips">
+            <view class="ratio-chip {{cropRatio === 'free' ? 'active' : ''}}" bindtap="setCropRatio" data-ratio="free">自由</view>
+            <view class="ratio-chip {{cropRatio === '1:1' ? 'active' : ''}}" bindtap="setCropRatio" data-ratio="1:1">1:1</view>
+            <view class="ratio-chip {{cropRatio === '4:3' ? 'active' : ''}}" bindtap="setCropRatio" data-ratio="4:3">4:3</view>
+            <view class="ratio-chip {{cropRatio === '3:4' ? 'active' : ''}}" bindtap="setCropRatio" data-ratio="3:4">3:4</view>
+            <view class="ratio-chip {{cropRatio === '16:9' ? 'active' : ''}}" bindtap="setCropRatio" data-ratio="16:9">16:9</view>
           </view>
-          <view class="crop-chip {{bgFitMode === 'contain' ? 'active' : ''}}" bindtap="setBgFitMode" data-mode="contain">
-            完整包含
-          </view>
-          <view class="crop-action-btn" bindtap="rotateBgImage">↷ 旋转90°</view>
-          <view class="crop-action-btn" bindtap="flipBgImage">⇄ 镜像</view>
+        </view>
+
+        <!-- 裁剪核心操作栏：确认裁剪、重置、旋转、镜像 -->
+        <view class="crop-action-row">
+          <button class="btn-crop-confirm" bindtap="applyCrop">✂️ 确认裁剪并应用</button>
+          <view class="crop-icon-btn" bindtap="resetCropBox">↩ 重置框</view>
+          <view class="crop-icon-btn" bindtap="rotateBgImage">↷ 旋转</view>
+          <view class="crop-icon-btn" bindtap="flipBgImage">⇄ 镜像</view>
         </view>
         
         <view class="crop-slider-row">
@@ -133,9 +187,8 @@
         <view class="crop-bottom-actions">
           <button class="btn-xs btn-change-bg" bindtap="changeBgImage">🔄 更换图片</button>
           <button class="btn-xs btn-remove-bg" bindtap="removeBgImage">🗑️ 去掉图片(画板)</button>
-          <button class="btn-xs btn-reset-crop" bindtap="resetCrop">↩ 重置</button>
         </view>
-        <view class="crop-hint-text">💡 可直接在上方画布单指拖动平移底图，搭配滑块缩放</view>
+        <view class="crop-hint-text">💡 拖拽白框可移动裁剪位置，拖拽四角或四边调整裁剪大小</view>
       </view>
 
       <!-- 子面板 2: 苹果风格调色 (曝光/对比度/饱和度/亮度) -->

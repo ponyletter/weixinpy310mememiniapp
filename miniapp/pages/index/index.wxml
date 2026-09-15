@@ -100,7 +100,9 @@
         </view>
       </view>
       <view class="sketch-toolbar">
-        <button class="btn-xs" bindtap="clearSketch">清空画布</button>
+        <button class="btn-xs" bindtap="undoSketch">↩ 撤销</button>
+        <button class="btn-xs" bindtap="redoSketch">↪ 前进</button>
+        <button class="btn-xs" bindtap="clearSketch">清空</button>
         <button class="btn-xs btn-fullscreen-launch" bindtap="openFullScreenSketch">🎨 全屏大画布</button>
       </view>
     </view>
@@ -304,6 +306,14 @@
         <text class="fs-badge">自由涂鸦</text>
       </view>
       <view class="fs-header-actions">
+        <view class="fs-action-btn" hover-class="fs-btn-hover" bindtap="undoFSSketch">
+          <text class="fs-btn-icon">↩</text>
+          <text>撤销</text>
+        </view>
+        <view class="fs-action-btn" hover-class="fs-btn-hover" bindtap="redoFSSketch">
+          <text class="fs-btn-icon">↪</text>
+          <text>前进</text>
+        </view>
         <view class="fs-action-btn fs-btn-clear" hover-class="fs-btn-hover" bindtap="clearFullScreenSketch">
           <text class="fs-btn-icon">🗑️</text>
           <text>清空</text>

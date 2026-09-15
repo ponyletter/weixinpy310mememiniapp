@@ -53,6 +53,11 @@ Page({
     // 滤镜风格
     imgFilter: 'original', // 'original' | 'vivid' | 'warm' | 'cool' | 'mono' | 'film'
 
+    // 交互式裁剪框与快照
+    cropRatio: 'free', // 'free' | '1:1' | '4:3' | '3:4' | '16:9'
+    cropBox: { x: 12, y: 12, w: 260, h: 260 },
+    modalCanvasSnapshot: '',
+
     // 元素属性控制条 (当前选中元素)
     selectedScale: 1.0,
     selectedRotate: 0
@@ -74,11 +79,15 @@ Page({
     const winWidth = windowInfo.windowWidth || 375;
     const cWidth = Math.min(winWidth - 32, 380);
     const cHeight = cWidth; // 1:1 正方形画布，最适合表情包
+    const pad = 12;
     this.setData({
       bgImageSrc: src,
       canvasWidth: cWidth,
       canvasHeight: cHeight,
+      cropBox: { x: pad, y: pad, w: cWidth - pad * 2, h: cHeight - pad * 2 },
+      cropRatio: 'free',
       activeTab: isCrop ? 'crop' : 'sticker',
+      cropSubTab: 'crop',
       bgFitMode: isCrop ? 'cover' : 'contain'
     });
 
@@ -647,14 +656,38 @@ Page({
 
   // --- 文字弹窗与添加 ---
   openTextModal() {
-    this.setData({
-      showTextModal: true,
-      textInputVal: ''
-    });
+    if (this.canvas) {
+      wx.canvasToTempFilePath({
+        canvas: this.canvas,
+        fileType: 'png',
+        quality: 1,
+        success: (res) => {
+          this.setData({
+            modalCanvasSnapshot: res.tempFilePath,
+            showTextModal: true,
+            textInputVal: ''
+          });
+        },
+        fail: () => {
+          this.setData({
+            showTextModal: true,
+            textInputVal: ''
+          });
+        }
+      });
+    } else {
+      this.setData({
+        showTextModal: true,
+        textInputVal: ''
+      });
+    }
   },
 
   closeTextModal() {
-    this.setData({ showTextModal: false });
+    this.setData({
+      showTextModal: false,
+      modalCanvasSnapshot: ''
+    });
   },
 
   onTextInput(e) {
@@ -698,6 +731,7 @@ Page({
     this.elementRedoStack = [];
     this.setData({
       showTextModal: false,
+      modalCanvasSnapshot: '',
       selectedElementId: newEl.id,
       selectedScale: 1.0,
       selectedRotate: 0
@@ -971,6 +1005,190 @@ Page({
     wx.showToast({ title: '调色参数已重置', icon: 'none' });
   },
 
+  // --- 交互式裁剪框触控与拖拽调整 ---
+  onCropTouchStart(e) {
+    const touch = e.touches[0];
+    const handle = e.currentTarget.dataset.handle || 'body';
+    this.cropTouchInfo = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      handle: handle,
+      initialBox: { ...this.data.cropBox }
+    };
+  },
+
+  onCropTouchMove(e) {
+    if (!this.cropTouchInfo) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - this.cropTouchInfo.startX;
+    const dy = touch.clientY - this.cropTouchInfo.startY;
+    const { handle, initialBox } = this.cropTouchInfo;
+    const maxW = this.data.canvasWidth;
+    const maxH = this.data.canvasHeight;
+    const minSize = 40;
+
+    let { x, y, w, h } = initialBox;
+
+    if (handle === 'body') {
+      x = Math.max(0, Math.min(initialBox.x + dx, maxW - w));
+      y = Math.max(0, Math.min(initialBox.y + dy, maxH - h));
+    } else {
+      if (handle === 'tl') {
+        x = Math.min(initialBox.x + dx, initialBox.x + initialBox.w - minSize);
+        y = Math.min(initialBox.y + dy, initialBox.y + initialBox.h - minSize);
+        x = Math.max(0, x);
+        y = Math.max(0, y);
+        w = initialBox.x + initialBox.w - x;
+        h = initialBox.y + initialBox.h - y;
+      } else if (handle === 'tr') {
+        y = Math.min(initialBox.y + dy, initialBox.y + initialBox.h - minSize);
+        y = Math.max(0, y);
+        w = Math.max(minSize, Math.min(initialBox.w + dx, maxW - initialBox.x));
+        h = initialBox.y + initialBox.h - y;
+      } else if (handle === 'bl') {
+        x = Math.min(initialBox.x + dx, initialBox.x + initialBox.w - minSize);
+        x = Math.max(0, x);
+        w = initialBox.x + initialBox.w - x;
+        h = Math.max(minSize, Math.min(initialBox.h + dy, maxH - initialBox.y));
+      } else if (handle === 'br') {
+        w = Math.max(minSize, Math.min(initialBox.w + dx, maxW - initialBox.x));
+        h = Math.max(minSize, Math.min(initialBox.h + dy, maxH - initialBox.y));
+      } else if (handle === 't') {
+        y = Math.min(initialBox.y + dy, initialBox.y + initialBox.h - minSize);
+        y = Math.max(0, y);
+        h = initialBox.y + initialBox.h - y;
+      } else if (handle === 'b') {
+        h = Math.max(minSize, Math.min(initialBox.h + dy, maxH - initialBox.y));
+      } else if (handle === 'l') {
+        x = Math.min(initialBox.x + dx, initialBox.x + initialBox.w - minSize);
+        x = Math.max(0, x);
+        w = initialBox.x + initialBox.w - x;
+      } else if (handle === 'r') {
+        w = Math.max(minSize, Math.min(initialBox.w + dx, maxW - initialBox.x));
+      }
+
+      const ratio = this.data.cropRatio;
+      if (ratio && ratio !== 'free') {
+        let r = 1;
+        if (ratio === '1:1') r = 1;
+        else if (ratio === '4:3') r = 4 / 3;
+        else if (ratio === '3:4') r = 3 / 4;
+        else if (ratio === '16:9') r = 16 / 9;
+
+        if (handle === 't' || handle === 'b') {
+          w = h * r;
+        } else {
+          h = w / r;
+        }
+        if (x + w > maxW) w = maxW - x;
+        if (y + h > maxH) h = maxH - y;
+      }
+    }
+
+    this.setData({
+      cropBox: {
+        x: Math.round(x),
+        y: Math.round(y),
+        w: Math.round(w),
+        h: Math.round(h)
+      }
+    });
+  },
+
+  onCropTouchEnd() {
+    this.cropTouchInfo = null;
+  },
+
+  resetCropBox() {
+    const pad = 12;
+    const w = this.data.canvasWidth - pad * 2;
+    const h = this.data.canvasHeight - pad * 2;
+    this.setData({
+      cropBox: { x: pad, y: pad, w: w, h: h },
+      cropRatio: 'free'
+    });
+  },
+
+  setCropRatio(e) {
+    const ratio = e.currentTarget.dataset.ratio;
+    this.setData({ cropRatio: ratio });
+    if (ratio === 'free') return;
+
+    let r = 1;
+    if (ratio === '1:1') r = 1;
+    else if (ratio === '4:3') r = 4 / 3;
+    else if (ratio === '3:4') r = 3 / 4;
+    else if (ratio === '16:9') r = 16 / 9;
+
+    const maxW = this.data.canvasWidth - 24;
+    const maxH = this.data.canvasHeight - 24;
+    let w = maxW;
+    let h = w / r;
+    if (h > maxH) {
+      h = maxH;
+      w = h * r;
+    }
+    const x = Math.round((this.data.canvasWidth - w) / 2);
+    const y = Math.round((this.data.canvasHeight - h) / 2);
+
+    this.setData({
+      cropBox: { x, y, w: Math.round(w), h: Math.round(h) }
+    });
+  },
+
+  // 确认裁剪：将当前裁剪选区输出并应用为新底图
+  applyCrop() {
+    if (!this.canvas || !this.data.bgImageSrc) {
+      wx.showToast({ title: '暂无底图可裁剪', icon: 'none' });
+      return;
+    }
+
+    const { x, y, w, h } = this.data.cropBox;
+    if (w < 20 || h < 20) {
+      wx.showToast({ title: '裁剪区域太小', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '正在应用裁剪...' });
+    this.setData({ selectedElementId: null });
+    this.renderCanvas();
+
+    setTimeout(() => {
+      wx.canvasToTempFilePath({
+        canvas: this.canvas,
+        x: Math.round(x),
+        y: Math.round(y),
+        width: Math.round(w),
+        height: Math.round(h),
+        destWidth: Math.round(w * this.dpr),
+        destHeight: Math.round(h * this.dpr),
+        fileType: 'png',
+        quality: 1,
+        success: (res) => {
+          wx.hideLoading();
+          const croppedSrc = res.tempFilePath;
+          this.elementRedoStack = [];
+          this.setData({
+            bgImageSrc: croppedSrc,
+            bgOffsetX: 0,
+            bgOffsetY: 0,
+            bgScale: 1.0,
+            bgRotation: 0,
+            bgFlipH: false
+          });
+          this.initCanvas(croppedSrc);
+          this.resetCropBox();
+          wx.showToast({ title: '裁剪已应用！', icon: 'success' });
+        },
+        fail: (err) => {
+          wx.hideLoading();
+          console.error("裁剪导出失败:", err);
+          wx.showToast({ title: '裁剪失败，请重试', icon: 'none' });
+        }
+      });
+    }, 120);
+  },
+
   resetCrop() {
     this.setData({
       bgFitMode: 'cover',
@@ -981,6 +1199,7 @@ Page({
       bgFlipH: false
     });
     this.renderCanvas();
+    this.resetCropBox();
     wx.showToast({ title: '构图已重置', icon: 'none' });
   },
 

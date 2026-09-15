@@ -354,32 +354,103 @@ Page({
         ctx.lineJoin = 'round';
         this.sketchCanvas = canvas;
         this.sketchCtx = ctx;
+        this.sketchStrokes = [];
+        this.sketchRedoStack = [];
       });
   },
 
   onSketchStart(e) {
     if (!this.sketchCtx) return;
     const touch = e.touches[0];
+    this.currentSketchStroke = {
+      color: '#1e293b',
+      width: 4,
+      points: [{ x: touch.x, y: touch.y }]
+    };
     this.sketchCtx.beginPath();
+    this.sketchCtx.strokeStyle = '#1e293b';
+    this.sketchCtx.lineWidth = 4;
+    this.sketchCtx.lineCap = 'round';
+    this.sketchCtx.lineJoin = 'round';
     this.sketchCtx.moveTo(touch.x, touch.y);
   },
 
   onSketchMove(e) {
-    if (!this.sketchCtx) return;
+    if (!this.sketchCtx || !this.currentSketchStroke) return;
     const touch = e.touches[0];
+    this.currentSketchStroke.points.push({ x: touch.x, y: touch.y });
     this.sketchCtx.lineTo(touch.x, touch.y);
     this.sketchCtx.stroke();
   },
 
   onSketchEnd() {
-    if (!this.sketchCtx) return;
+    if (!this.sketchCtx || !this.currentSketchStroke) return;
     this.sketchCtx.closePath();
+    if (!this.sketchStrokes) this.sketchStrokes = [];
+    if (this.currentSketchStroke.points.length > 0) {
+      this.sketchStrokes.push(this.currentSketchStroke);
+      this.sketchRedoStack = [];
+    }
+    this.currentSketchStroke = null;
+  },
+
+  redrawSketch() {
+    if (!this.sketchCanvas || !this.sketchCtx) return;
+    const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
+    const dpr = windowInfo.pixelRatio || 2;
+    this.sketchCtx.clearRect(0, 0, this.sketchCanvas.width / dpr, this.sketchCanvas.height / dpr);
+
+    if (!this.sketchStrokes || this.sketchStrokes.length === 0) return;
+    for (const stroke of this.sketchStrokes) {
+      if (!stroke.points || stroke.points.length === 0) continue;
+      this.sketchCtx.save();
+      this.sketchCtx.strokeStyle = stroke.color || '#1e293b';
+      this.sketchCtx.lineWidth = stroke.width || 4;
+      this.sketchCtx.lineCap = 'round';
+      this.sketchCtx.lineJoin = 'round';
+      this.sketchCtx.beginPath();
+      this.sketchCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length; i++) {
+        this.sketchCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
+      }
+      this.sketchCtx.stroke();
+      this.sketchCtx.restore();
+    }
+  },
+
+  undoSketch() {
+    if (!this.sketchStrokes || this.sketchStrokes.length === 0) {
+      wx.showToast({ title: '无可撤销笔画', icon: 'none' });
+      return;
+    }
+    if (!this.sketchRedoStack) this.sketchRedoStack = [];
+    const stroke = this.sketchStrokes.pop();
+    this.sketchRedoStack.push(stroke);
+    this.redrawSketch();
+    wx.showToast({ title: '已撤销', icon: 'none', duration: 600 });
+  },
+
+  redoSketch() {
+    if (!this.sketchRedoStack || this.sketchRedoStack.length === 0) {
+      wx.showToast({ title: '无可前进笔画', icon: 'none' });
+      return;
+    }
+    if (!this.sketchStrokes) this.sketchStrokes = [];
+    const stroke = this.sketchRedoStack.pop();
+    this.sketchStrokes.push(stroke);
+    this.redrawSketch();
+    wx.showToast({ title: '已恢复', icon: 'none', duration: 600 });
   },
 
   clearSketch() {
     if (!this.sketchCanvas || !this.sketchCtx) return;
-    this.sketchCtx.clearRect(0, 0, this.sketchCanvas.width, this.sketchCanvas.height);
+    this.sketchStrokes = [];
+    this.sketchRedoStack = [];
+    const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
+    const dpr = windowInfo.pixelRatio || 2;
+    this.sketchCtx.clearRect(0, 0, this.sketchCanvas.width / dpr, this.sketchCanvas.height / dpr);
     this.setData({ sketchTempPath: '' });
+    wx.showToast({ title: '画板已清空', icon: 'none' });
   },
 
   // --- 全屏涂鸦画板 ---
@@ -401,6 +472,8 @@ Page({
   },
 
   initFullScreenCanvas() {
+    this.fsStrokes = [];
+    this.fsRedoStack = [];
     const query = wx.createSelectorQuery();
     query.select('#fullScreenCanvas')
       .fields({ node: true, size: true })
@@ -424,9 +497,12 @@ Page({
         if (this.data.sketchTempPath) {
           const img = canvas.createImage();
           img.onload = () => {
+            this.fsBaseImageObj = img;
             ctx.drawImage(img, 0, 0, res[0].width, res[0].height);
           };
           img.src = this.data.sketchTempPath;
+        } else {
+          this.fsBaseImageObj = null;
         }
       });
   },
@@ -434,22 +510,88 @@ Page({
   onFSSketchStart(e) {
     if (!this.fsCtx) return;
     const touch = e.touches[0];
+    this.currentFSStroke = {
+      color: this.data.fsColor || '#1e293b',
+      width: this.data.fsLineWidth || 6,
+      points: [{ x: touch.x, y: touch.y }]
+    };
     this.fsCtx.beginPath();
-    this.fsCtx.strokeStyle = this.data.fsColor;
-    this.fsCtx.lineWidth = this.data.fsLineWidth;
+    this.fsCtx.strokeStyle = this.data.fsColor || '#1e293b';
+    this.fsCtx.lineWidth = this.data.fsLineWidth || 6;
+    this.fsCtx.lineCap = 'round';
+    this.fsCtx.lineJoin = 'round';
     this.fsCtx.moveTo(touch.x, touch.y);
   },
 
   onFSSketchMove(e) {
-    if (!this.fsCtx) return;
+    if (!this.fsCtx || !this.currentFSStroke) return;
     const touch = e.touches[0];
+    this.currentFSStroke.points.push({ x: touch.x, y: touch.y });
     this.fsCtx.lineTo(touch.x, touch.y);
     this.fsCtx.stroke();
   },
 
   onFSSketchEnd() {
-    if (!this.fsCtx) return;
+    if (!this.fsCtx || !this.currentFSStroke) return;
     this.fsCtx.closePath();
+    if (!this.fsStrokes) this.fsStrokes = [];
+    if (this.currentFSStroke.points.length > 0) {
+      this.fsStrokes.push(this.currentFSStroke);
+      this.fsRedoStack = [];
+    }
+    this.currentFSStroke = null;
+  },
+
+  redrawFSSketch() {
+    if (!this.fsCanvas || !this.fsCtx) return;
+    const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
+    const dpr = windowInfo.pixelRatio || 2;
+    this.fsCtx.clearRect(0, 0, this.fsCanvas.width / dpr, this.fsCanvas.height / dpr);
+
+    if (this.fsBaseImageObj) {
+      this.fsCtx.drawImage(this.fsBaseImageObj, 0, 0, this.fsCanvas.width / dpr, this.fsCanvas.height / dpr);
+    }
+
+    if (!this.fsStrokes || this.fsStrokes.length === 0) return;
+    for (const stroke of this.fsStrokes) {
+      if (!stroke.points || stroke.points.length === 0) continue;
+      this.fsCtx.save();
+      this.fsCtx.strokeStyle = stroke.color;
+      this.fsCtx.lineWidth = stroke.width;
+      this.fsCtx.lineCap = 'round';
+      this.fsCtx.lineJoin = 'round';
+      this.fsCtx.beginPath();
+      this.fsCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length; i++) {
+        this.fsCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
+      }
+      this.fsCtx.stroke();
+      this.fsCtx.restore();
+    }
+  },
+
+  undoFSSketch() {
+    if (!this.fsStrokes || this.fsStrokes.length === 0) {
+      wx.showToast({ title: '无可撤销笔画', icon: 'none' });
+      return;
+    }
+    if (!this.fsRedoStack) this.fsRedoStack = [];
+    const stroke = this.fsStrokes.pop();
+    this.fsRedoStack.push(stroke);
+    this.redrawFSSketch();
+    wx.showToast({ title: '已撤销', icon: 'none', duration: 600 });
+  },
+
+  redoFSSketch() {
+    if (!this.fsRedoStack || this.fsRedoStack.length === 0) {
+      wx.showToast({ title: '无可前进笔画', icon: 'none' });
+      return;
+    }
+    if (!this.fsStrokes) this.fsStrokes = [];
+    const stroke = this.fsRedoStack.pop();
+    this.fsStrokes.push(stroke);
+    this.redrawFSSketch();
+    wx.showToast({ title: '已恢复', icon: 'none', duration: 600 });
   },
 
   setFSColor(e) {
@@ -466,8 +608,14 @@ Page({
 
   clearFullScreenSketch() {
     if (!this.fsCanvas || !this.fsCtx) return;
-    this.fsCtx.clearRect(0, 0, this.fsCanvas.width, this.fsCanvas.height);
+    this.fsStrokes = [];
+    this.fsRedoStack = [];
+    this.fsBaseImageObj = null;
+    const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
+    const dpr = windowInfo.pixelRatio || 2;
+    this.fsCtx.clearRect(0, 0, this.fsCanvas.width / dpr, this.fsCanvas.height / dpr);
     this.setData({ sketchTempPath: '' });
+    wx.showToast({ title: '画板已清空', icon: 'none' });
   },
 
   saveAndSyncFullScreenSketch() {

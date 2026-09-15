@@ -860,7 +860,7 @@
 .fs-header-actions {
   display: flex;
   align-items: center;
-  gap: 14rpx;
+  gap: 8rpx;
   flex-shrink: 0;
 }
 
@@ -868,18 +868,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 56rpx;
-  padding: 0 22rpx;
-  border-radius: 28rpx;
-  font-size: 24rpx;
+  height: 52rpx;
+  padding: 0 14rpx;
+  border-radius: 26rpx;
+  font-size: 22rpx;
   font-weight: 600;
   box-sizing: border-box;
+  background: #f8fafc;
+  color: #334155;
+  border: 1rpx solid #e2e8f0;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .fs-btn-icon {
-  margin-right: 6rpx;
-  font-size: 24rpx;
+  margin-right: 4rpx;
+  font-size: 22rpx;
   line-height: 1;
 }
 
