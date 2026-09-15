@@ -536,6 +536,36 @@ async def compress_image(
     }
 
 
+def _get_cjk_font(size: int, bold: bool = False, serif: bool = False) -> ImageFont.ImageFont:
+    """优先加载系统安装的开源 Noto CJK 中文字体，若未安装则平滑回退"""
+    candidates = []
+    if serif:
+        if bold:
+            candidates.append(("/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc", 2))
+        candidates.append(("/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc", 2))
+    else:
+        if bold:
+            candidates.append(("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", 2))
+        candidates.append(("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 2))
+    # 静态目录备选
+    static_font = settings.STATIC_DIR / "fonts" / "NotoSansSC-Bold.ttf"
+    if static_font.exists():
+        candidates.append((str(static_font), None))
+    # Linux 文泉驿中文字体备选
+    candidates.append(("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 0))
+    candidates.append(("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", 0))
+
+    for path, idx in candidates:
+        if Path(path).exists():
+            try:
+                if idx is not None:
+                    return ImageFont.truetype(path, size=size, index=idx)
+                return ImageFont.truetype(path, size=size)
+            except Exception:
+                pass
+    return ImageFont.load_default()
+
+
 @router.post("/text-to-image")
 async def text_to_image(
     current_openid: CurrentOpenid,
@@ -565,36 +595,57 @@ async def text_to_image(
     }
     bg_col, text_col, accent_col = themes.get(theme, themes["classic"])
 
-    font_path = settings.STATIC_DIR / "fonts" / "NotoSansSC-Bold.ttf"
     f_size = max(20, min(56, font_size))
-    if font_path.exists():
-        body_font = ImageFont.truetype(str(font_path), size=f_size)
-        small_font = ImageFont.truetype(str(font_path), size=max(16, int(f_size * 0.6)))
+    # 金句和极简风格采用优雅宋体，其他采用黑体
+    use_serif = theme in ("gold", "classic", "minimal")
+    body_font = _get_cjk_font(f_size, bold=False, serif=use_serif)
+    small_font = _get_cjk_font(max(16, int(f_size * 0.6)), bold=False, serif=False)
+
+    title_str = title.strip()
+    author_str = author.strip()
+    is_pure_quote = not title_str and not author_str
+    line_h = int(f_size * 1.65)
+
+    if is_pure_quote:
+        # 纯金句模式：去除左侧强调竖线与冗余尾注，紧凑排版
+        pad_x = 48
+        line_w = max(10, int((card_w - pad_x * 2) / max(f_size * 0.95, 1)))
+        lines = wrap(text.strip(), width=line_w) or [text.strip()]
+        body_h = len(lines) * line_h
+        card_h = max(140, 48 * 2 + body_h)
+        canvas = Image.new("RGB", (card_w, card_h), bg_col)
+        draw = ImageDraw.Draw(canvas)
+
+        curr_y = (card_h - body_h) // 2
+        for line in lines:
+            draw.text((pad_x, curr_y), line, font=body_font, fill=text_col)
+            curr_y += line_h
     else:
-        body_font = ImageFont.load_default()
-        small_font = ImageFont.load_default()
+        # 附带标题或作者模式：保留左侧竖条，作者紧贴正文下方，不留巨大空隙
+        pad_x = 64
+        line_w = max(10, int((card_w - pad_x - 48) / max(f_size * 0.95, 1)))
+        lines = wrap(text.strip(), width=line_w) or [text.strip()]
+        body_h = len(lines) * line_h
+        title_h = (int(f_size * 0.9) + 16) if title_str else 0
+        author_h = (int(f_size * 0.8) + 20) if author_str else 0
+        card_h = max(160, 40 + title_h + body_h + author_h + 36)
+        canvas = Image.new("RGB", (card_w, card_h), bg_col)
+        draw = ImageDraw.Draw(canvas)
 
-    line_w = max(10, int((card_w - 100) / max(f_size * 0.9, 1)))
-    lines = wrap(text.strip(), width=line_w) or [text.strip()]
-    line_h = int(f_size * 1.6)
+        draw.rectangle([36, 36, 42, card_h - 36], fill=accent_col)
 
-    card_h = max(380, 140 + len(lines) * line_h + 100)
-    canvas = Image.new("RGB", (card_w, card_h), bg_col)
-    draw = ImageDraw.Draw(canvas)
+        curr_y = 40
+        if title_str:
+            draw.text((pad_x, curr_y), title_str, font=small_font, fill=accent_col)
+            curr_y += title_h
 
-    draw.rectangle([36, 40, 42, card_h - 40], fill=accent_col)
+        for line in lines:
+            draw.text((pad_x, curr_y), line, font=body_font, fill=text_col)
+            curr_y += line_h
 
-    curr_y = 60
-    if title.strip():
-        draw.text((64, curr_y), title.strip(), font=small_font, fill=accent_col)
-        curr_y += int(f_size * 0.9) + 20
-
-    for line in lines:
-        draw.text((64, curr_y), line, font=body_font, fill=text_col)
-        curr_y += line_h
-
-    footer_text = author.strip() or "动态表情工坊 · 灵感卡片"
-    draw.text((64, card_h - 60), f"— {footer_text}", font=small_font, fill=accent_col)
+        if author_str:
+            curr_y += 10
+            draw.text((pad_x, curr_y), f"— {author_str}", font=small_font, fill=accent_col)
 
     out_path = task_dir / "card.png"
     canvas.save(out_path, format="PNG")

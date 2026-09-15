@@ -85,7 +85,7 @@
 
   <!-- 改名/备注弹窗 -->
   <view wx:if="{{showRenameModal}}" class="modal-mask" bindtap="closeRenameModal">
-    <view class="modal-card" catchtap="true">
+    <view class="modal-card" catchtap="stopBubble">
       <view class="modal-header">
         <text class="modal-title">✏️ 修改表情备注</text>
         <text class="btn-close-icon" bindtap="closeRenameModal">✕</text>
@@ -107,7 +107,7 @@
 
   <!-- 移动到其他合集弹窗 -->
   <view wx:if="{{showMoveModal}}" class="modal-mask" bindtap="closeMoveModal">
-    <view class="modal-card col-modal-card" catchtap="true">
+    <view class="modal-card col-modal-card" catchtap="stopBubble">
       <view class="modal-header">
         <text class="modal-title">📂 移动到其他合集</text>
         <text class="btn-close-icon" bindtap="closeMoveModal">✕</text>

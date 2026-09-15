@@ -350,9 +350,17 @@ def test_collection_move_rename_reorder_endpoints(client: TestClient):
         json={"collection_id": col_id_1, "gif_url": "/samples/sample_run.png", "title": "表情1"},
         headers=headers
     ).json()["data"]
+    # Test duplicate insertion returns 409
+    dup_res = client.post(
+        "/api/collection/add-item",
+        json={"collection_id": col_id_1, "gif_url": "/samples/sample_run.png", "title": "重复表情"},
+        headers=headers
+    )
+    assert dup_res.status_code == 409
+
     item2 = client.post(
         "/api/collection/add-item",
-        json={"collection_id": col_id_1, "gif_url": "/samples/sample_run.png", "title": "表情2"},
+        json={"collection_id": col_id_1, "gif_url": "/samples/sample_walk.png", "title": "表情2"},
         headers=headers
     ).json()["data"]
 

@@ -849,6 +849,9 @@ def add_item_to_collection(collection_id: str, gif_url: str, title: str = "", op
             raise HTTPException(status_code=403, detail="不能修改官方合集")
         if not openid or collection["openid"] != openid:
             raise HTTPException(status_code=403, detail="无权修改该合集")
+        cursor.execute("SELECT id FROM collection_items WHERE collection_id = ? AND gif_url = ?", (collection_id, gif_url))
+        if cursor.fetchone():
+            raise HTTPException(status_code=409, detail="该合集中已有此表情，无需重复添加")
         cursor.execute('''
             INSERT INTO collection_items (collection_id, gif_url, title)
             VALUES (?, ?, ?)

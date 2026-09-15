@@ -454,17 +454,25 @@ page {
   margin-right: 14rpx;
 }
 
-/* 裁剪面板样式 */
+/* 裁剪、调色与滤镜面板样式 (Apple 风格) */
+.crop-sub-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding-top: 4rpx;
+}
+
 .crop-mode-row {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  margin-bottom: 20rpx;
+  gap: 14rpx;
+  margin-bottom: 12rpx;
+  flex-wrap: wrap;
 }
 
 .crop-chip {
-  font-size: 24rpx;
-  padding: 12rpx 24rpx;
+  font-size: 23rpx;
+  padding: 10rpx 20rpx;
   background: #f1f5f9;
   border: 1rpx solid #e2e8f0;
   border-radius: 14rpx;
@@ -479,50 +487,145 @@ page {
   font-weight: 700;
 }
 
-.btn-reset-crop {
-  margin-left: auto;
+.crop-action-btn {
   font-size: 22rpx;
+  padding: 10rpx 16rpx;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 12rpx;
+  color: #334155;
+  font-weight: 600;
+}
+
+.crop-bottom-actions {
+  display: flex;
+  gap: 14rpx;
+  margin: 6rpx 0 10rpx;
+}
+
+.btn-change-bg {
+  flex: 1;
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1rpx solid #bbf7d0;
+  font-size: 22rpx;
+  padding: 10rpx 0;
+  border-radius: 12rpx;
+}
+
+.btn-remove-bg {
+  flex: 1;
+  background: #fef2f2;
+  color: #ef4444;
+  border: 1rpx solid #fecaca;
+  font-size: 22rpx;
+  padding: 10rpx 0;
+  border-radius: 12rpx;
+}
+
+.btn-reset-crop {
   background: #f8fafc;
   color: #64748b;
-  border: 1rpx solid #e2e8f0;
-  padding: 6rpx 16rpx;
-  border-radius: 10rpx;
+  border: 1rpx solid #cbd5e1;
+  font-size: 22rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 12rpx;
 }
 
-.crop-slider-row {
+.crop-slider-row,
+.adjust-slider-row {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  margin-bottom: 16rpx;
+  gap: 14rpx;
 }
 
-.crop-slider-label {
+.crop-slider-label,
+.adjust-label {
   font-size: 24rpx;
   color: #475569;
   font-weight: 600;
-  width: 110rpx;
+  width: 90rpx;
   flex-shrink: 0;
 }
 
-.crop-slider {
+.crop-slider,
+.adjust-slider {
   flex: 1;
   margin: 0;
 }
 
-.crop-slider-val {
+.crop-slider-val,
+.adjust-val {
   font-size: 22rpx;
   color: #4f46e5;
   font-weight: 700;
-  width: 60rpx;
+  width: 68rpx;
   text-align: right;
+  flex-shrink: 0;
+}
+
+.adjust-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10rpx;
+}
+
+.btn-reset-adjust {
+  font-size: 22rpx;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 12rpx;
+  padding: 8rpx 20rpx;
+}
+
+/* 滤镜滑块 */
+.filter-scroll-bar {
+  width: 100%;
+  white-space: nowrap;
+  padding: 10rpx 0;
+}
+
+.filter-pill-list {
+  display: flex;
+  gap: 16rpx;
+}
+
+.filter-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 28rpx;
+  border-radius: 18rpx;
+  background: #f1f5f9;
+  border: 2rpx solid transparent;
+  min-width: 120rpx;
+}
+
+.filter-pill.active {
+  background: #eef2ff;
+  border-color: #4f46e5;
+}
+
+.filter-pill.active .filter-name {
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.filter-name {
+  font-size: 25rpx;
+  color: #334155;
+  font-weight: 500;
 }
 
 .crop-hint-text {
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: #64748b;
   background: #f8fafc;
-  padding: 12rpx 18rpx;
+  padding: 10rpx 16rpx;
   border-radius: 12rpx;
   border: 1rpx dashed #cbd5e1;
-  line-height: 1.5;
+  line-height: 1.4;
+  margin-top: 6rpx;
 }

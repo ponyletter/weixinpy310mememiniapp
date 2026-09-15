@@ -206,7 +206,13 @@ Page({
           wx.showToast({ title: '已成功存入合集！', icon: 'success' });
           this.setData({ pendingGifUrl: '' });
           this.fetchData();
+        } else {
+          wx.showToast({ title: (res.data && (res.data.detail || res.data.error)) || '存入失败', icon: 'none' });
         }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络超时', icon: 'none' });
       }
     });
   },

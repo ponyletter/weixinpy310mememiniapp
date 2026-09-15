@@ -35,9 +35,23 @@ Page({
     brushColor: '#1e293b',
     brushWidth: 4,
 
-    // 底图适配与裁剪控制
-    bgFitMode: 'contain', // 'contain' | 'cover'
+    // 底图适配、变换与裁剪控制 (Apple 风格)
+    cropSubTab: 'crop', // 'crop' | 'adjust' | 'filter'
+    bgFitMode: 'cover', // 'contain' | 'cover'
     bgScale: 1.0,
+    bgOffsetX: 0,
+    bgOffsetY: 0,
+    bgRotation: 0,
+    bgFlipH: false,
+
+    // 调色参数 (曝光/对比度/饱和度/亮度)
+    imgExposure: 0,   // -100 ~ +100
+    imgContrast: 0,   // -50 ~ +50
+    imgSaturation: 0, // -50 ~ +50
+    imgBrightness: 0, // -50 ~ +50
+
+    // 滤镜风格
+    imgFilter: 'original', // 'original' | 'vivid' | 'warm' | 'cool' | 'mono' | 'film'
 
     // 元素属性控制条 (当前选中元素)
     selectedScale: 1.0,
@@ -53,9 +67,10 @@ Page({
     this.bgImageObj = null;
     this.elementCounter = 1;
 
-    // 获取设备屏幕宽度以适配画布
-    const sysInfo = wx.getSystemInfoSync();
-    const cWidth = Math.min(sysInfo.windowWidth - 32, 380);
+    // 获取设备屏幕宽度以适配画布 (采用新 API 避免废弃警告)
+    const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
+    const winWidth = windowInfo.windowWidth || 375;
+    const cWidth = Math.min(winWidth - 32, 380);
     const cHeight = cWidth; // 1:1 正方形画布，最适合表情包
     this.setData({
       bgImageSrc: src,
@@ -78,7 +93,8 @@ Page({
         if (!res[0] || !res[0].node) return;
         const canvas = res[0].node;
         const ctx = canvas.getContext('2d');
-        const dpr = wx.getSystemInfoSync().pixelRatio || 2;
+        const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
+        const dpr = windowInfo.pixelRatio || 2;
 
         canvas.width = res[0].width * dpr;
         canvas.height = res[0].height * dpr;
@@ -119,7 +135,7 @@ Page({
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
 
-    // 2. 绘制底图 (居中 Cover / Contain 适配与缩放裁剪)
+    // 2. 绘制底图 (居中 Cover / Contain 适配、缩放、平移、旋转与 Apple 风格调色滤镜)
     if (this.bgImageObj) {
       const img = this.bgImageObj;
       const imgW = img.width || w;
@@ -128,9 +144,71 @@ Page({
       const scale = fitRatio * (this.data.bgScale || 1.0);
       const drawW = imgW * scale;
       const drawH = imgH * scale;
-      const drawX = (w - drawW) / 2;
-      const drawY = (h - drawH) / 2;
-      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+      // 计算滤镜属性 (曝光、亮度、对比度、饱和度与 Apple 风格滤镜)
+      const expFactor = 1 + (this.data.imgExposure || 0) / 100;
+      const brightFactor = 1 + (this.data.imgBrightness || 0) / 100;
+      const totalBright = Math.max(0, Math.round(expFactor * brightFactor * 100));
+      const contrastFactor = Math.max(0, Math.round((1 + (this.data.imgContrast || 0) / 100) * 100));
+      let satFactor = Math.max(0, Math.round((1 + (this.data.imgSaturation || 0) / 100) * 100));
+
+      let sepia = 0;
+      let hueRotate = 0;
+      let grayscale = 0;
+
+      switch (this.data.imgFilter) {
+        case 'vivid':
+          satFactor = Math.round(satFactor * 1.35);
+          break;
+        case 'warm':
+          sepia = 30;
+          break;
+        case 'cool':
+          hueRotate = 180;
+          break;
+        case 'mono':
+          grayscale = 100;
+          break;
+        case 'film':
+          sepia = 35;
+          satFactor = Math.round(satFactor * 0.85);
+          break;
+        case 'original':
+        default:
+          break;
+      }
+
+      const filters = [];
+      if (totalBright !== 100) filters.push(`brightness(${totalBright}%)`);
+      if (contrastFactor !== 100) filters.push(`contrast(${contrastFactor}%)`);
+      if (satFactor !== 100) filters.push(`saturate(${satFactor}%)`);
+      if (grayscale > 0) filters.push(`grayscale(${grayscale}%)`);
+      if (sepia > 0) filters.push(`sepia(${sepia}%)`);
+      if (hueRotate > 0) filters.push(`hue-rotate(${hueRotate}deg)`);
+
+      ctx.save();
+      if (filters.length > 0 && typeof ctx.filter !== 'undefined') {
+        try {
+          ctx.filter = filters.join(' ');
+        } catch (e) {}
+      }
+
+      const cx = w / 2 + (this.data.bgOffsetX || 0);
+      const cy = h / 2 + (this.data.bgOffsetY || 0);
+      ctx.translate(cx, cy);
+
+      if (this.data.bgRotation) {
+        ctx.rotate((this.data.bgRotation * Math.PI) / 180);
+      }
+      if (this.data.bgFlipH) {
+        ctx.scale(-1, 1);
+      }
+
+      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+      ctx.restore();
+      if (typeof ctx.filter !== 'undefined') {
+        try { ctx.filter = 'none'; } catch (e) {}
+      }
     }
 
     // 3. 绘制涂鸦画笔线条
@@ -385,8 +463,15 @@ Page({
       this.elStartY = hitEl.y;
       this.renderCanvas();
     } else {
-      // 点击空白处取消选中
+      // 点击空白处取消选中：若处于裁剪构图模式且有底图，则支持拖拽平移底图
       this.setData({ selectedElementId: null });
+      if (this.data.activeTab === 'crop' && this.bgImageObj) {
+        this.isBgDragging = true;
+        this.bgDragStartX = x;
+        this.bgDragStartY = y;
+        this.bgDragInitX = this.data.bgOffsetX || 0;
+        this.bgDragInitY = this.data.bgOffsetY || 0;
+      }
       this.renderCanvas();
     }
   },
@@ -398,6 +483,17 @@ Page({
 
     if (this.data.isBrushActive && this.currentStroke) {
       this.currentStroke.points.push({ x, y });
+      this.renderCanvas();
+      return;
+    }
+
+    if (this.isBgDragging) {
+      const dx = x - this.bgDragStartX;
+      const dy = y - this.bgDragStartY;
+      this.setData({
+        bgOffsetX: Math.round(this.bgDragInitX + dx),
+        bgOffsetY: Math.round(this.bgDragInitY + dy)
+      });
       this.renderCanvas();
       return;
     }
@@ -414,6 +510,7 @@ Page({
 
   onTouchEnd() {
     this.isDragging = false;
+    this.isBgDragging = false;
     this.currentStroke = null;
   },
 
@@ -662,11 +759,20 @@ Page({
   // --- 底部 Tab 切换 ---
   switchTab(e) {
     const tab = e.currentTarget.dataset.tab;
-    this.setData({ activeTab: tab });
-    if (tab !== 'brush' && this.data.isBrushActive) {
-      this.setData({ isBrushActive: false });
-      this.renderCanvas();
+    const isBrush = tab === 'brush';
+    this.setData({
+      activeTab: tab,
+      isBrushActive: isBrush,
+      selectedElementId: isBrush ? null : this.data.selectedElementId
+    });
+    this.renderCanvas();
+    if (isBrush) {
+      wx.showToast({ title: '已开启涂鸦模式', icon: 'none' });
     }
+  },
+
+  stopBubble() {
+    // 阻止模态框内点击向外冒泡关闭弹窗
   },
 
   switchStickerCategory(e) {
@@ -696,7 +802,12 @@ Page({
     }
   },
 
-  // --- 裁剪与底图适配控制 ---
+  // --- Apple 风格修图：裁剪与底图适配、调色与滤镜控制 ---
+  setCropSubTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    this.setData({ cropSubTab: tab });
+  },
+
   setBgFitMode(e) {
     const mode = e.currentTarget.dataset.mode;
     this.setData({ bgFitMode: mode });
@@ -709,13 +820,121 @@ Page({
     this.renderCanvas();
   },
 
+  rotateBgImage() {
+    const next = ((this.data.bgRotation || 0) + 90) % 360;
+    this.setData({ bgRotation: next });
+    this.renderCanvas();
+  },
+
+  flipBgImage() {
+    this.setData({ bgFlipH: !this.data.bgFlipH });
+    this.renderCanvas();
+  },
+
+  removeBgImage() {
+    wx.showModal({
+      title: '去掉图片',
+      content: '确定要去掉底图，切换为纯白画板进行涂鸦创作吗？',
+      confirmColor: '#ef4444',
+      success: (res) => {
+        if (res.confirm) {
+          this.bgImageObj = null;
+          this.setData({
+            bgImageSrc: '',
+            bgOffsetX: 0,
+            bgOffsetY: 0,
+            bgScale: 1.0,
+            bgRotation: 0,
+            bgFlipH: false
+          });
+          this.renderCanvas();
+          wx.showToast({ title: '已清除底图', icon: 'none' });
+        }
+      }
+    });
+  },
+
+  changeBgImage() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      success: (res) => {
+        if (res.tempFiles && res.tempFiles.length > 0) {
+          const path = res.tempFiles[0].tempFilePath;
+          this.setData({
+            bgImageSrc: path,
+            bgOffsetX: 0,
+            bgOffsetY: 0,
+            bgScale: 1.0,
+            bgRotation: 0,
+            bgFlipH: false
+          });
+          wx.showLoading({ title: '载入新图片...' });
+          const img = this.canvas.createImage();
+          img.onload = () => {
+            wx.hideLoading();
+            this.bgImageObj = img;
+            this.renderCanvas();
+          };
+          img.onerror = () => {
+            wx.hideLoading();
+            wx.showToast({ title: '加载图片失败', icon: 'none' });
+          };
+          img.src = path;
+        }
+      }
+    });
+  },
+
+  onExposureChange(e) {
+    this.setData({ imgExposure: Number(e.detail.value) });
+    this.renderCanvas();
+  },
+
+  onContrastChange(e) {
+    this.setData({ imgContrast: Number(e.detail.value) });
+    this.renderCanvas();
+  },
+
+  onSaturationChange(e) {
+    this.setData({ imgSaturation: Number(e.detail.value) });
+    this.renderCanvas();
+  },
+
+  onBrightnessChange(e) {
+    this.setData({ imgBrightness: Number(e.detail.value) });
+    this.renderCanvas();
+  },
+
+  setImgFilter(e) {
+    const f = e.currentTarget.dataset.filter;
+    this.setData({ imgFilter: f });
+    this.renderCanvas();
+  },
+
+  resetAdjust() {
+    this.setData({
+      imgExposure: 0,
+      imgContrast: 0,
+      imgSaturation: 0,
+      imgBrightness: 0,
+      imgFilter: 'original'
+    });
+    this.renderCanvas();
+    wx.showToast({ title: '调色参数已重置', icon: 'none' });
+  },
+
   resetCrop() {
     this.setData({
       bgFitMode: 'cover',
-      bgScale: 1.0
+      bgScale: 1.0,
+      bgOffsetX: 0,
+      bgOffsetY: 0,
+      bgRotation: 0,
+      bgFlipH: false
     });
     this.renderCanvas();
-    wx.showToast({ title: '已重置居中满幅', icon: 'success' });
+    wx.showToast({ title: '构图已重置', icon: 'none' });
   },
 
   // --- 保存到手机相册 ---

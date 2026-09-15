@@ -4,6 +4,7 @@ Page({
   data: {
     tab: 'video', // 'video' | 'images' | 'caption' | 'stitch' | 'compress' | 'card'
     videoPath: '',
+    videoStartTime: 0.0,
     videoDuration: 3.0,
     multiImages: [],
     srcGifPath: '',
@@ -18,6 +19,7 @@ Page({
 
     // 5. 动图与图片瘦身
     compressSrcPath: '',
+    compressFileSizeStr: '',
     compressTargetKb: 500,
 
     // 6. 金句卡片生成器
@@ -46,6 +48,10 @@ Page({
 
   onInputCaption(e) {
     this.setData({ captionText: e.detail.value });
+  },
+
+  onVideoStartTimeChange(e) {
+    this.setData({ videoStartTime: Number(e.detail.value) });
   },
 
   onVideoDurationChange(e) {
@@ -85,6 +91,7 @@ Page({
       name: 'video',
       formData: {
         caption: this.data.captionText,
+        start_time: this.data.videoStartTime || 0.0,
         duration: this.data.videoDuration || 3.0,
         fps: 10,
         width: 240
@@ -346,14 +353,25 @@ Page({
       mediaType: ['image'],
       success: (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
-          this.setData({ compressSrcPath: res.tempFiles[0].tempFilePath });
+          const file = res.tempFiles[0];
+          const bytes = file.size || 0;
+          let sizeStr = '';
+          if (bytes > 1024 * 1024) {
+            sizeStr = (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+          } else if (bytes > 0) {
+            sizeStr = (bytes / 1024).toFixed(1) + ' KB';
+          }
+          this.setData({
+            compressSrcPath: file.tempFilePath,
+            compressFileSizeStr: sizeStr
+          });
         }
       }
     });
   },
 
   clearCompressImage() {
-    this.setData({ compressSrcPath: '' });
+    this.setData({ compressSrcPath: '', compressFileSizeStr: '' });
   },
 
   setCompressTargetKb(e) {

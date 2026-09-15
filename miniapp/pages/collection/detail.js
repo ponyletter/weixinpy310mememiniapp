@@ -508,6 +508,10 @@ Page({
     });
   },
 
+  stopBubble() {
+    // 阻止模态框内点击向外冒泡关闭弹窗
+  },
+
   onShareAppMessage() {
     const col = this.data.collection;
     return {

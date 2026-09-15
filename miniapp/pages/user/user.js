@@ -533,7 +533,7 @@ Page({
           this.setData({ showHistoryColModal: false });
           wx.showToast({ title: '存入合集成功！', icon: 'success' });
         } else {
-          wx.showToast({ title: (res.data && res.data.error) || '存入失败', icon: 'none' });
+          wx.showToast({ title: (res.data && (res.data.detail || res.data.error)) || '存入失败', icon: 'none' });
         }
       },
       fail: () => {

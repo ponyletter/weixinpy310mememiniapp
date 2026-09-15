@@ -556,3 +556,21 @@
   color: #334155;
   font-weight: 700;
 }
+
+.file-size-info-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  background: #f1f5f9;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 12rpx;
+  padding: 8rpx 16rpx;
+  font-size: 22rpx;
+  color: #475569;
+  margin: 12rpx 0;
+}
+
+.file-size-info-tag .tag-bold {
+  font-weight: 700;
+  color: #4f46e5;
+}

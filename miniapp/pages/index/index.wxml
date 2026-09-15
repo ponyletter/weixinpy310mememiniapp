@@ -53,15 +53,6 @@
     <text class="tpl-switch-btn">更换 ›</text>
   </view>
 
-  <!-- 生成规格选择器快捷栏（帧数与分辨率） -->
-  <view class="specs-selector-bar" bindtap="openSpecsSheet">
-    <view class="specs-current">
-      <text class="specs-icon">⚙️</text>
-      <text class="specs-tag-pill">{{currentFrameCount}} 帧动作</text>
-      <text class="specs-tag-pill">{{currentResolution}} 尺寸</text>
-      <text class="specs-hint">点击定制帧数/尺寸</text>
-    </view>
-    <text class="specs-arrow">设置 ›</text>
   </view>
 
   <!-- ★ 核心区域：形象设定 (照片参考 / 在线手绘) -->
@@ -169,7 +160,7 @@
       <view class="advanced-desc-content" wx:if="{{showAdvDesc}}">
         <input
           class="form-input-compact"
-          placeholder="例如：红色卫衣、圆框眼镜"
+          placeholder="例如：Q版动漫风、二次元萌宠、卡通粘土、红色卫衣、圆框眼镜"
           value="{{characterDesc}}"
           bindinput="onInputDesc"
         />
