@@ -4,13 +4,14 @@ import time
 from contextlib import asynccontextmanager
 from collections import defaultdict, deque
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app.config import settings
 from app.database import init_db
+from app.r2_storage import is_r2_enabled, task_public_url
 from app.storage_cleanup import cleanup_stale_artifacts
 from app.api.meme import router as meme_router
 from app.api.wechat import router as wechat_router
@@ -97,7 +98,7 @@ app.add_middleware(
 @app.middleware("http")
 async def add_cache_control_header(request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith(("/outputs/", "/samples/", "/static/")):
+    if response.status_code == 200 and request.url.path.startswith(("/outputs/", "/samples/", "/static/")):
         response.headers["Cache-Control"] = "public, max-age=604800, immutable"
     return response
 
@@ -111,8 +112,40 @@ app.include_router(convert_router)
 
 # 静态文件映射
 app.mount("/static", StaticFiles(directory=str(settings.STATIC_DIR)), name="static")
-app.mount("/outputs", StaticFiles(directory=str(settings.OUTPUT_DIR)), name="outputs")
 app.mount("/samples", StaticFiles(directory=str(settings.SAMPLES_DIR)), name="samples")
+
+
+@app.get("/outputs/{file_path:path}")
+async def serve_outputs(file_path: str):
+    """兼顾新旧小程序：优先返回本地文件；若本地已清理或缺失且开启 R2，则 302 重定向到 R2。"""
+    try:
+        resolved_base = settings.OUTPUT_DIR.resolve()
+        local_path = (settings.OUTPUT_DIR / file_path).resolve()
+        local_path.relative_to(resolved_base)
+    except (ValueError, RuntimeError):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if local_path.is_file():
+        return FileResponse(str(local_path))
+
+    if is_r2_enabled():
+        parts = file_path.strip("/").split("/", 1)
+        if len(parts) == 2:
+            return RedirectResponse(url=task_public_url(parts[0], parts[1]), status_code=302)
+        return RedirectResponse(
+            url=f"{settings.R2_PUBLIC_BASE_URL.rstrip('/')}/{file_path.strip('/')}",
+            status_code=302
+        )
+
+    raise HTTPException(status_code=404, detail="文件不存在")
+
+
+@app.get("/https:/{rest:path}")
+@app.get("/http:/{rest:path}")
+async def redirect_malformed_http(rest: str):
+    """兜底修复旧版小程序可能因粗暴拼接产生的 https://domain/https://r2... 异常路径。"""
+    target = f"https://{rest.lstrip('/')}"
+    return RedirectResponse(url=target, status_code=302)
 
 @app.get("/")
 def read_root():

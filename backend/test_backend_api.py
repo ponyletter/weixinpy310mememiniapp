@@ -597,3 +597,68 @@ def test_image_matting_and_watermark_options(client: TestClient):
     )
     assert mat_trans_res.status_code == 200
     assert mat_trans_res.json()["success"] is True
+
+
+def test_output_serving_and_backward_compatibility(client: TestClient, monkeypatch):
+    # 1. Local file serving
+    task_dir = settings.OUTPUT_DIR / "task123"
+    task_dir.mkdir(parents=True, exist_ok=True)
+    gif_file = task_dir / "meme_result.gif"
+    gif_file.write_bytes(b"GIF89a_test_content")
+
+    res = client.get("/outputs/task123/meme_result.gif")
+    assert res.status_code == 200
+    assert res.content == b"GIF89a_test_content"
+    assert "public, max-age=604800, immutable" in res.headers.get("Cache-Control", "")
+
+    # 2. Path traversal rejection
+    bad_res = client.get("/outputs/../test.db")
+    assert bad_res.status_code in (403, 404)
+
+    # 3. Non-existent file with R2 disabled -> 404
+    monkeypatch.setattr(settings, "R2_ENABLED", False)
+    res_404 = client.get("/outputs/nonexistent/meme_result.gif")
+    assert res_404.status_code == 404
+
+    # 4. Non-existent file with R2 enabled -> 302 redirect
+    monkeypatch.setattr(settings, "R2_ENABLED", True)
+    monkeypatch.setattr(settings, "R2_ENDPOINT_URL", "https://endpoint.r2.cloudflarestorage.com")
+    monkeypatch.setattr(settings, "R2_ACCESS_KEY_ID", "test-key")
+    monkeypatch.setattr(settings, "R2_SECRET_ACCESS_KEY", "test-secret")
+    monkeypatch.setattr(settings, "R2_BUCKET", "test-bucket")
+    monkeypatch.setattr(settings, "R2_PUBLIC_BASE_URL", "https://cdn.example.com")
+    monkeypatch.setattr(settings, "R2_TASK_PREFIX", "tasks")
+
+    res_302 = client.get("/outputs/task456/meme_result.gif", follow_redirects=False)
+    assert res_302.status_code == 302
+    assert res_302.headers["location"] == "https://cdn.example.com/tasks/task456/meme_result.gif"
+
+    # 5. Legacy double URL recovery route (baseURL + https://r2...)
+    res_legacy = client.get("/https:/cdn.example.com/tasks/task456/meme_result.gif", follow_redirects=False)
+    assert res_legacy.status_code == 302
+    assert res_legacy.headers["location"] == "https://cdn.example.com/tasks/task456/meme_result.gif"
+
+
+def test_task_status_returns_relative_url_and_attaches_r2(client: TestClient, monkeypatch):
+    monkeypatch.setattr(settings, "R2_ENABLED", True)
+    monkeypatch.setattr(settings, "R2_PUBLIC_BASE_URL", "https://cdn.example.com")
+    openid, headers = login(client)
+    from app.database import get_db
+
+    task_id = "df4492bd"
+    with get_db() as conn:
+        conn.execute(
+            """INSERT INTO meme_tasks (task_id, openid, status, progress, gif_url, sprite_url, duration_seconds)
+               VALUES (?, ?, 'completed', 100, 'https://cdn.example.com/tasks/df4492bd/meme_result.gif', '/outputs/df4492bd/input_sprite.png', 5.2)""",
+            (task_id, openid)
+        )
+        conn.commit()
+
+    # Even though database stores R2 URL, get_task_status must return relative /outputs/... for miniapp compatibility
+    res = client.get(f"/api/task-status/{task_id}", headers=headers)
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["status"] == "completed"
+    assert data["data"]["gif_url"] == f"/outputs/{task_id}/meme_result.gif"
+    assert data["data"]["r2_url"] == "https://cdn.example.com/tasks/df4492bd/meme_result.gif"
+

@@ -159,25 +159,46 @@ def is_public_r2_url(value: str) -> bool:
     )
 
 
-def rewrite_output_urls(value: Any, task_id: str, published: dict[str, str]) -> Any:
-    """Replace local /outputs URLs recursively in API response payloads."""
+def attach_r2_urls(value: Any, task_id: str, published: dict[str, str]) -> Any:
+    """Attach r2_url while preserving relative /outputs URLs for backward compatibility.
+
+    Old miniapp versions in production directly prepend baseURL: `${baseURL}${gifPath}`.
+    If the API returns an absolute HTTPS URL, old miniapps produce malformed URLs
+    like `https://api.domain.comhttps://r2.domain.com/...`, leading to blank preview.
+    By keeping `/outputs/{task_id}/...` as the primary URL, old miniapps cleanly resolve
+    `${baseURL}/outputs/...`, while newly submitted miniapps (using `toAbsoluteUrl`)
+    also cleanly resolve `${baseURL}/outputs/...`.
+    """
     if not published:
         return value
-    local_prefix = f"/outputs/{task_id}/"
-    if isinstance(value, str) and value.startswith(local_prefix):
-        relative = value[len(local_prefix):]
-        return published.get(relative, "")
     if isinstance(value, dict):
-        return {key: rewrite_output_urls(item, task_id, published) for key, item in value.items()}
+        result = {}
+        for k, v in value.items():
+            result[k] = attach_r2_urls(v, task_id, published)
+        for key in ("gif_url", "output_url", "image_url", "thumb_url", "zip_url", "input_url"):
+            val = result.get(key)
+            if isinstance(val, str) and val:
+                filename = Path(val).name
+                if filename in published:
+                    if key in ("gif_url", "output_url", "image_url"):
+                        result.setdefault("r2_url", published[filename])
+                    if val.startswith("http://") or val.startswith("https://"):
+                        result[key] = f"/outputs/{task_id}/{filename}"
+        return result
     if isinstance(value, list):
-        return [rewritten for item in value if (rewritten := rewrite_output_urls(item, task_id, published))]
+        return [attach_r2_urls(item, task_id, published) for item in value]
     if isinstance(value, tuple):
-        return tuple(rewrite_output_urls(item, task_id, published) for item in value)
+        return tuple(attach_r2_urls(item, task_id, published) for item in value)
     return value
+
+
+def rewrite_output_urls(value: Any, task_id: str, published: dict[str, str]) -> Any:
+    """Compatibility wrapper preserving relative URLs and attaching r2_url."""
+    return attach_r2_urls(value, task_id, published)
 
 
 async def publish_and_rewrite(task_id: str, task_dir: Path, payload: Any) -> Any:
     published = await publish_task_directory(task_id, task_dir)
     if published:
         await asyncio.to_thread(cleanup_local_intermediates, task_dir)
-    return rewrite_output_urls(payload, task_id, published)
+    return attach_r2_urls(payload, task_id, published)

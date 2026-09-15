@@ -31,6 +31,7 @@ from app.r2_storage import (
     is_public_r2_url,
     is_r2_enabled,
     publish_and_rewrite,
+    task_public_url,
 )
 from pydantic import BaseModel
 
@@ -810,34 +811,39 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
     if not owner or owner["openid"] != current_openid:
         raise HTTPException(status_code=404, detail="任务不存在")
     task_dir = settings.OUTPUT_DIR / task_id
-    if (task_dir / "meme_result.gif").exists():
+    if owner["status"] == "completed" or (task_dir / "meme_result.gif").exists():
         frames_dir = task_dir / "frames"
-        use_r2 = is_public_r2_url(owner["gif_url"] or "")
-        frame_urls = [f"/outputs/{task_id}/frames/{f.name}" for f in sorted(frames_dir.glob("*.png"))]
-        gif_url = owner["gif_url"] if use_r2 else f"/outputs/{task_id}/meme_result.gif"
-        zip_url = f"/outputs/{task_id}/frames_pack.zip" if (task_dir / "frames_pack.zip").exists() else ""
-        input_url = owner["sprite_url"] if use_r2 else f"/outputs/{task_id}/input_sprite.png"
+        raw_gif_url = owner["gif_url"] or ""
+        use_r2 = is_public_r2_url(raw_gif_url) or raw_gif_url.startswith(("http://", "https://"))
+        frame_urls = [f"/outputs/{task_id}/frames/{f.name}" for f in sorted(frames_dir.glob("*.png"))] if frames_dir.exists() else []
+        gif_file = task_dir / "meme_result.gif"
+        file_size_kb = round(gif_file.stat().st_size / 1024, 1) if gif_file.exists() else 0.0
+        is_compliant = (gif_file.stat().st_size <= settings.WECHAT_GIF_MAX_BYTES) if gif_file.exists() else True
+        result_payload = {
+            "task_id": task_id,
+            "gif_url": f"/outputs/{task_id}/meme_result.gif",
+            "zip_url": f"/outputs/{task_id}/frames_pack.zip" if (task_dir / "frames_pack.zip").exists() else "",
+            "input_url": f"/outputs/{task_id}/input_sprite.png",
+            "frames": frame_urls,
+            "stats": {
+                "frame_count": len(frame_urls),
+                "file_size_kb": file_size_kb,
+                "duration_per_frame_ms": 125,
+                "duration_seconds": owner["duration_seconds"] or 0.0,
+                "is_wechat_compliant": is_compliant,
+                "warning": "当前 GIF 超过微信常用的 1MB 提醒线，仍可下载到本地；发送到微信时可能受到大小限制。"
+                if not is_compliant else "",
+            }
+        }
+        r2_link = owner["gif_url"] if use_r2 else (task_public_url(task_id, "meme_result.gif") if is_r2_enabled() else "")
+        if r2_link:
+            result_payload["r2_url"] = r2_link
         return {
             "code": 0,
             "data": {
                 "status": "completed",
                 "progress": 100,
-                "data": {
-                    "task_id": task_id,
-                    "gif_url": gif_url,
-                    "zip_url": zip_url,
-                    "input_url": input_url,
-                    "frames": frame_urls,
-                    "stats": {
-                        "frame_count": len(frame_urls),
-                        "file_size_kb": round((task_dir / "meme_result.gif").stat().st_size / 1024, 1),
-                        "duration_per_frame_ms": 125,
-                        "duration_seconds": owner["duration_seconds"] or 0.0,
-                        "is_wechat_compliant": (task_dir / "meme_result.gif").stat().st_size <= settings.WECHAT_GIF_MAX_BYTES,
-                        "warning": "当前 GIF 超过微信常用的 1MB 提醒线，仍可下载到本地；发送到微信时可能受到大小限制。"
-                        if (task_dir / "meme_result.gif").stat().st_size > settings.WECHAT_GIF_MAX_BYTES else "",
-                    }
-                }
+                "data": result_payload
             }
         }
 
