@@ -17,6 +17,7 @@ from app.database import (
     refund_quota,
     get_db,
     delete_meme_task,
+    meme_task_output_is_referenced,
     rename_meme_task,
     get_estimated_generation_duration,
     format_datetime_china,
@@ -303,6 +304,36 @@ async def generate_and_process(
 # 全局异步任务存储
 TASK_STORE: dict[str, dict] = {}
 
+
+def _set_task_progress(
+    task_id: str,
+    openid: str,
+    progress: int,
+    stage: str,
+    stage_text: str,
+) -> None:
+    """同时写入内存和数据库，确保多 worker 轮询时也能看到阶段进度。"""
+    estimated_duration = get_estimated_generation_duration()
+    TASK_STORE[task_id] = {
+        "openid": openid,
+        "status": "processing",
+        "progress": progress,
+        "stage": stage,
+        "stage_text": stage_text,
+        "estimated_duration": estimated_duration,
+    }
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE meme_tasks SET status = 'processing', progress = ?, error_message = '' "
+                "WHERE task_id = ? AND openid = ?",
+                (progress, task_id, openid),
+            )
+            conn.commit()
+    except Exception:
+        # 数据库记录失败不应中断生成任务，内存状态仍可供当前 worker 使用。
+        logger.warning("Unable to persist progress for task %s", task_id, exc_info=True)
+
 async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path):
     """
     确保动图产物在 /var/www/outputs/{task_id} 就绪。
@@ -386,28 +417,20 @@ async def run_generate_pipeline(
     try:
         # 阶段 1：组装提示词
         stage_desc = f"阶段 1/4: 结合手绘草图造型与动作语义对齐 ({frame_count}帧)..." if is_sketch else f"阶段 1/4: 组装角色提示词与人设语义对齐 ({frame_count}帧)..."
-        TASK_STORE[task_id] = {
-            "openid": openid,
-            "status": "processing",
-            "progress": 10,
-            "stage": "prompt",
-            "stage_text": stage_desc,
-            "estimated_duration": get_estimated_generation_duration()
-        }
+        _set_task_progress(task_id, openid, 10, "prompt", stage_desc)
 
         has_image = ref_image_bytes is not None and len(ref_image_bytes) > 0
         template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
         prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch, custom_action.strip(), frame_count=frame_count)
 
         # 阶段 2：请求画质渲染引擎出图
-        TASK_STORE[task_id] = {
-            "openid": openid,
-            "status": "processing",
-            "progress": 25,
-            "stage": "drawing",
-            "stage_text": f"阶段 2/4: 智能画质渲染引擎正在绘制 {frame_count} 帧动作拆解图...",
-            "estimated_duration": get_estimated_generation_duration()
-        }
+        _set_task_progress(
+            task_id,
+            openid,
+            25,
+            "drawing",
+            f"阶段 2/4: 智能画质渲染引擎正在绘制 {frame_count} 帧动作拆解图...",
+        )
 
         headers = {
             "Authorization": f"Bearer {settings.CPA_API_KEY}"
@@ -463,14 +486,13 @@ async def run_generate_pipeline(
             raise RuntimeError("未能从响应中解析出图片数据")
 
         # 阶段 3：多尺度主间隙物理网格切割
-        TASK_STORE[task_id] = {
-            "openid": openid,
-            "status": "processing",
-            "progress": 75,
-            "stage": "slicing",
-            "stage_text": f"阶段 3/4: 多尺度主间隙物理网格切割 ({rows}×{cols}, {target_size_px}px)...",
-            "estimated_duration": get_estimated_generation_duration()
-        }
+        _set_task_progress(
+            task_id,
+            openid,
+            75,
+            "slicing",
+            f"阶段 3/4: 多尺度主间隙物理网格切割 ({rows}×{cols}, {target_size_px}px)...",
+        )
 
         task_dir = settings.OUTPUT_DIR / task_id
         task_dir.mkdir(parents=True, exist_ok=True)
@@ -488,14 +510,13 @@ async def run_generate_pipeline(
         )
 
         # 阶段 4：固定色差泛洪去底与动图生成
-        TASK_STORE[task_id] = {
-            "openid": openid,
-            "status": "processing",
-            "progress": 90,
-            "stage": "assembling",
-            "stage_text": "阶段 4/4: 固定色差泛洪去底并封装微信 GIF 动图...",
-            "estimated_duration": get_estimated_generation_duration()
-        }
+        _set_task_progress(
+            task_id,
+            openid,
+            90,
+            "assembling",
+            "阶段 4/4: 固定色差泛洪去底并封装微信 GIF 动图...",
+        )
 
         gif_path = task_dir / "meme_result.gif"
         stats = await asyncio.to_thread(
@@ -503,8 +524,11 @@ async def run_generate_pipeline(
             frames=frames,
             output_path=str(gif_path),
             fps=fps,
-            make_transparent=make_transparent
+            make_transparent=make_transparent,
+            max_file_size_bytes=settings.WECHAT_GIF_MAX_BYTES,
         )
+        if not stats.get("is_wechat_compliant"):
+            raise RuntimeError("生成的 GIF 体积仍超过 1MB，请降低帧数或尺寸后重试")
 
         zip_path = task_dir / "frames_pack.zip"
         await asyncio.to_thread(
@@ -598,6 +622,9 @@ async def run_generate_pipeline(
         logger.exception("Meme generation task %s failed", task_id)
         if openid:
             refund_quota(openid, deducted_from)
+        failed_task_dir = settings.OUTPUT_DIR / task_id
+        if failed_task_dir.is_dir():
+            shutil.rmtree(failed_task_dir, ignore_errors=True)
         TASK_STORE[task_id] = {
             "openid": openid,
             "status": "failed",
@@ -760,13 +787,20 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
         }
 
     if owner["status"] in ("processing", "pending"):
+        progress = int(owner["progress"] or 0)
+        persisted_stage = {
+            10: ("prompt", "阶段 1/4：正在组装角色提示词与动作语义..."),
+            25: ("drawing", "阶段 2/4：智能画质渲染引擎正在绘制动作拆解图..."),
+            75: ("slicing", "阶段 3/4：正在切割并整理动图帧..."),
+            90: ("assembling", "阶段 4/4：正在封装微信 GIF 动图..."),
+        }.get(progress, ("queued", "任务正在处理中..."))
         return {
             "code": 0,
             "data": {
                 "status": "processing",
-                "progress": owner["progress"],
-                "stage": "queued",
-                "stage_text": "任务正在处理中...",
+                "progress": progress,
+                "stage": persisted_stage[0],
+                "stage_text": persisted_stage[1],
                 "estimated_duration": get_estimated_generation_duration()
             },
         }
@@ -896,5 +930,14 @@ def delete_meme(req: DeleteMemeRequest, current_openid: CurrentOpenid):
     if not req.task_id:
         raise HTTPException(status_code=400, detail="任务ID不能为空")
     openid = require_same_user(req.openid, current_openid)
-    delete_meme_task(req.task_id, openid)
+    if not re.fullmatch(r"(?:[0-9a-f]{8}|[0-9a-f]{32})", req.task_id):
+        raise HTTPException(status_code=400, detail="任务 ID 不合法")
+    deleted = delete_meme_task(req.task_id, openid)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="作品不存在或无权删除")
+    # 作品可能已被合集引用；只有未被引用时才删除任务目录。
+    if not meme_task_output_is_referenced(req.task_id):
+        task_dir = settings.OUTPUT_DIR / req.task_id
+        if task_dir.is_dir():
+            shutil.rmtree(task_dir, ignore_errors=True)
     return {"success": True, "message": "作品已从历史记录中删除"}

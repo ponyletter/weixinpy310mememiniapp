@@ -245,12 +245,22 @@ Page({
 
     // 3. 绘制涂鸦画笔线条
     for (const stroke of this.brushStrokes) {
-      if (stroke.points.length < 2) continue;
+      if (!stroke.points || stroke.points.length === 0) continue;
       ctx.save();
       ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.width;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
+      if (stroke.points.length === 1) {
+        // 单击画布也应留下一个笔触点，而不是必须拖动才可见。
+        const point = stroke.points[0];
+        ctx.fillStyle = stroke.color;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, Math.max(1, stroke.width / 2), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
       ctx.beginPath();
       ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
       for (let i = 1; i < stroke.points.length; i++) {

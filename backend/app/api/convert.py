@@ -1,6 +1,7 @@
 import io
 import hashlib
 import asyncio
+import re
 import shutil
 import subprocess
 import time
@@ -17,6 +18,7 @@ import cv2
 import numpy as np
 
 from app.config import settings
+from app.core.sprite_processor import SpriteProcessor
 from app.security import CurrentOpenid
 from app.upload_utils import ensure_within, open_validated_image, read_limited_upload
 
@@ -55,6 +57,34 @@ def _user_stage_dir(openid: str) -> Path:
     return directory
 
 
+def _ensure_gif_file_size(gif_path: Path, max_file_size_bytes: Optional[int] = None) -> dict:
+    """对已生成的 GIF 做一次受限重编码，避免工具输出超过微信常用限制。"""
+    max_file_size_bytes = max_file_size_bytes or settings.WECHAT_GIF_MAX_BYTES
+    if gif_path.stat().st_size <= max_file_size_bytes:
+        return {
+            "file_size_bytes": gif_path.stat().st_size,
+            "is_wechat_compliant": True,
+            "compression_attempts": 0,
+        }
+
+    with Image.open(gif_path) as source:
+        durations = []
+        frames = []
+        for index in range(getattr(source, "n_frames", 1)):
+            source.seek(index)
+            frames.append(source.convert("RGBA").copy())
+            durations.append(source.info.get("duration", 100))
+    avg_duration = sum(durations) / max(1, len(durations))
+    fps = max(1, min(30, round(1000 / max(avg_duration, 1))))
+    return SpriteProcessor.assemble_gif(
+        frames,
+        str(gif_path),
+        fps=fps,
+        make_transparent=False,
+        max_file_size_bytes=max_file_size_bytes,
+    )
+
+
 def _save_frames_as_gif(frames: list[Image.Image], fps: int, caption: str) -> dict:
     task_id = uuid.uuid4().hex
     task_dir = settings.OUTPUT_DIR / task_id
@@ -63,11 +93,17 @@ def _save_frames_as_gif(frames: list[Image.Image], fps: int, caption: str) -> di
     imageio.mimsave(str(output_gif_path), frames, format="GIF", duration=1.0 / fps, loop=0)
     if caption.strip():
         _add_caption_to_gif(output_gif_path, caption.strip())
+    size_stats = _ensure_gif_file_size(output_gif_path)
+    if not size_stats["is_wechat_compliant"]:
+        shutil.rmtree(task_dir, ignore_errors=True)
+        raise HTTPException(status_code=422, detail="GIF 体积超过 1MB，请减少图片数量或降低尺寸")
     return {
         "success": True,
         "task_id": task_id,
         "gif_url": f"/outputs/{task_id}/meme_result.gif",
         "file_size_kb": round(output_gif_path.stat().st_size / 1024, 1),
+        "is_wechat_compliant": size_stats["is_wechat_compliant"],
+        "compression_attempts": size_stats["compression_attempts"],
     }
 
 @router.post("/video-to-gif")
@@ -82,11 +118,13 @@ async def video_to_gif(
     caption_pos: str = Form("bottom"),
     font_size: int = Form(24),
     opacity: float = Form(1.0),
-    color: str = Form("#ffffff"),
+    color: str = Form("#1e293b"),
 ):
     """【聊天视频直转动图】利用本地 ffmpeg 高质量双通道调色板生成微信合规 GIF"""
     if not 1 <= fps <= 20 or not 64 <= width <= 720:
         raise HTTPException(status_code=400, detail="fps 或输出宽度超出允许范围")
+    if not 0 <= start_time <= 3600 or not 0.5 <= duration <= 10.0:
+        raise HTTPException(status_code=400, detail="视频起始时间或截取时长超出允许范围")
     if len(caption) > 80:
         raise HTTPException(status_code=400, detail="字幕不能超过 80 个字符")
     ffmpeg_bin = _resolve_ffmpeg()
@@ -147,12 +185,18 @@ async def video_to_gif(
             color=color,
         )
 
+    size_stats = _ensure_gif_file_size(output_gif_path)
+    if not size_stats["is_wechat_compliant"]:
+        shutil.rmtree(task_dir, ignore_errors=True)
+        raise HTTPException(status_code=422, detail="GIF 体积超过 1MB，请缩短时长或降低输出宽度")
     file_size_kb = round(output_gif_path.stat().st_size / 1024, 1)
     return {
         "success": True,
         "task_id": task_id,
         "gif_url": f"/outputs/{task_id}/meme_result.gif",
         "file_size_kb": file_size_kb,
+        "is_wechat_compliant": size_stats["is_wechat_compliant"],
+        "compression_attempts": size_stats["compression_attempts"],
         "caption": caption.strip()
     }
 
@@ -226,7 +270,7 @@ async def edit_caption(
     caption_pos: str = Form("bottom"),
     font_size: int = Form(24),
     opacity: float = Form(1.0),
-    color: str = Form("#ffffff"),
+    color: str = Form("#1e293b"),
 ):
     """【表情包改字与水印二创】为已有动图重新覆盖/追加爆笑字幕或水印"""
     if not caption.strip():
@@ -265,6 +309,10 @@ async def edit_caption(
         opacity=opacity,
         color=color,
     )
+    size_stats = _ensure_gif_file_size(target_gif)
+    if not size_stats["is_wechat_compliant"]:
+        shutil.rmtree(task_dir, ignore_errors=True)
+        raise HTTPException(status_code=422, detail="GIF 体积超过 1MB，请降低尺寸或减少文字内容")
     file_size_kb = round(target_gif.stat().st_size / 1024, 1)
     return {
         "success": True,
@@ -272,7 +320,9 @@ async def edit_caption(
         "gif_url": f"/outputs/{task_id}/meme_result.gif",
         "file_size_kb": file_size_kb,
         "new_caption": caption.strip(),
-        "caption_pos": caption_pos
+        "caption_pos": caption_pos,
+        "is_wechat_compliant": size_stats["is_wechat_compliant"],
+        "compression_attempts": size_stats["compression_attempts"]
     }
 
 @router.post("/caption-suggest")
@@ -341,7 +391,7 @@ def _add_caption_to_gif(
     pos: str = "bottom",
     font_size: int = 24,
     opacity: float = 1.0,
-    color: str = "#ffffff"
+    color: str = "#1e293b"
 ):
     """
     为 GIF 叠加字幕或水印：
@@ -354,7 +404,7 @@ def _add_caption_to_gif(
       'banner-bottom': 经典纯白下边缘横幅
     font_size: 16 ~ 48
     opacity: 0.1 ~ 1.0
-    color: 十六进制色值，默认 '#ffffff'
+    color: 十六进制色值，默认 '#1e293b'
     """
     try:
         im = Image.open(gif_path)
@@ -563,6 +613,12 @@ async def compress_image(
     quality: int = Form(80),
 ):
     """【图片/动图压缩瘦身】支持将超大图片或动图压缩至微信表情合规限制 (如 500KB 或 1MB)"""
+    if not 32 <= target_kb <= 2048:
+        raise HTTPException(status_code=400, detail="目标大小需在 32KB 到 2048KB 之间")
+    if not 0 <= max_width <= 4096:
+        raise HTTPException(status_code=400, detail="最大宽度需在 0 到 4096 像素之间")
+    if not 10 <= quality <= 100:
+        raise HTTPException(status_code=400, detail="压缩质量需在 10 到 100 之间")
     file_bytes = await read_limited_upload(file, settings.MAX_IMAGE_UPLOAD_MB)
     orig_size_kb = round(len(file_bytes) / 1024, 1)
 
@@ -582,11 +638,13 @@ async def compress_image(
         im = Image.open(io.BytesIO(file_bytes))
         frames = []
         durations = []
+        # 图片可以按用户需要压到更大的体积，但 GIF 成品统一遵守微信自定义表情上限。
+        gif_target_kb = min(target_kb, settings.WECHAT_GIF_MAX_BYTES // 1024)
         scale_ratio = 1.0
         if max_width > 0 and im.width > max_width:
             scale_ratio = max_width / im.width
-        elif orig_size_kb > target_kb:
-            scale_ratio = min(1.0, (target_kb / orig_size_kb) ** 0.5)
+        elif orig_size_kb > gif_target_kb:
+            scale_ratio = min(1.0, (gif_target_kb / orig_size_kb) ** 0.5)
 
         for i in range(getattr(im, "n_frames", 1)):
             im.seek(i)
@@ -600,28 +658,63 @@ async def compress_image(
 
         avg_dur = sum(durations) / max(1, len(durations))
         imageio.mimsave(str(out_path), frames, format="GIF", duration=avg_dur, loop=0)
+        gif_stats = _ensure_gif_file_size(
+            out_path,
+            max_file_size_bytes=gif_target_kb * 1024,
+        )
+        if not gif_stats["is_wechat_compliant"]:
+            shutil.rmtree(task_dir, ignore_errors=True)
+            raise HTTPException(
+                status_code=422,
+                detail=f"GIF 无法压缩到 {gif_target_kb}KB 以内，请降低尺寸、帧数或质量",
+            )
         out_url = f"/outputs/{task_id}/compressed.gif"
     else:
-        im = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+        source_im = Image.open(io.BytesIO(file_bytes))
+        has_alpha = source_im.mode in ("RGBA", "LA") or "transparency" in source_im.info
+        im = source_im.convert("RGBA" if has_alpha else "RGB")
         if max_width > 0 and im.width > max_width:
             nh = int(im.height * (max_width / im.width))
             im = im.resize((max_width, nh), Image.Resampling.LANCZOS)
 
-        out_path = task_dir / "compressed.jpg"
-        q = max(30, min(95, quality))
-        im.save(out_path, format="JPEG", quality=q, optimize=True)
-        while out_path.stat().st_size / 1024 > target_kb and q > 35:
-            q -= 10
+        if has_alpha:
+            # 保留透明 PNG，不再为了压缩大小静默改成 JPEG 导致透明背景丢失。
+            out_path = task_dir / "compressed.png"
+            im.save(out_path, format="PNG", optimize=True, compress_level=9)
+            for _ in range(5):
+                if out_path.stat().st_size / 1024 <= target_kb or im.width <= 64:
+                    break
+                ratio = max(0.5, min(0.9, (target_kb / max(out_path.stat().st_size / 1024, 1)) ** 0.5))
+                nw = max(64, int(im.width * ratio))
+                nh = max(64, int(im.height * ratio))
+                if (nw, nh) == im.size:
+                    break
+                im = im.resize((nw, nh), Image.Resampling.LANCZOS)
+                im.save(out_path, format="PNG", optimize=True, compress_level=9)
+            out_url = f"/outputs/{task_id}/compressed.png"
+        else:
+            out_path = task_dir / "compressed.jpg"
+            q = max(30, min(95, quality))
             im.save(out_path, format="JPEG", quality=q, optimize=True)
-        out_url = f"/outputs/{task_id}/compressed.jpg"
+            while out_path.stat().st_size / 1024 > target_kb and q > 35:
+                q -= 10
+                im.save(out_path, format="JPEG", quality=q, optimize=True)
+            out_url = f"/outputs/{task_id}/compressed.jpg"
 
-    file_size_kb = round(out_path.stat().st_size / 1024, 1)
+    file_size_bytes = out_path.stat().st_size
+    effective_target_kb = gif_target_kb if is_gif else target_kb
+    file_size_kb = round(file_size_bytes / 1024, 1)
     return {
         "success": True,
         "task_id": task_id,
         "output_url": out_url,
         "file_size_kb": file_size_kb,
-        "original_size_kb": orig_size_kb
+        "file_size_bytes": file_size_bytes,
+        "original_size_kb": orig_size_kb,
+        "target_kb": effective_target_kb,
+        "requested_target_kb": target_kb,
+        "target_met": file_size_bytes <= effective_target_kb * 1024,
+        "warning": "当前格式内容较复杂，未达到目标大小，请降低尺寸或质量。" if file_size_bytes > effective_target_kb * 1024 else ""
     }
 
 
@@ -663,12 +756,26 @@ async def text_to_image(
     title: str = Form(""),
     author: str = Form(""),
     font_size: int = Form(32),
+    padding_x: int = Form(48),
+    padding_y: int = Form(48),
+    align: str = Form("left"),
+    text_color: str = Form(""),
+    background_color: str = Form(""),
 ):
     """【金句台词卡片生成器】将金句、名言或梗图文案一键排版生成精致卡片"""
     if not text.strip():
         raise HTTPException(status_code=400, detail="文本内容不能为空")
     if len(text) > 300:
         raise HTTPException(status_code=400, detail="文本内容不能超过 300 字")
+    if not 16 <= padding_x <= 160 or not 16 <= padding_y <= 200:
+        raise HTTPException(status_code=400, detail="内边距超出允许范围")
+    if align not in {"left", "center", "right"}:
+        raise HTTPException(status_code=400, detail="文字对齐方式不合法")
+    hex_color = re.compile(r"^#[0-9a-fA-F]{6}$")
+    if text_color and not hex_color.fullmatch(text_color):
+        raise HTTPException(status_code=400, detail="文字颜色格式不合法")
+    if background_color and not hex_color.fullmatch(background_color):
+        raise HTTPException(status_code=400, detail="背景颜色格式不合法")
 
     task_id = uuid.uuid4().hex
     task_dir = settings.OUTPUT_DIR / task_id
@@ -683,6 +790,10 @@ async def text_to_image(
         "minimal": ((248, 250, 252), (51, 65, 85), (79, 70, 229)),
     }
     bg_col, text_col, accent_col = themes.get(theme, themes["classic"])
+    if text_color:
+        text_col = tuple(int(text_color[i:i + 2], 16) for i in (1, 3, 5))
+    if background_color:
+        bg_col = tuple(int(background_color[i:i + 2], 16) for i in (1, 3, 5))
 
     f_size = max(20, min(56, font_size))
     # 金句和极简风格采用优雅宋体，其他采用黑体
@@ -695,46 +806,57 @@ async def text_to_image(
     is_pure_quote = not title_str and not author_str
     line_h = int(f_size * 1.65)
 
+    def draw_aligned_line(draw_obj, line, y, font, fill, left, right):
+        bbox = draw_obj.textbbox((0, 0), line, font=font)
+        text_w = bbox[2] - bbox[0]
+        if align == "center":
+            x = left + (right - left - text_w) // 2
+        elif align == "right":
+            x = right - text_w
+        else:
+            x = left
+        draw_obj.text((x, y), line, font=font, fill=fill)
+
     if is_pure_quote:
         # 纯金句模式：去除左侧强调竖线与冗余尾注，紧凑排版
-        pad_x = 48
+        pad_x = padding_x
         line_w = max(10, int((card_w - pad_x * 2) / max(f_size * 0.95, 1)))
         lines = wrap(text.strip(), width=line_w) or [text.strip()]
         body_h = len(lines) * line_h
-        card_h = max(140, 48 * 2 + body_h)
+        card_h = max(140, padding_y * 2 + body_h)
         canvas = Image.new("RGB", (card_w, card_h), bg_col)
         draw = ImageDraw.Draw(canvas)
 
-        curr_y = (card_h - body_h) // 2
+        curr_y = padding_y
         for line in lines:
-            draw.text((pad_x, curr_y), line, font=body_font, fill=text_col)
+            draw_aligned_line(draw, line, curr_y, body_font, text_col, pad_x, card_w - pad_x)
             curr_y += line_h
     else:
         # 附带标题或作者模式：保留左侧竖条，作者紧贴正文下方，不留巨大空隙
-        pad_x = 64
-        line_w = max(10, int((card_w - pad_x - 48) / max(f_size * 0.95, 1)))
+        pad_x = padding_x
+        line_w = max(10, int((card_w - pad_x * 2) / max(f_size * 0.95, 1)))
         lines = wrap(text.strip(), width=line_w) or [text.strip()]
         body_h = len(lines) * line_h
         title_h = (int(f_size * 0.9) + 16) if title_str else 0
         author_h = (int(f_size * 0.8) + 20) if author_str else 0
-        card_h = max(160, 40 + title_h + body_h + author_h + 36)
+        card_h = max(160, padding_y + title_h + body_h + author_h + padding_y)
         canvas = Image.new("RGB", (card_w, card_h), bg_col)
         draw = ImageDraw.Draw(canvas)
 
-        draw.rectangle([36, 36, 42, card_h - 36], fill=accent_col)
+        draw.rectangle([max(8, pad_x // 2 - 3), padding_y, max(14, pad_x // 2 + 3), card_h - padding_y], fill=accent_col)
 
-        curr_y = 40
+        curr_y = padding_y
         if title_str:
-            draw.text((pad_x, curr_y), title_str, font=small_font, fill=accent_col)
+            draw_aligned_line(draw, title_str, curr_y, small_font, accent_col, pad_x, card_w - pad_x)
             curr_y += title_h
 
         for line in lines:
-            draw.text((pad_x, curr_y), line, font=body_font, fill=text_col)
+            draw_aligned_line(draw, line, curr_y, body_font, text_col, pad_x, card_w - pad_x)
             curr_y += line_h
 
         if author_str:
             curr_y += 10
-            draw.text((pad_x, curr_y), f"— {author_str}", font=small_font, fill=accent_col)
+            draw_aligned_line(draw, f"— {author_str}", curr_y, small_font, accent_col, pad_x, card_w - pad_x)
 
     out_path = task_dir / "card.png"
     canvas.save(out_path, format="PNG")
@@ -840,4 +962,3 @@ async def image_matting(
         "file_size_kb": file_size_kb,
         "bg_mode": bg_mode
     }
-

@@ -104,6 +104,89 @@
   font-weight: 800;
 }
 
+.caption-options-remix {
+  margin: 8rpx 0 20rpx;
+  padding: 14rpx 16rpx;
+  background: #f8fafc;
+  border-radius: 14rpx;
+}
+
+.caption-option-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.caption-option-row:first-child {
+  margin-top: 0;
+}
+
+.caption-option-label {
+  width: 100rpx;
+  flex-shrink: 0;
+  color: #475569;
+  font-size: 22rpx;
+}
+
+.caption-option-chips,
+.caption-color-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.caption-chip {
+  padding: 6rpx 14rpx;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 18rpx;
+  color: #64748b;
+  font-size: 20rpx;
+}
+
+.caption-chip.active {
+  color: #4f46e5;
+  border-color: #818cf8;
+  background: #eef2ff;
+}
+
+.caption-option-slider {
+  flex: 1;
+  margin: 0;
+}
+
+.caption-color-chip {
+  width: 30rpx;
+  height: 30rpx;
+  border-radius: 50%;
+  border: 3rpx solid transparent;
+}
+
+.caption-color-chip.active {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3rpx #c7d2fe;
+}
+
+.caption-color-chip.dark { background: #1e293b; }
+.caption-color-chip.light { background: #ffffff; border-color: #cbd5e1; }
+.caption-color-chip.red { background: #ef4444; }
+.caption-color-chip.blue { background: #3b82f6; }
+
+.card-layout-options {
+  margin: 10rpx 0 20rpx;
+  padding: 14rpx 16rpx;
+  background: #f8fafc;
+  border-radius: 14rpx;
+}
+
+.card-align-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
 .tip-bar {
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
   border: 1rpx solid #c7d2fe;
@@ -876,4 +959,3 @@
   font-size: 22rpx;
   font-weight: 700;
 }
-

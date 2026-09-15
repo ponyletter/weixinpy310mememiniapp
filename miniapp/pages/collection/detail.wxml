@@ -68,12 +68,15 @@
       <!-- 次操作行：上下排序与删除 (仅合集创建者本人可见) -->
       <view wx:if="{{isOwner}}" class="meme-card-actions-sub">
         <view class="order-btn-group">
-          <button class="btn-order {{index === 0 ? 'disabled' : ''}}" catchtap="moveItemUp" data-id="{{item.id}}" disabled="{{index === 0}}">⬆</button>
-          <button class="btn-order {{index === displayItems.length - 1 ? 'disabled' : ''}}" catchtap="moveItemDown" data-id="{{item.id}}" disabled="{{index === displayItems.length - 1}}">⬇</button>
+          <button class="btn-order {{index === 0 || searchKeyword ? 'disabled' : ''}}" catchtap="moveItemUp" data-id="{{item.id}}" disabled="{{index === 0 || searchKeyword}}">⬆</button>
+          <button class="btn-order {{index === displayItems.length - 1 || searchKeyword ? 'disabled' : ''}}" catchtap="moveItemDown" data-id="{{item.id}}" disabled="{{index === displayItems.length - 1 || searchKeyword}}">⬇</button>
         </view>
         <button class="btn-xs-meme btn-del-action" catchtap="deleteItem" data-id="{{item.id}}">删除</button>
       </view>
     </view>
+  </view>
+  <view wx:if="{{isOwner && searchKeyword && displayItems.length > 0}}" class="search-order-hint">
+    搜索状态下暂不调整顺序，请先清除搜索条件
   </view>
 
   <view wx:if="{{!detailLoading && !detailError && (!collection.items || collection.items.length === 0)}}" class="empty-state card">

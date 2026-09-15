@@ -1,5 +1,19 @@
 const app = getApp();
 
+function decodeQueryValue(value, fallback = '') {
+  if (!value) return fallback;
+  try {
+    return decodeURIComponent(value);
+  } catch (e) {
+    console.warn('分享参数解码失败:', e);
+    return fallback;
+  }
+}
+
+function isValidTaskId(value) {
+  return /^[0-9a-f]{32}$/.test(value || '');
+}
+
 Page({
   data: {
     quota: 10,
@@ -50,9 +64,21 @@ Page({
       app.globalData.inviterCode = options.inviter;
     }
     // 微信好友点击分享链接：优先直出动图成品，彻底杜绝跳过成品直接载入模板的体验 Bug
-    if (options && options.share_gif) {
-      const sharedUrl = decodeURIComponent(options.share_gif);
-      const sharedTitle = options.share_title ? decodeURIComponent(options.share_title) : '专属动图';
+    if (options && isValidTaskId(options.share_task)) {
+      const sharedTitle = decodeQueryValue(options.share_title, '专属动图');
+      this.setData({
+        taskId: options.share_task,
+        gifResultUrl: `${app.globalData.baseURL}/outputs/${options.share_task}/meme_result.gif`,
+        caption: sharedTitle,
+        sharedFromFriend: true,
+        sharedGifTitle: sharedTitle
+      });
+      if (options.ref_tpl) {
+        wx.setStorageSync('preselect_tpl', { id: decodeQueryValue(options.ref_tpl) });
+      }
+    } else if (options && options.share_gif) {
+      const sharedUrl = decodeQueryValue(options.share_gif);
+      const sharedTitle = decodeQueryValue(options.share_title, '专属动图');
       this.setData({
         gifResultUrl: sharedUrl,
         caption: sharedTitle,
@@ -1315,9 +1341,12 @@ Page({
     // 如果当前已有生成好的动图，卡片直出动图封面并携带 share_gif 与 share_title 参数，好友点击后直达动图成品
     if (this.data.gifResultUrl) {
       const titleTag = this.data.caption || this.data.selectedTemplateTitle || '专属';
+      const taskQuery = isValidTaskId(this.data.taskId)
+        ? `&share_task=${this.data.taskId}`
+        : `&share_gif=${encodeURIComponent(this.data.gifResultUrl)}`;
       return {
         title: `🔥 快接招！我刚用 AI 做了【${titleTag}】表情包，快来看看！`,
-        path: `/pages/index/index?inviter=${inviteCode}&share_gif=${encodeURIComponent(this.data.gifResultUrl)}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${this.data.selectedTemplate}`,
+        path: `/pages/index/index?inviter=${encodeURIComponent(inviteCode)}${taskQuery}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`,
         imageUrl: this.data.gifResultUrl
       };
     }
@@ -1325,7 +1354,7 @@ Page({
     // 默认首页分享
     return {
       title: '送你 10 次免费动图制作额度，一键生成微信专属表情包！',
-      path: `/pages/index/index?inviter=${inviteCode}`
+      path: `/pages/index/index?inviter=${encodeURIComponent(inviteCode)}`
     };
   },
 
@@ -1333,7 +1362,11 @@ Page({
     const titleTag = this.data.caption || this.data.selectedTemplateTitle || 'AI专属表情包';
     return {
       title: `我用 AI 做了【${titleTag}】动态表情包，一键定制超好玩！`,
-      query: `ref_tpl=${this.data.selectedTemplate}`,
+      query: this.data.gifResultUrl && isValidTaskId(this.data.taskId)
+        ? `share_task=${this.data.taskId}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`
+        : this.data.gifResultUrl
+          ? `share_gif=${encodeURIComponent(this.data.gifResultUrl)}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`
+        : `ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`,
       imageUrl: this.data.gifResultUrl || ''
     };
   }

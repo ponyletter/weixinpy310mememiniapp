@@ -177,6 +177,7 @@ Page({
   },
 
   updateAndSyncOrder(newItems) {
+    const previousItems = [...(this._allItems || this.data.collection.items || [])];
     const col = { ...this.data.collection, items: newItems };
     this._allItems = newItems;
     this.setData({ collection: col });
@@ -195,7 +196,18 @@ Page({
       success: (res) => {
         if (res.data && res.data.success) {
           wx.showToast({ title: '排序已更新', icon: 'success', duration: 800 });
+        } else {
+          this._allItems = previousItems;
+          this.setData({ collection: { ...this.data.collection, items: previousItems } });
+          this.filterItems(this.data.searchKeyword);
+          wx.showToast({ title: (res.data && res.data.detail) || '排序保存失败', icon: 'none' });
         }
+      },
+      fail: () => {
+        this._allItems = previousItems;
+        this.setData({ collection: { ...this.data.collection, items: previousItems } });
+        this.filterItems(this.data.searchKeyword);
+        wx.showToast({ title: '排序保存失败，请重试', icon: 'none' });
       }
     });
   },

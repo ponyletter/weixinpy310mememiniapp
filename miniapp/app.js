@@ -14,8 +14,7 @@ App({
 
   getGifConfig() {
     const cfg = wx.getStorageSync('gif_config');
-    if (cfg && typeof cfg === 'object') return cfg;
-    return {
+    const defaults = {
       fastMode: true,
       resolution: '240x240',
       frameCount: 16,
@@ -23,10 +22,15 @@ App({
       smartCompress: true,
       loopCount: 0
     };
+    // 配置项分步修改时必须合并，避免只保存帧数或尺寸导致其他设置丢失。
+    return Object.assign({}, defaults, cfg && typeof cfg === 'object' ? cfg : {});
   },
 
   setGifConfig(cfg) {
-    wx.setStorageSync('gif_config', cfg);
+    const current = this.getGifConfig();
+    const next = Object.assign({}, current, cfg && typeof cfg === 'object' ? cfg : {});
+    wx.setStorageSync('gif_config', next);
+    return next;
   },
 
   authHeader(extraHeader) {

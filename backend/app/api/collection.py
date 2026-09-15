@@ -5,6 +5,7 @@ from app.database import (
     create_collection,
     add_item_to_collection,
     get_collection_detail,
+    get_collection_visibility,
     get_user_collections,
     get_public_collections,
     delete_collection,
@@ -13,7 +14,7 @@ from app.database import (
     update_collection_item_title,
     reorder_collection_items
 )
-from app.security import CurrentOpenid, require_same_user
+from app.security import CurrentOpenid, OptionalOpenid, require_same_user
 
 router = APIRouter(prefix="/api/collection", tags=["collections"])
 
@@ -112,9 +113,15 @@ def add_gif_to_collection(req: AddItemRequest, current_openid: CurrentOpenid):
     return {"success": True, "data": res}
 
 @router.get("/detail")
-def get_detail(response: Response, collection_id: str = Query(...)):
+def get_detail(response: Response, collection_id: str = Query(...), current_openid: OptionalOpenid = None):
     """获取合集详情及其包含的表情包列表 (支持微信分享打开直接查看)"""
     _disable_cache(response)
+    visibility = get_collection_visibility(collection_id)
+    if not visibility:
+        raise HTTPException(status_code=404, detail="合集不存在或已被删除")
+    # 公开合集可匿名查看；私有合集只能由创建者查看，避免猜测 collection_id 泄露内容。
+    if not visibility.get("is_public") and visibility.get("openid") != current_openid:
+        raise HTTPException(status_code=404, detail="合集不存在或已被删除")
     res = get_collection_detail(collection_id)
     if not res:
         raise HTTPException(status_code=404, detail="合集不存在或已被删除")

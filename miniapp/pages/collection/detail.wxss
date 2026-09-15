@@ -215,6 +215,13 @@
   padding: 8rpx;
 }
 
+.search-order-hint {
+  margin: -8rpx 0 18rpx;
+  color: #64748b;
+  font-size: 22rpx;
+  text-align: center;
+}
+
 /* 按钮扩展 */
 .btn-rename-action {
   background: #f8fafc !important;

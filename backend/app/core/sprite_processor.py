@@ -1,7 +1,7 @@
 import io
 import os
 import zipfile
-from typing import List
+from typing import List, Optional
 import numpy as np
 import cv2
 from PIL import Image
@@ -164,12 +164,16 @@ class SpriteProcessor:
         frames: List[Image.Image],
         output_path: str,
         fps: int = 8,
-        make_transparent: bool = True
+        make_transparent: bool = True,
+        max_file_size_bytes: Optional[int] = 1024 * 1024,
     ) -> dict:
         """
         完整工作流：处理每一帧（超高速外围去白底）并合成为微信标准无限循环 GIF。
         完全保留 ChatGPT 原画中随动作弹跳的原生艺术字体！
         """
+        if not frames:
+            raise ValueError("至少需要一帧才能生成 GIF")
+
         duration_ms = int(1000 / max(1, min(fps, 30)))
         processed_frames: List[Image.Image] = []
 
@@ -179,31 +183,56 @@ class SpriteProcessor:
                 f = cls.remove_white_bg(f)
             processed_frames.append(f)
 
-        gif_frames = []
-        for pf in processed_frames:
-            # 关键：先将帧叠加在纯白背景上，彻底消除 Windows/查看器中将透明误显为黑色的问题
-            white_bg = Image.new("RGBA", pf.size, (255, 255, 255, 255))
-            composed = Image.alpha_composite(white_bg, pf)
-            alpha = pf.split()[-1]
-            p_img = composed.convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=255)
-            mask = Image.eval(alpha, lambda a: 255 if a <= 128 else 0)
-            p_img.paste(255, mask)
-            gif_frames.append(p_img)
-
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        gif_frames[0].save(
-            output_path,
-            save_all=True,
-            append_images=gif_frames[1:],
-            duration=duration_ms,
-            loop=0,
-            transparency=255,
-            disposal=2,
-            optimize=True
-        )
+        working_frames = processed_frames
+        palette_colors = 255
+        compression_attempts = 0
+        while True:
+            gif_frames = []
+            for pf in working_frames:
+                # 关键：先将帧叠加在纯白背景上，彻底消除 Windows/查看器中将透明误显为黑色的问题
+                pf_rgba = pf.convert("RGBA")
+                white_bg = Image.new("RGBA", pf.size, (255, 255, 255, 255))
+                composed = Image.alpha_composite(white_bg, pf_rgba)
+                alpha = pf_rgba.split()[-1]
+                p_img = composed.convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=palette_colors)
+                mask = Image.eval(alpha, lambda a: 255 if a <= 128 else 0)
+                p_img.paste(255, mask)
+                gif_frames.append(p_img)
 
-        file_size = os.path.getsize(output_path)
-        out_w, out_h = processed_frames[0].size
+            gif_frames[0].save(
+                output_path,
+                save_all=True,
+                append_images=gif_frames[1:],
+                duration=duration_ms,
+                loop=0,
+                transparency=255,
+                disposal=2,
+                optimize=True
+            )
+
+            file_size = os.path.getsize(output_path)
+            if not max_file_size_bytes or file_size <= max_file_size_bytes or compression_attempts >= 5:
+                break
+
+            # 先减色，再按文件大小比例缩小画布；最多重编码 5 次，避免死循环。
+            compression_attempts += 1
+            if compression_attempts == 1:
+                palette_colors = 192
+            else:
+                palette_colors = 128
+            ratio = (max_file_size_bytes / max(file_size, 1)) ** 0.5 * 0.92
+            ratio = max(0.5, min(0.9, ratio))
+            resized_frames = []
+            for frame in working_frames:
+                new_w = max(64, int(frame.width * ratio))
+                new_h = max(64, int(frame.height * ratio))
+                resized_frames.append(frame.resize((new_w, new_h), Image.Resampling.LANCZOS))
+            if all(new.size == old.size for new, old in zip(resized_frames, working_frames)):
+                break
+            working_frames = resized_frames
+
+        out_w, out_h = working_frames[0].size
         return {
             "output_path": output_path,
             "frame_count": len(frames),
@@ -213,7 +242,8 @@ class SpriteProcessor:
             "duration_per_frame_ms": duration_ms,
             "file_size_bytes": file_size,
             "file_size_kb": round(file_size / 1024, 2),
-            "is_wechat_compliant": file_size < (1024 * 1024)
+            "is_wechat_compliant": file_size <= (max_file_size_bytes or file_size),
+            "compression_attempts": compression_attempts,
         }
 
     @classmethod

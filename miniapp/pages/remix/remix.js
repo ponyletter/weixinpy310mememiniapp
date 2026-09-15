@@ -1,5 +1,30 @@
 const app = getApp();
 
+function decodeQueryValue(value, fallback = '') {
+  if (!value) return fallback;
+  try {
+    return decodeURIComponent(value);
+  } catch (e) {
+    console.warn('分享参数解码失败:', e);
+    return fallback;
+  }
+}
+
+const SHAREABLE_OUTPUT_FILES = new Set([
+  'meme_result.gif',
+  'compressed.gif',
+  'compressed.jpg',
+  'compressed.png',
+  'matting_result.png',
+  'card.png'
+]);
+
+function getShareableOutput(url) {
+  const match = String(url || '').match(/\/outputs\/([0-9a-f]{32})\/([^/?#]+)/);
+  if (!match || !SHAREABLE_OUTPUT_FILES.has(match[2])) return null;
+  return { taskId: match[1], fileName: match[2] };
+}
+
 const TOOL_META = {
   video: { id: 'video', name: '视频转GIF', icon: '📹' },
   compress: { id: 'compress', name: '图片瘦身', icon: '⚡' },
@@ -19,10 +44,18 @@ Page({
     videoFileSizeStr: '',
     videoStartTime: 0.0,
     videoDuration: 3.0,
+    videoSourceDuration: 3.0,
+    videoStartMax: 0.0,
+    videoMaxDuration: 3.0,
     uploadPercent: 0,
 
     // 通用字幕
     captionText: '',
+    captionPos: 'bottom',
+    captionFontSize: 24,
+    captionOpacity: 1.0,
+    captionColor: '#1e293b',
+    sharedResultTitle: '',
 
     // 多图连续合成动图
     multiImages: [],
@@ -55,6 +88,11 @@ Page({
     cardTitle: '',
     cardAuthor: '',
     cardFontSize: 32,
+    cardPaddingX: 48,
+    cardPaddingY: 48,
+    cardAlign: 'left',
+    cardTextColor: '#0f172a',
+    cardBgColor: '#ffffff',
 
     // 全局合成状态与结果
     isConverting: false,
@@ -62,6 +100,26 @@ Page({
   },
 
   onLoad(options) {
+    if (options && /^[0-9a-f]{32}$/.test(options.share_task || '') &&
+        SHAREABLE_OUTPUT_FILES.has(options.share_file || 'meme_result.gif')) {
+      const fileName = options.share_file || 'meme_result.gif';
+      const resultTitle = decodeQueryValue(options.share_title, '图片百宝箱作品');
+      this.setData({
+        remixResultUrl: `${app.globalData.baseURL}/outputs/${options.share_task}/${fileName}`,
+        sharedResultTitle: resultTitle
+      });
+      wx.showToast({ title: '已打开好友分享的成品', icon: 'success' });
+    } else if (options && options.share_result) {
+      const resultUrl = decodeQueryValue(options.share_result);
+      const resultTitle = decodeQueryValue(options.share_title, '图片百宝箱作品');
+      if (resultUrl) {
+        this.setData({
+          remixResultUrl: resultUrl,
+          sharedResultTitle: resultTitle
+        });
+        wx.showToast({ title: '已打开好友分享的成品', icon: 'success' });
+      }
+    }
     // 1. 初始化最近使用工具，自动过滤已移除的工具
     let recents = wx.getStorageSync('remix_recent_tools');
     if (Array.isArray(recents)) {
@@ -100,6 +158,27 @@ Page({
     this.recordRecentTool(tab);
   },
 
+  // 百宝箱独立修图入口：复用制作页的贴纸、文字、气泡、涂鸦和裁剪能力，并支持直接保存。
+  openStickerEditor() {
+    const openEditor = (path) => {
+      const src = path ? '?src=' + encodeURIComponent(path) : '';
+      wx.navigateTo({ url: '/pages/editor/editor' + src });
+    };
+    if (this.data.remixResultUrl) {
+      openEditor(this.data.remixResultUrl);
+      return;
+    }
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const file = res.tempFiles && res.tempFiles[0];
+        if (file && file.tempFilePath) openEditor(file.tempFilePath);
+      }
+    });
+  },
+
   onInputCaption(e) {
     this.setData({ captionText: e.detail.value });
   },
@@ -114,9 +193,17 @@ Page({
     this.setData({ captionFontSize: sz });
   },
 
+  onCaptionFontSizeChange(e) {
+    this.setData({ captionFontSize: Number(e.detail.value) || 24 });
+  },
+
   setCaptionOpacity(e) {
     const op = Number(e.currentTarget.dataset.op);
     this.setData({ captionOpacity: op });
+  },
+
+  onCaptionOpacityChange(e) {
+    this.setData({ captionOpacity: Number(e.detail.value) || 1.0 });
   },
 
   setCaptionColor(e) {
@@ -135,11 +222,17 @@ Page({
         if (res.tempFiles && res.tempFiles.length > 0) {
           const file = res.tempFiles[0];
           const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+          const sourceDuration = Math.max(0.5, Number(file.duration) || 3.0);
+          const maxDuration = Math.min(10.0, sourceDuration);
+          const defaultDuration = Math.min(5.0, maxDuration);
           this.setData({
             videoPath: file.tempFilePath,
             videoFileSizeStr: `${sizeMb} MB`,
             videoStartTime: 0.0,
-            videoDuration: Math.min(5.0, Math.max(2.0, (file.duration || 3.0) > 10 ? 3.0 : file.duration)),
+            videoSourceDuration: sourceDuration,
+            videoStartMax: Math.max(0, sourceDuration - defaultDuration),
+            videoMaxDuration: maxDuration,
+            videoDuration: defaultDuration,
             uploadPercent: 0,
             remixResultUrl: ''
           });
@@ -149,15 +242,34 @@ Page({
   },
 
   clearVideo() {
-    this.setData({ videoPath: '', videoFileSizeStr: '', uploadPercent: 0 });
+    this.setData({
+      videoPath: '',
+      videoFileSizeStr: '',
+      uploadPercent: 0,
+      videoStartTime: 0,
+      videoDuration: 3,
+      videoSourceDuration: 3,
+      videoStartMax: 0,
+      videoMaxDuration: 3
+    });
   },
 
   onVideoStartTimeChange(e) {
-    this.setData({ videoStartTime: Number(e.detail.value) });
+    const start = Math.max(0, Number(e.detail.value) || 0);
+    const sourceDuration = this.data.videoSourceDuration || 3.0;
+    const maxDuration = Math.min(10.0, Math.max(0.5, sourceDuration - start));
+    this.setData({
+      videoStartTime: start,
+      videoMaxDuration: maxDuration,
+      videoDuration: Math.min(this.data.videoDuration || 3.0, maxDuration)
+    });
   },
 
   onVideoDurationChange(e) {
-    this.setData({ videoDuration: Number(e.detail.value) });
+    const maxDuration = this.data.videoMaxDuration || 10.0;
+    this.setData({
+      videoDuration: Math.min(maxDuration, Math.max(0.5, Number(e.detail.value) || 0.5))
+    });
   },
 
   convertVideoToGif() {
@@ -178,7 +290,7 @@ Page({
         caption_pos: this.data.captionPos || 'bottom',
         font_size: this.data.captionFontSize || 24,
         opacity: this.data.captionOpacity || 1.0,
-        color: this.data.captionColor || '#ffffff',
+        color: this.data.captionColor || '#1e293b',
         start_time: this.data.videoStartTime || 0.0,
         duration: this.data.videoDuration || 3.0,
         fps: 10,
@@ -257,7 +369,7 @@ Page({
         caption_pos: this.data.captionPos || 'bottom',
         font_size: this.data.captionFontSize || 24,
         opacity: this.data.captionOpacity || 1.0,
-        color: this.data.captionColor || '#ffffff'
+        color: this.data.captionColor || '#1e293b'
       },
       success: (res) => {
         wx.hideLoading();
@@ -790,11 +902,36 @@ Page({
 
   selectCardTheme(e) {
     const theme = e.currentTarget.dataset.theme;
-    this.setData({ cardTheme: theme });
+    const palette = {
+      classic: { text: '#0f172a', bg: '#ffffff' },
+      dark: { text: '#f4f4f5', bg: '#18181b' },
+      gold: { text: '#713f12', bg: '#fefce8' },
+      cute: { text: '#9f1239', bg: '#fff1f2' },
+      minimal: { text: '#334155', bg: '#f8fafc' }
+    }[theme] || { text: '#0f172a', bg: '#ffffff' };
+    this.setData({ cardTheme: theme, cardTextColor: palette.text, cardBgColor: palette.bg });
   },
 
   onCardFontSizeChange(e) {
-    this.setData({ cardFontSize: Number(e.detail.value) });
+    this.setData({ cardFontSize: Number(e.detail.value) || 32 });
+  },
+
+  onCardPaddingXChange(e) {
+    this.setData({ cardPaddingX: Number(e.detail.value) || 48 });
+  },
+
+  onCardPaddingYChange(e) {
+    this.setData({ cardPaddingY: Number(e.detail.value) || 48 });
+  },
+
+  setCardAlign(e) {
+    this.setData({ cardAlign: e.currentTarget.dataset.align || 'left' });
+  },
+
+  setCardColor(e) {
+    const type = e.currentTarget.dataset.type;
+    const color = e.currentTarget.dataset.color;
+    this.setData(type === 'bg' ? { cardBgColor: color } : { cardTextColor: color });
   },
 
   executeGenerateCard() {
@@ -816,7 +953,12 @@ Page({
         theme: this.data.cardTheme || 'classic',
         title: (this.data.cardTitle || '').trim(),
         author: (this.data.cardAuthor || '').trim(),
-        font_size: this.data.cardFontSize || 32
+        font_size: this.data.cardFontSize || 32,
+        padding_x: this.data.cardPaddingX || 48,
+        padding_y: this.data.cardPaddingY || 48,
+        align: this.data.cardAlign || 'left',
+        text_color: this.data.cardTextColor || '#0f172a',
+        background_color: this.data.cardBgColor || '#ffffff'
       },
       success: (res) => {
         wx.hideLoading();
@@ -884,19 +1026,26 @@ Page({
               gif_url: this.data.remixResultUrl,
               title: this.data.captionText || '百宝箱创作'
             },
-            success: () => {
+            success: (saveRes) => {
               wx.hideLoading();
+              if (!(saveRes.data && saveRes.data.success)) {
+                wx.showToast({
+                  title: (saveRes.data && (saveRes.data.detail || saveRes.data.error)) || '存入失败',
+                  icon: 'none'
+                });
+                return;
+              }
               wx.showModal({
-                title: '存入成功 🎉',
-                content: '已成功存入表情合集！可前往底栏【表情合集】查看或打包分享给好友。',
-                confirmText: '前往查看',
-                cancelText: '留在本页',
-                success: (mRes) => {
-                  if (mRes.confirm) {
-                    wx.switchTab({ url: '/pages/collection/collection' });
+                  title: '存入成功 🎉',
+                  content: '已成功存入表情合集！可前往底栏【表情合集】查看或打包分享给好友。',
+                  confirmText: '前往查看',
+                  cancelText: '留在本页',
+                  success: (mRes) => {
+                    if (mRes.confirm) {
+                      wx.switchTab({ url: '/pages/collection/collection' });
+                    }
                   }
-                }
-              });
+                });
             },
             fail: () => {
               wx.hideLoading();
@@ -939,24 +1088,36 @@ Page({
     const inviteCode = user.invite_code || app.globalData.inviterCode || '';
 
     if (this.data.remixResultUrl) {
-      const cap = this.data.captionText || '精彩作品';
+      const cap = this.data.sharedResultTitle || this.data.captionText || '精彩作品';
+      const output = getShareableOutput(this.data.remixResultUrl);
+      const query = output
+        ? `&share_task=${output.taskId}&share_file=${encodeURIComponent(output.fileName)}`
+        : `&share_result=${encodeURIComponent(this.data.remixResultUrl)}`;
       return {
         title: `🔥 看看我用图片百宝箱制作的【${cap}】，太棒了！`,
-        path: `/pages/remix/remix?inviter=${inviteCode}`,
+        path: `/pages/remix/remix?inviter=${encodeURIComponent(inviteCode)}${query}&share_title=${encodeURIComponent(cap)}`,
         imageUrl: this.data.remixResultUrl
       };
     }
 
     return {
       title: '图片百宝箱：视频转GIF、智能抠图、取色器、压缩瘦身！',
-      path: `/pages/remix/remix?inviter=${inviteCode}`
+      path: `/pages/remix/remix?inviter=${encodeURIComponent(inviteCode)}`
     };
   },
 
   onShareTimeline() {
-    const cap = this.data.captionText || '精彩作品';
+    const cap = this.data.sharedResultTitle || this.data.captionText || '精彩作品';
     return {
       title: `我在图片百宝箱制作了【${cap}】，快来体验！`,
+      query: this.data.remixResultUrl && getShareableOutput(this.data.remixResultUrl)
+        ? (() => {
+            const output = getShareableOutput(this.data.remixResultUrl);
+            return `share_task=${output.taskId}&share_file=${encodeURIComponent(output.fileName)}&share_title=${encodeURIComponent(cap)}`;
+          })()
+        : this.data.remixResultUrl
+          ? `share_result=${encodeURIComponent(this.data.remixResultUrl)}&share_title=${encodeURIComponent(cap)}`
+        : '',
       imageUrl: this.data.remixResultUrl || ''
     };
   }

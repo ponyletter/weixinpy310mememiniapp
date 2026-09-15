@@ -563,11 +563,14 @@ Page({
               wx.hideLoading();
               if (res.data && (res.data.success || res.data.code === 0)) {
                 const newList = this.data.historyList.filter(item => item.task_id !== taskId);
+                const allList = (this._allHistoryList || this.data.historyList)
+                  .filter(item => item.task_id !== taskId);
                 const updatedUser = { 
                   ...this.data.user, 
-                  works_count: newList.length, 
-                  total_generated: newList.length 
+                  works_count: allList.length,
+                  total_generated: allList.length
                 };
+                this._allHistoryList = allList;
                 this.setData({ 
                   historyList: newList,
                   user: updatedUser

@@ -55,6 +55,20 @@ def get_current_openid(
 CurrentOpenid = Annotated[str, Depends(get_current_openid)]
 
 
+def get_optional_openid(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> str | None:
+    """允许公开资源匿名访问，同时让私有资源识别已登录的所有者。"""
+    if credentials is None:
+        return None
+    if credentials.scheme.lower() != "bearer":
+        raise HTTPException(status_code=401, detail="登录状态无效或已过期，请重新登录")
+    return verify_access_token(credentials.credentials)
+
+
+OptionalOpenid = Annotated[str | None, Depends(get_optional_openid)]
+
+
 def require_same_user(requested_openid: str | None, current_openid: str) -> str:
     if requested_openid and requested_openid.strip() != current_openid:
         raise HTTPException(status_code=403, detail="无权访问其他用户的数据")

@@ -47,6 +47,9 @@
     <view class="remix-tab {{tab === 'card' ? 'active' : ''}}" bindtap="switchTab" data-tab="card">
       <text class="remix-tab-icon">📜</text><text>金句卡片</text>
     </view>
+    <view class="remix-tab remix-tab-action" bindtap="openStickerEditor">
+      <text class="remix-tab-icon">🖍️</text><text>贴纸修图</text>
+    </view>
   </view>
 
   <!-- ================= 模式 1: 视频转动图 ================= -->
@@ -56,7 +59,7 @@
     <view wx:if="{{!videoPath}}" class="upload-zone" bindtap="chooseVideo">
       <text class="upload-icon">📹</text>
       <text class="upload-title">选择或拍摄视频</text>
-      <text class="upload-sub">支持 MP4、MOV (最长支持100MB长视频上传截取)</text>
+      <text class="upload-sub">支持 MP4、MOV（单次最多截取 10 秒，文件不超过 100MB）</text>
     </view>
     <view wx:else class="selected-wrap">
       <video class="preview-video" src="{{videoPath}}" controls></video>
@@ -74,7 +77,7 @@
       </view>
       <slider
         min="0.0"
-        max="30.0"
+        max="{{videoStartMax}}"
         step="0.5"
         value="{{videoStartTime}}"
         bindchanging="onVideoStartTimeChange"
@@ -92,7 +95,7 @@
       </view>
       <slider
         min="1.0"
-        max="6.0"
+        max="{{videoMaxDuration}}"
         step="0.5"
         value="{{videoDuration}}"
         bindchanging="onVideoDurationChange"
@@ -104,8 +107,37 @@
 
     <!-- 底部字幕输入 (简洁经典样式) -->
     <view class="form-item-remix">
-      <text class="form-label-remix">底部字幕 <text class="optional-label">选填</text></text>
+      <text class="form-label-remix">画面内字幕 <text class="optional-label">默认黑色</text></text>
       <input class="form-input-remix" placeholder="例如：听懂掌声、收到、冲鸭" value="{{captionText}}" bindinput="onInputCaption" maxlength="80" />
+    </view>
+    <view class="caption-options-remix">
+      <view class="caption-option-row">
+        <text class="caption-option-label">位置</text>
+        <view class="caption-option-chips">
+          <view class="caption-chip {{captionPos === 'bottom' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="bottom">下方</view>
+          <view class="caption-chip {{captionPos === 'top' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="top">上方</view>
+          <view class="caption-chip {{captionPos === 'center' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="center">居中</view>
+          <view class="caption-chip {{captionPos === 'top-left' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="top-left">左上</view>
+          <view class="caption-chip {{captionPos === 'bottom-right' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="bottom-right">右下</view>
+        </view>
+      </view>
+      <view class="caption-option-row">
+        <text class="caption-option-label">字号 {{captionFontSize}}</text>
+        <slider class="caption-option-slider" min="16" max="48" step="2" value="{{captionFontSize}}" bindchanging="onCaptionFontSizeChange" bindchange="onCaptionFontSizeChange" block-size="14" activeColor="#4f46e5" />
+      </view>
+      <view class="caption-option-row">
+        <text class="caption-option-label">颜色</text>
+        <view class="caption-color-chips">
+          <view class="caption-color-chip dark {{captionColor === '#1e293b' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#1e293b"></view>
+          <view class="caption-color-chip light {{captionColor === '#ffffff' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#ffffff"></view>
+          <view class="caption-color-chip red {{captionColor === '#ef4444' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#ef4444"></view>
+          <view class="caption-color-chip blue {{captionColor === '#3b82f6' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#3b82f6"></view>
+        </view>
+      </view>
+      <view class="caption-option-row">
+        <text class="caption-option-label">透明度 {{captionOpacity}}</text>
+        <slider class="caption-option-slider" min="0.2" max="1" step="0.1" value="{{captionOpacity}}" bindchanging="onCaptionOpacityChange" bindchange="onCaptionOpacityChange" block-size="14" activeColor="#4f46e5" />
+      </view>
     </view>
 
     <button class="btn-primary btn-convert" bindtap="convertVideoToGif" loading="{{isConverting}}" disabled="{{isConverting}}">
@@ -154,9 +186,8 @@
       <text class="form-label-remix">目标体积限制</text>
       <view class="compress-kb-group">
         <view class="kb-chip {{compressTargetKb === 300 ? 'active' : ''}}" bindtap="setCompressTargetKb" data-kb="300">极速 300KB</view>
-        <view class="kb-chip {{compressTargetKb === 500 ? 'active' : ''}}" bindtap="setCompressTargetKb" data-kb="500">微信推荐 500KB</view>
+        <view class="kb-chip {{compressTargetKb === 500 ? 'active' : ''}}" bindtap="setCompressTargetKb" data-kb="500">稳妥兼容 500KB</view>
         <view class="kb-chip {{compressTargetKb === 1000 ? 'active' : ''}}" bindtap="setCompressTargetKb" data-kb="1000">高清 1MB</view>
-        <view class="kb-chip {{compressTargetKb === 2000 ? 'active' : ''}}" bindtap="setCompressTargetKb" data-kb="2000">宽松 2MB</view>
       </view>
     </view>
 
@@ -373,6 +404,43 @@
       </view>
     </view>
 
+    <view class="card-layout-options">
+      <view class="slider-label-row">
+        <text class="form-label-remix">字号 {{cardFontSize}}</text>
+        <slider min="20" max="56" step="2" value="{{cardFontSize}}" bindchanging="onCardFontSizeChange" bindchange="onCardFontSizeChange" block-size="14" activeColor="#4f46e5" />
+      </view>
+      <view class="slider-label-row">
+        <text class="form-label-remix">左右边距 {{cardPaddingX}}</text>
+        <slider min="16" max="160" step="4" value="{{cardPaddingX}}" bindchanging="onCardPaddingXChange" bindchange="onCardPaddingXChange" block-size="14" activeColor="#4f46e5" />
+      </view>
+      <view class="slider-label-row">
+        <text class="form-label-remix">上下边距 {{cardPaddingY}}</text>
+        <slider min="16" max="160" step="4" value="{{cardPaddingY}}" bindchanging="onCardPaddingYChange" bindchange="onCardPaddingYChange" block-size="14" activeColor="#4f46e5" />
+      </view>
+      <view class="card-align-row">
+        <text class="form-label-remix">对齐</text>
+        <view class="caption-option-chips">
+          <view class="caption-chip {{cardAlign === 'left' ? 'active' : ''}}" bindtap="setCardAlign" data-align="left">左对齐</view>
+          <view class="caption-chip {{cardAlign === 'center' ? 'active' : ''}}" bindtap="setCardAlign" data-align="center">居中</view>
+          <view class="caption-chip {{cardAlign === 'right' ? 'active' : ''}}" bindtap="setCardAlign" data-align="right">右对齐</view>
+        </view>
+      </view>
+      <view class="card-align-row">
+        <text class="form-label-remix">文字色</text>
+        <view class="caption-color-chips">
+          <view class="caption-color-chip dark {{cardTextColor === '#0f172a' ? 'active' : ''}}" bindtap="setCardColor" data-type="text" data-color="#0f172a"></view>
+          <view class="caption-color-chip red {{cardTextColor === '#dc2626' ? 'active' : ''}}" bindtap="setCardColor" data-type="text" data-color="#dc2626"></view>
+          <view class="caption-color-chip blue {{cardTextColor === '#2563eb' ? 'active' : ''}}" bindtap="setCardColor" data-type="text" data-color="#2563eb"></view>
+        </view>
+        <text class="form-label-remix">背景色</text>
+        <view class="caption-color-chips">
+          <view class="caption-color-chip light {{cardBgColor === '#ffffff' ? 'active' : ''}}" bindtap="setCardColor" data-type="bg" data-color="#ffffff"></view>
+          <view class="caption-color-chip dark {{cardBgColor === '#18181b' ? 'active' : ''}}" bindtap="setCardColor" data-type="bg" data-color="#18181b"></view>
+          <view class="caption-color-chip red {{cardBgColor === '#fff1f2' ? 'active' : ''}}" bindtap="setCardColor" data-type="bg" data-color="#fff1f2"></view>
+        </view>
+      </view>
+    </view>
+
     <button class="btn-primary btn-convert" bindtap="executeGenerateCard" loading="{{isConverting}}" disabled="{{isConverting}}">
       {{isConverting ? '正在排版卡片中...' : '生成排版卡片'}}
     </button>
@@ -406,7 +474,7 @@
     <view class="compliance-list">
       <view class="compliance-item">
         <text class="compliance-dot">•</text>
-        <text><text class="compliance-emp">文件体积：</text>动图建议控制在 1MB 以内（最大勿超 2MB），过大容易发送变慢或在聊天中发送失败。</text>
+        <text><text class="compliance-emp">动图体积：</text>个人添加自定义表情，本工具严格控制在 1MB（1024KB）以内；开放平台投稿通常还有 100KB/500KB 分类限制。超过会自动压缩，如仍无法达标请减少帧数、时长或尺寸。</text>
       </view>
       <view class="compliance-item">
         <text class="compliance-dot">•</text>

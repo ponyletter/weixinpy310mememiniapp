@@ -46,6 +46,28 @@ def png_bytes(color: str = "red") -> bytes:
     return buffer.getvalue()
 
 
+def transparent_png_bytes() -> bytes:
+    buffer = io.BytesIO()
+    image = Image.new("RGBA", (96, 64), (0, 0, 0, 0))
+    image.putpixel((48, 32), (255, 0, 0, 255))
+    image.save(buffer, "PNG")
+    return buffer.getvalue()
+
+
+def animated_gif_bytes() -> bytes:
+    buffer = io.BytesIO()
+    frames = [Image.new("RGB", (96, 96), color) for color in ("red", "green", "blue")]
+    frames[0].save(
+        buffer,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=100,
+        loop=0,
+    )
+    return buffer.getvalue()
+
+
 def test_authentication_and_user_isolation(client: TestClient):
     alice, alice_headers = login(client, "alice")
     bob, _ = login(client, "bob")
@@ -67,6 +89,39 @@ def test_collection_ownership(client: TestClient):
         headers=bob_headers,
     )
     assert denied.status_code == 403
+    assert client.get(f"/api/collection/detail?collection_id={collection_id}").status_code == 404
+    assert client.get(
+        f"/api/collection/detail?collection_id={collection_id}", headers=alice_headers
+    ).status_code == 200
+
+
+def test_delete_meme_requires_owner_and_removes_unreferenced_output(client: TestClient):
+    from app.database import get_db
+
+    alice, alice_headers = login(client, "delete_owner")
+    _, bob_headers = login(client, "delete_other")
+    task_id = "a" * 32
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO meme_tasks (task_id, openid, status, progress) VALUES (?, ?, 'completed', 100)",
+            (task_id, alice),
+        )
+        conn.commit()
+    task_dir = settings.OUTPUT_DIR / task_id
+    task_dir.mkdir()
+    (task_dir / "meme_result.gif").write_bytes(b"gif")
+
+    denied = client.post(
+        "/api/meme/delete", json={"task_id": task_id}, headers=bob_headers
+    )
+    assert denied.status_code == 404
+    assert task_dir.exists()
+
+    deleted = client.post(
+        "/api/meme/delete", json={"task_id": task_id}, headers=alice_headers
+    )
+    assert deleted.status_code == 200
+    assert not task_dir.exists()
 
 
 def test_collection_list_and_detail_counts_match(client: TestClient):
@@ -287,6 +342,29 @@ def test_prompt_builder_frame_count():
     assert "4行×4列" in prompt_16
 
 
+def test_gif_assembly_handles_opaque_frames_and_compresses_to_limit(tmp_path):
+    import numpy as np
+    from app.core.sprite_processor import SpriteProcessor
+
+    frames = [
+        Image.fromarray(
+            np.random.default_rng(index).integers(0, 256, (320, 320, 3), dtype=np.uint8),
+            "RGB",
+        )
+        for index in range(4)
+    ]
+    stats = SpriteProcessor.assemble_gif(
+        frames,
+        str(tmp_path / "compressed.gif"),
+        fps=8,
+        make_transparent=False,
+        max_file_size_bytes=100_000,
+    )
+    assert stats["is_wechat_compliant"] is True
+    assert stats["compression_attempts"] > 0
+    assert stats["width"] < 320
+
+
 def test_meme_rename_and_estimate_endpoints(client: TestClient):
     openid, headers = login(client, "rename_test")
 
@@ -389,7 +467,9 @@ def test_collection_move_rename_reorder_endpoints(client: TestClient):
     assert move_res.status_code == 200
 
     # Verify detail of collection 2 contains item1
-    detail2 = client.get(f"/api/collection/detail?collection_id={col_id_2}").json()["data"]
+    detail2 = client.get(
+        f"/api/collection/detail?collection_id={col_id_2}", headers=headers
+    ).json()["data"]
     assert any(it["id"] == item1["id"] for it in detail2["items"])
 
 
@@ -432,6 +512,35 @@ def test_convert_toolkit_endpoints(client: TestClient):
     assert comp_res.status_code == 200
     assert comp_res.json()["success"] is True
 
+    alpha_res = client.post(
+        "/api/convert/compress-image",
+        files={"file": ("transparent.png", transparent_png_bytes(), "image/png")},
+        data={"target_kb": 200, "quality": 75},
+        headers=headers,
+    )
+    assert alpha_res.status_code == 200
+    assert alpha_res.json()["output_url"].endswith("compressed.png")
+
+    gif_res = client.post(
+        "/api/convert/compress-image",
+        files={"file": ("animated.gif", animated_gif_bytes(), "image/gif")},
+        data={"target_kb": 2000, "quality": 75},
+        headers=headers,
+    )
+    assert gif_res.status_code == 200
+    gif_data = gif_res.json()
+    assert gif_data["target_kb"] == settings.WECHAT_GIF_MAX_BYTES // 1024
+    assert gif_data["requested_target_kb"] == 2000
+    assert gif_data["file_size_bytes"] <= settings.WECHAT_GIF_MAX_BYTES
+
+    invalid_target = client.post(
+        "/api/convert/compress-image",
+        files={"file": ("orig.png", png_bytes("green"), "image/png")},
+        data={"target_kb": 2},
+        headers=headers,
+    )
+    assert invalid_target.status_code == 400
+
     # 3. Test text-to-image
     card_res = client.post(
         "/api/convert/text-to-image",
@@ -441,6 +550,28 @@ def test_convert_toolkit_endpoints(client: TestClient):
     assert card_res.status_code == 200
     assert card_res.json()["success"] is True
     assert "image_url" in card_res.json()
+
+    custom_card = client.post(
+        "/api/convert/text-to-image",
+        data={
+            "text": "自定义边距和对齐",
+            "align": "center",
+            "padding_x": 80,
+            "padding_y": 64,
+            "text_color": "#0f172a",
+            "background_color": "#ffffff",
+        },
+        headers=headers,
+    )
+    assert custom_card.status_code == 200
+    assert custom_card.json()["success"] is True
+
+    invalid_card = client.post(
+        "/api/convert/text-to-image",
+        data={"text": "测试", "align": "diagonal"},
+        headers=headers,
+    )
+    assert invalid_card.status_code == 400
 
 
 def test_image_matting_and_watermark_options(client: TestClient):
@@ -466,4 +597,3 @@ def test_image_matting_and_watermark_options(client: TestClient):
     )
     assert mat_trans_res.status_code == 200
     assert mat_trans_res.json()["success"] is True
-

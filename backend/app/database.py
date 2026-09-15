@@ -730,11 +730,23 @@ def delete_meme_task(task_id: str, openid: str = "") -> bool:
     """从历史创作库中删除指定动图作品"""
     with get_db() as conn:
         if openid:
-            conn.execute("DELETE FROM meme_tasks WHERE task_id = ? AND openid = ?", (task_id, openid))
+            cursor = conn.execute(
+                "DELETE FROM meme_tasks WHERE task_id = ? AND openid = ?", (task_id, openid)
+            )
         else:
-            conn.execute("DELETE FROM meme_tasks WHERE task_id = ?", (task_id,))
+            cursor = conn.execute("DELETE FROM meme_tasks WHERE task_id = ?", (task_id,))
         conn.commit()
-    return True
+    return cursor.rowcount > 0
+
+
+def meme_task_output_is_referenced(task_id: str) -> bool:
+    """判断作品文件是否仍被合集引用，避免删除历史记录时破坏合集。"""
+    marker = f"%/outputs/{task_id}/%"
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM collection_items WHERE gif_url LIKE ? LIMIT 1", (marker,)
+        ).fetchone()
+    return row is not None
 
 def rename_meme_task(task_id: str, title: str, openid: str = "") -> bool:
     """修改历史作品的标题或备注"""
@@ -782,7 +794,7 @@ def move_collection_item(item_id: int, target_collection_id: str, openid: str = 
 
         # 验证当前表情存在且属于当前用户
         cursor.execute('''
-            SELECT ci.collection_id, c.openid 
+            SELECT ci.collection_id, ci.gif_url, c.openid
             FROM collection_items ci
             JOIN collections c ON ci.collection_id = c.collection_id
             WHERE ci.id = ?
@@ -792,6 +804,13 @@ def move_collection_item(item_id: int, target_collection_id: str, openid: str = 
             raise HTTPException(status_code=404, detail="表情条目不存在")
         if openid and src_item["openid"] != openid:
             raise HTTPException(status_code=403, detail="无权操作该表情")
+        if src_item["collection_id"] != target_collection_id:
+            cursor.execute(
+                "SELECT 1 FROM collection_items WHERE collection_id = ? AND gif_url = ? LIMIT 1",
+                (target_collection_id, src_item["gif_url"]),
+            )
+            if cursor.fetchone():
+                raise HTTPException(status_code=409, detail="目标合集已存在此表情")
 
         cursor.execute("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM collection_items WHERE collection_id = ?", (target_collection_id,))
         next_order = cursor.fetchone()[0]
@@ -833,6 +852,14 @@ def reorder_collection_items(collection_id: str, item_ids: List[int], openid: st
             raise HTTPException(status_code=403, detail="官方精选合集不可排序")
         if openid and col["openid"] != openid:
             raise HTTPException(status_code=403, detail="无权排序该合集")
+        if len(item_ids) != len(set(item_ids)):
+            raise HTTPException(status_code=400, detail="排序条目不能重复")
+        rows = cursor.execute(
+            "SELECT id FROM collection_items WHERE collection_id = ?", (collection_id,)
+        ).fetchall()
+        existing_ids = {row["id"] for row in rows}
+        if set(item_ids) != existing_ids:
+            raise HTTPException(status_code=400, detail="排序条目必须完整匹配当前合集")
         for idx, i_id in enumerate(item_ids, start=1):
             cursor.execute("UPDATE collection_items SET sort_order = ? WHERE id = ? AND collection_id = ?", (idx, i_id, collection_id))
         conn.commit()
@@ -908,6 +935,16 @@ def get_collection_detail(collection_id: str) -> Optional[Dict[str, Any]]:
         col["cover_url"] = get_fast_thumb_url(col.get("cover_url") or "")
         col["created_at"] = format_datetime_china(col.get("created_at"))
         return col
+
+
+def get_collection_visibility(collection_id: str) -> Optional[Dict[str, Any]]:
+    """读取合集访问控制字段，不触发浏览量统计或加载条目内容。"""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT collection_id, openid, is_public FROM collections WHERE collection_id = ?",
+            (collection_id,),
+        ).fetchone()
+    return dict(row) if row else None
 
 def get_user_collections(openid: str) -> List[Dict[str, Any]]:
     with get_db() as conn:

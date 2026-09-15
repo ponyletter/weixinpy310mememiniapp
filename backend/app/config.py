@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     MAX_IMAGE_PIXELS: int = 25_000_000
     MAX_GIF_FRAMES: int = 120
     MAX_IMAGES_PER_GIF: int = 9
+    # 个人微信自定义 GIF 的硬上限；超过后不返回不可直接使用的成品。
+    WECHAT_GIF_MAX_BYTES: int = 1024 * 1024
     RATE_LIMIT_WINDOW_SECONDS: int = 60
     RATE_LIMIT_GENERAL: int = 120
     RATE_LIMIT_EXPENSIVE: int = 10
