@@ -1,8 +1,8 @@
 """Safe, delayed cleanup for temporary processing artifacts.
 
-Successful user outputs are intentionally excluded from age-based cleanup.  The
-cleanup job only removes raw video inputs, staged PNGs, and failed task
-directories after a grace period.
+Successful user results and original sprite images are retained. Frames, ZIP
+packages, thumbnails, debug images, and uploaded videos are temporary and are
+removed after a grace period.
 """
 
 import logging
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 FAILED_MARKER = ".cleanup_failed"
 
 # These files represent a usable result and must never be removed by the
-# background cleanup job.  A task directory containing one of them is retained
+# background cleanup job. A task directory containing one of them is retained
 # even when a later optional step fails.
 SUCCESS_ARTIFACT_NAMES = frozenset({
     "meme_result.gif",
@@ -27,9 +27,8 @@ SUCCESS_ARTIFACT_NAMES = frozenset({
     "card.png",
     "matting_result.png",
     "stitched.jpg",
-    "thumb.jpg",
-    "frames_pack.zip",
 })
+PRESERVED_ARTIFACT_NAMES = SUCCESS_ARTIFACT_NAMES | frozenset({"input_sprite.png"})
 
 
 def mark_failed_task_dir(task_dir: Path, reason: str = "") -> None:
@@ -50,7 +49,33 @@ def _is_old(path: Path, cutoff: float) -> bool:
 
 
 def _has_success_artifact(task_dir: Path) -> bool:
-    return any((task_dir / name).is_file() for name in SUCCESS_ARTIFACT_NAMES) or (task_dir / "frames").is_dir()
+    return any((task_dir / name).is_file() for name in SUCCESS_ARTIFACT_NAMES)
+
+
+def _cleanup_old_intermediates(task_dir: Path, cutoff: float) -> tuple[int, int]:
+    """Delete expired temporary files, returning (all_files, input_videos)."""
+    removed = 0
+    removed_inputs = 0
+    for path in sorted(task_dir.rglob("*"), key=lambda item: len(item.parts), reverse=True):
+        if (
+            path.is_file()
+            and path.name != FAILED_MARKER
+            and path.name not in PRESERVED_ARTIFACT_NAMES
+            and _is_old(path, cutoff)
+        ):
+            try:
+                path.unlink()
+                removed += 1
+                if path.name.startswith("input_video."):
+                    removed_inputs += 1
+            except OSError:
+                logger.debug("Unable to remove temporary artifact: %s", path, exc_info=True)
+        elif path.is_dir():
+            try:
+                path.rmdir()
+            except OSError:
+                pass
+    return removed, removed_inputs
 
 
 def _cleanup_staged_images(cutoff: float) -> int:
@@ -79,6 +104,7 @@ def cleanup_stale_artifacts(now: float | None = None) -> dict[str, int]:
     current_time = now if now is not None else time.time()
     cutoff = current_time - max(60, settings.TEMP_ARTIFACT_TTL_SECONDS)
     removed_inputs = 0
+    removed_intermediates = 0
     removed_failed_tasks = 0
     removed_staged_images = _cleanup_staged_images(cutoff)
 
@@ -86,6 +112,7 @@ def cleanup_stale_artifacts(now: float | None = None) -> dict[str, int]:
     if not output_root.is_dir():
         return {
             "input_videos": removed_inputs,
+            "intermediate_files": removed_intermediates,
             "failed_tasks": removed_failed_tasks,
             "staged_images": removed_staged_images,
         }
@@ -94,15 +121,9 @@ def cleanup_stale_artifacts(now: float | None = None) -> dict[str, int]:
         if not task_dir.is_dir() or not task_dir.name:
             continue
 
-        # Successful GIF/image outputs stay in place; only the original video
-        # upload is disposable after the grace period.
-        for input_video in task_dir.glob("input_video.*"):
-            if _is_old(input_video, cutoff):
-                try:
-                    input_video.unlink()
-                    removed_inputs += 1
-                except OSError:
-                    logger.debug("Unable to remove input video: %s", input_video, exc_info=True)
+        cleaned, cleaned_inputs = _cleanup_old_intermediates(task_dir, cutoff)
+        removed_intermediates += cleaned
+        removed_inputs += cleaned_inputs
 
         marker = task_dir / FAILED_MARKER
         if marker.is_file() and _is_old(marker, cutoff):
@@ -125,6 +146,7 @@ def cleanup_stale_artifacts(now: float | None = None) -> dict[str, int]:
 
     return {
         "input_videos": removed_inputs,
+        "intermediate_files": removed_intermediates,
         "failed_tasks": removed_failed_tasks,
         "staged_images": removed_staged_images,
     }

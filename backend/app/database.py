@@ -3,10 +3,9 @@ import datetime
 import uuid
 from typing import Optional, List, Dict, Any
 from zoneinfo import ZoneInfo
-from urllib.parse import urlsplit
 from fastapi import HTTPException
 from app.config import settings
-from app.r2_storage import is_public_r2_url, task_public_url
+from app.r2_storage import is_public_r2_url
 
 
 CHINA_TIMEZONE = ZoneInfo("Asia/Shanghai")
@@ -901,16 +900,12 @@ def add_item_to_collection(collection_id: str, gif_url: str, title: str = "", op
     return {"id": item_id, "collection_id": collection_id, "gif_url": gif_url, "title": title}
 
 def get_fast_thumb_url(gif_url: str) -> str:
-    """获取表情或封面的极速轻量静态缩略图 (~7KB)，比 500KB 动图提速 50 倍以上"""
+    """返回可直接展示的结果图；R2 模式只保留最终成品，不虚构缩略图地址。"""
     if not gif_url:
         return ""
     if is_public_r2_url(gif_url):
-        marker = f"/{settings.R2_TASK_PREFIX.strip('/')}/"
-        path = urlsplit(gif_url).path
-        if marker in path:
-            remainder = path.split(marker, 1)[1].split("/", 1)
-            if len(remainder) == 2 and remainder[0] and remainder[1]:
-                return task_public_url(remainder[0], "thumb.jpg")
+        # R2 intentionally keeps only the source and final artifact; do not
+        # return a thumbnail URL that would point to a non-existent object.
         return gif_url
     if "/outputs/" in gif_url:
         try:

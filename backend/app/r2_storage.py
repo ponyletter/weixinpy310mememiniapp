@@ -18,7 +18,20 @@ from app.config import settings
 
 
 logger = logging.getLogger(__name__)
-R2_EXCLUDED_FILE_NAMES = frozenset({".cleanup_failed"})
+
+# Only source material and final deliverables are durable objects.  Frame PNGs,
+# ZIP packages, thumbnails, debug images, input videos and cleanup markers are
+# deliberately excluded so a shared bucket is not filled by intermediates.
+R2_FINAL_ARTIFACT_NAMES = frozenset({
+    "meme_result.gif",
+    "compressed.gif",
+    "compressed.jpg",
+    "compressed.png",
+    "card.png",
+    "matting_result.png",
+    "stitched.jpg",
+})
+R2_SOURCE_ARTIFACT_NAMES = frozenset({"input_sprite.png"})
 
 
 def is_r2_enabled() -> bool:
@@ -81,6 +94,18 @@ def _upload_file(client, path: Path, bucket: str, key: str) -> None:
     )
 
 
+def cleanup_local_intermediates(task_dir: Path) -> None:
+    """Remove non-durable processing files after a successful R2 publish."""
+    for path in sorted(task_dir.rglob("*"), key=lambda item: len(item.parts), reverse=True):
+        if path.is_file() and path.name not in R2_FINAL_ARTIFACT_NAMES | R2_SOURCE_ARTIFACT_NAMES:
+            path.unlink(missing_ok=True)
+        elif path.is_dir():
+            try:
+                path.rmdir()
+            except OSError:
+                pass
+
+
 async def publish_task_directory(task_id: str, task_dir: Path) -> dict[str, str]:
     """Upload every completed task artifact and return relative-path URLs.
 
@@ -95,8 +120,7 @@ async def publish_task_directory(task_id: str, task_dir: Path) -> dict[str, str]
     files = sorted(
         path for path in task_dir.rglob("*")
         if path.is_file()
-        and path.name not in R2_EXCLUDED_FILE_NAMES
-        and not path.name.startswith("input_video.")
+        and path.name in R2_FINAL_ARTIFACT_NAMES | R2_SOURCE_ARTIFACT_NAMES
     )
     if not files:
         raise RuntimeError(f"R2 发布失败：任务目录为空 ({task_id})")
@@ -142,11 +166,11 @@ def rewrite_output_urls(value: Any, task_id: str, published: dict[str, str]) -> 
     local_prefix = f"/outputs/{task_id}/"
     if isinstance(value, str) and value.startswith(local_prefix):
         relative = value[len(local_prefix):]
-        return published.get(relative, value)
+        return published.get(relative, "")
     if isinstance(value, dict):
         return {key: rewrite_output_urls(item, task_id, published) for key, item in value.items()}
     if isinstance(value, list):
-        return [rewrite_output_urls(item, task_id, published) for item in value]
+        return [rewritten for item in value if (rewritten := rewrite_output_urls(item, task_id, published))]
     if isinstance(value, tuple):
         return tuple(rewrite_output_urls(item, task_id, published) for item in value)
     return value
@@ -154,4 +178,6 @@ def rewrite_output_urls(value: Any, task_id: str, published: dict[str, str]) -> 
 
 async def publish_and_rewrite(task_id: str, task_dir: Path, payload: Any) -> Any:
     published = await publish_task_directory(task_id, task_dir)
+    if published:
+        await asyncio.to_thread(cleanup_local_intermediates, task_dir)
     return rewrite_output_urls(payload, task_id, published)

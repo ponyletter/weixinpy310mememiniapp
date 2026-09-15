@@ -25,7 +25,13 @@ from app.database import (
 from app.security import CurrentOpenid, require_same_user
 from app.storage_cleanup import mark_failed_task_dir
 from app.upload_utils import open_validated_image, read_limited_upload
-from app.r2_storage import is_public_r2_url, publish_and_rewrite, task_public_url
+from app.r2_storage import (
+    R2_FINAL_ARTIFACT_NAMES,
+    R2_SOURCE_ARTIFACT_NAMES,
+    is_public_r2_url,
+    is_r2_enabled,
+    publish_and_rewrite,
+)
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api", tags=["Meme GIF"])
@@ -346,14 +352,17 @@ async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path) -> bool:
     返回 True 代表目标节点已经同步完成，未配置同步时也视为成功。
     """
     try:
+        durable_names = R2_FINAL_ARTIFACT_NAMES | R2_SOURCE_ARTIFACT_NAMES
+        files = sorted(
+            path for path in task_dir.rglob("*")
+            if path.is_file() and (not is_r2_enabled() or path.name in durable_names)
+        )
         local_root = Path(settings.OUTPUT_SYNC_LOCAL_DIR) if settings.OUTPUT_SYNC_LOCAL_DIR else None
         local_target = local_root / task_id if local_root else None
         if local_root:
             local_root.mkdir(parents=True, exist_ok=True)
             if local_target.resolve() != task_dir.resolve():
-                for source in task_dir.rglob("*"):
-                    if not source.is_file():
-                        continue
+                for source in files:
                     destination = local_target / source.relative_to(task_dir)
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(str(source), str(destination))
@@ -371,14 +380,25 @@ async def sync_task_outputs_to_domestic(task_id: str, task_dir: Path) -> bool:
         if proc.returncode != 0:
             return False
 
-        # 同步 GIF、缩略图、原始雪碧图、ZIP 和逐帧预览，保证国内节点
-        # 与当前任务目录一致，而不是只同步其中两个文件。
-        proc2 = await asyncio.create_subprocess_exec(
-            "scp", "-q", "-r", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes",
-            str(task_dir / "."), remote_dest
-        )
-        await proc2.wait()
-        return proc2.returncode == 0
+        if not is_r2_enabled():
+            proc2 = await asyncio.create_subprocess_exec(
+                "scp", "-q", "-r", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes",
+                str(task_dir / "."), remote_dest,
+            )
+            await proc2.wait()
+            return proc2.returncode == 0
+
+        # R2 启用时只同步源图和最终成品，避免把视频、逐帧 PNG、ZIP
+        # 和缩略图复制到国内服务器；R2 未启用时保留原有全量同步兼容性。
+        for source in files:
+            proc2 = await asyncio.create_subprocess_exec(
+                "scp", "-q", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes",
+                str(source), f"{remote_dest}{source.name}",
+            )
+            await proc2.wait()
+            if proc2.returncode != 0:
+                return False
+        return True
     except Exception as e:
         logger.warning("[%s] failed to sync output to domestic node: %s", task_id, e)
         return False
@@ -568,7 +588,7 @@ async def run_generate_pipeline(
             f_clean.save(f_thumb_path, format="PNG")
             frame_preview_urls.append(f"/outputs/{task_id}/frames/frame_{idx:02d}.png")
 
-        # 生成静态快速缩略图 thumb.jpg (160x160 JPEG, 仅~8KB，极大提升相册与列表加载速度)
+        # 生成静态缩略图供旧版本地回退使用；R2 发布后会清理该中间文件。
         if frames:
             try:
                 frames[0].convert("RGB").resize((160, 160), Image.Resampling.LANCZOS).save(task_dir / "thumb.jpg", format="JPEG", quality=80)
@@ -590,7 +610,8 @@ async def run_generate_pipeline(
         result_data = {
             "task_id": task_id,
             "gif_url": f"/outputs/{task_id}/meme_result.gif",
-            "thumb_url": f"/outputs/{task_id}/thumb.jpg",
+            # R2 仅保存源图和最终成品 GIF，不再发布缩略图；相册缩略图直接使用 GIF。
+            "thumb_url": f"/outputs/{task_id}/meme_result.gif",
             "zip_url": f"/outputs/{task_id}/frames_pack.zip",
             "input_url": f"/outputs/{task_id}/input_sprite.png",
             "caption": custom_caption,
@@ -792,12 +813,9 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
     if (task_dir / "meme_result.gif").exists():
         frames_dir = task_dir / "frames"
         use_r2 = is_public_r2_url(owner["gif_url"] or "")
-        frame_urls = [
-            task_public_url(task_id, f"frames/{f.name}") if use_r2 else f"/outputs/{task_id}/frames/{f.name}"
-            for f in sorted(frames_dir.glob("*.png"))
-        ]
+        frame_urls = [f"/outputs/{task_id}/frames/{f.name}" for f in sorted(frames_dir.glob("*.png"))]
         gif_url = owner["gif_url"] if use_r2 else f"/outputs/{task_id}/meme_result.gif"
-        zip_url = task_public_url(task_id, "frames_pack.zip") if use_r2 else f"/outputs/{task_id}/frames_pack.zip"
+        zip_url = f"/outputs/{task_id}/frames_pack.zip" if (task_dir / "frames_pack.zip").exists() else ""
         input_url = owner["sprite_url"] if use_r2 else f"/outputs/{task_id}/input_sprite.png"
         return {
             "code": 0,
@@ -911,12 +929,12 @@ def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
         # 格式化展示时间为中国标准时间 (CST UTC+8)，杜绝 UTC 导致的时间前移或未来时间错觉
         row["created_at"] = format_datetime_china(row.get("created_at"))
 
-        # 极速轻量缩略图 thumb_url (仅~8KB，相比动图提速50倍以上)
+        # R2 模式不再发布 thumb.jpg，相册缩略图直接使用最终 GIF。
         task_id = row.get("task_id")
         if task_id:
             thumb_path = settings.OUTPUT_DIR / task_id / "thumb.jpg"
             if is_public_r2_url(row.get("gif_url") or ""):
-                row["thumb_url"] = task_public_url(task_id, "thumb.jpg")
+                row["thumb_url"] = row.get("gif_url")
             elif thumb_path.exists():
                 row["thumb_url"] = f"/outputs/{task_id}/thumb.jpg"
             elif (settings.OUTPUT_DIR / task_id / "frames" / "frame_01.png").exists():
