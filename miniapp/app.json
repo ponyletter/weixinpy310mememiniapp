@@ -41,5 +41,11 @@
   },
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
+  "networkTimeout": {
+    "request": 120000,
+    "uploadFile": 300000,
+    "downloadFile": 120000,
+    "connectSocket": 60000
+  },
   "sitemapLocation": "sitemap.json"
 }

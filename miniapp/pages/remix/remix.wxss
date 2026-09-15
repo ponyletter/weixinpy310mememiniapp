@@ -1,26 +1,88 @@
-/* 极速二创页面样式 (对齐 index 现代清爽白风格) */
-.remix-tabs {
+/* 最近使用快捷栏目 */
+.recent-tools-card {
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+  background: #ffffff;
+  border-radius: 20rpx;
+}
+
+.recent-header {
   display: flex;
-  background: #ececf4;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.recent-title {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.recent-hint {
+  font-size: 20rpx;
+  color: #94a3b8;
+}
+
+.recent-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.recent-chips {
+  display: flex;
+  gap: 12rpx;
+}
+
+.recent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 18rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 28rpx;
+  font-size: 22rpx;
+  color: #475569;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.recent-chip.active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.recent-chip-icon {
+  font-size: 24rpx;
+}
+
+/* 8大百宝箱工具导航网格 */
+.remix-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10rpx;
+  background: #f1f5f9;
   border-radius: 22rpx;
-  padding: 6rpx;
+  padding: 10rpx;
   margin-bottom: 20rpx;
 }
 
 .remix-tab {
-  flex: 1;
   text-align: center;
   padding: 14rpx 4rpx;
-  font-size: 23rpx;
+  font-size: 22rpx;
   color: #64748b;
   font-weight: 500;
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   transition: all 0.2s ease;
   white-space: nowrap;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5rpx;
+  gap: 6rpx;
 }
 
 .remix-tab.active {
@@ -574,3 +636,225 @@
   font-weight: 700;
   color: #4f46e5;
 }
+
+/* ========== 水印与加字配置面板 ========== */
+.watermark-options-box {
+  background: #f8fafc;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 24rpx;
+  border: 1rpx solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.wm-option-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.wm-label {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #475569;
+}
+
+.wm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.wm-chip {
+  padding: 10rpx 18rpx;
+  background: #ffffff;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 12rpx;
+  font-size: 22rpx;
+  color: #334155;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.wm-chip.active {
+  background: #eef2ff;
+  border-color: #4f46e5;
+  color: #4f46e5;
+  font-weight: 700;
+  box-shadow: 0 2rpx 8rpx rgba(79, 70, 229, 0.15);
+}
+
+/* ========== 智能抠图换底选项 ========== */
+.bg-mode-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 10rpx;
+}
+
+.bg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
+  background: #f8fafc;
+  border: 1rpx solid #cbd5e1;
+  border-radius: 14rpx;
+  font-size: 23rpx;
+  color: #334155;
+  font-weight: 600;
+}
+
+.bg-chip.active {
+  background: #eef2ff;
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+.bg-color-preview {
+  width: 22rpx;
+  height: 22rpx;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.checkerboard-preview {
+  background-image: linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%);
+  background-size: 10rpx 10rpx;
+  background-position: 0 0, 0 5rpx, 5rpx -5rpx, -5rpx 0rpx;
+  border: 1rpx solid #94a3b8;
+}
+
+/* ========== 图片取色器 (RGB & HEX) ========== */
+.picker-workspace {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14rpx;
+  margin-bottom: 24rpx;
+}
+
+.picker-canvas {
+  border-radius: 16rpx;
+  border: 1rpx solid #cbd5e1;
+  box-shadow: 0 4rpx 14rpx rgba(0, 0, 0, 0.06);
+  touch-action: none;
+}
+
+.picker-hint {
+  font-size: 22rpx;
+  color: #64748b;
+  margin-top: 6rpx;
+}
+
+.picker-result-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 24rpx;
+}
+
+.color-swatch-box {
+  width: 90rpx;
+  height: 90rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid #cbd5e1;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.color-values-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.color-val-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.color-type-label {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #475569;
+  width: 64rpx;
+}
+
+.color-code-text {
+  font-size: 24rpx;
+  font-family: monospace;
+  font-weight: 600;
+  color: #0f172a;
+  flex: 1;
+}
+
+.btn-copy-color {
+  padding: 6rpx 16rpx !important;
+  font-size: 20rpx !important;
+  border-radius: 10rpx !important;
+  background: #e0e7ff !important;
+  color: #4338ca !important;
+  border: none !important;
+}
+
+/* ========== 压缩对比卡片 ========== */
+.compress-compare-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #f0fdf4;
+  border: 1rpx solid #bbf7d0;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 24rpx;
+}
+
+.compare-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.c-title {
+  font-size: 20rpx;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.c-val {
+  font-size: 26rpx;
+  color: #334155;
+  font-weight: 700;
+}
+
+.c-val-highlight {
+  font-size: 30rpx;
+  color: #16a34a;
+  font-weight: 800;
+}
+
+.compare-arrow {
+  font-size: 32rpx;
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.compare-badge {
+  background: #dcfce7;
+  color: #15803d;
+  border-radius: 20rpx;
+  padding: 6rpx 16rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+

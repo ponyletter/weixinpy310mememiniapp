@@ -13,6 +13,8 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel, Field
 from PIL import Image, ImageDraw, ImageFont
 import imageio
+import cv2
+import numpy as np
 
 from app.config import settings
 from app.security import CurrentOpenid
@@ -77,6 +79,10 @@ async def video_to_gif(
     fps: int = Form(10),
     width: int = Form(240),
     caption: str = Form(""),
+    caption_pos: str = Form("bottom"),
+    font_size: int = Form(24),
+    opacity: float = Form(1.0),
+    color: str = Form("#ffffff"),
 ):
     """【聊天视频直转动图】利用本地 ffmpeg 高质量双通道调色板生成微信合规 GIF"""
     if not 1 <= fps <= 20 or not 64 <= width <= 720:
@@ -130,9 +136,16 @@ async def video_to_gif(
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail="服务器未安装 FFmpeg，暂时无法处理视频") from exc
 
-    # 如果需要加字幕
+    # 如果需要加字幕或水印
     if caption.strip() and output_gif_path.exists():
-        _add_caption_to_gif(output_gif_path, caption.strip())
+        _add_caption_to_gif(
+            output_gif_path,
+            caption.strip(),
+            pos=caption_pos,
+            font_size=font_size,
+            opacity=opacity,
+            color=color,
+        )
 
     file_size_kb = round(output_gif_path.stat().st_size / 1024, 1)
     return {
@@ -210,8 +223,12 @@ async def edit_caption(
     gif_file: Optional[UploadFile] = File(None),
     gif_url: Optional[str] = Form(None),
     caption: str = Form(""),
+    caption_pos: str = Form("bottom"),
+    font_size: int = Form(24),
+    opacity: float = Form(1.0),
+    color: str = Form("#ffffff"),
 ):
-    """【表情包改字与二创】为已有动图重新覆盖/追加爆笑字幕"""
+    """【表情包改字与水印二创】为已有动图重新覆盖/追加爆笑字幕或水印"""
     if not caption.strip():
         raise HTTPException(status_code=400, detail="新文字不能为空")
     if len(caption) > 80:
@@ -240,14 +257,22 @@ async def edit_caption(
     else:
         raise HTTPException(status_code=400, detail="请上传动图或提供动图 URL")
 
-    _add_caption_to_gif(target_gif, caption.strip())
+    _add_caption_to_gif(
+        target_gif,
+        caption.strip(),
+        pos=caption_pos,
+        font_size=font_size,
+        opacity=opacity,
+        color=color,
+    )
     file_size_kb = round(target_gif.stat().st_size / 1024, 1)
     return {
         "success": True,
         "task_id": task_id,
         "gif_url": f"/outputs/{task_id}/meme_result.gif",
         "file_size_kb": file_size_kb,
-        "new_caption": caption.strip()
+        "new_caption": caption.strip(),
+        "caption_pos": caption_pos
     }
 
 @router.post("/caption-suggest")
@@ -298,58 +323,122 @@ def caption_suggest(keyword: str = Form(""), style: str = Form("all")):
         "suggestions": results
     }
 
-def _add_caption_to_gif(gif_path: Path, caption: str):
-    """在 GIF 每帧下方增加独立的白色文字区，避免覆盖原图内容。"""
+def _hex_to_rgba(hex_code: str, opacity: float = 1.0) -> tuple:
+    hex_code = hex_code.lstrip("#")
+    if len(hex_code) == 3:
+        hex_code = "".join([c * 2 for c in hex_code])
+    if len(hex_code) != 6:
+        return (255, 255, 255, int(255 * max(0.0, min(1.0, opacity))))
+    r = int(hex_code[0:2], 16)
+    g = int(hex_code[2:4], 16)
+    b = int(hex_code[4:6], 16)
+    return (r, g, b, int(255 * max(0.0, min(1.0, opacity))))
+
+
+def _add_caption_to_gif(
+    gif_path: Path,
+    caption: str,
+    pos: str = "bottom",
+    font_size: int = 24,
+    opacity: float = 1.0,
+    color: str = "#ffffff"
+):
+    """
+    为 GIF 叠加字幕或水印：
+    pos:
+      'bottom': 底部画面内居中 (默认)
+      'top': 顶部居中
+      'center': 正中央
+      'top-left': 左上角水印
+      'bottom-right': 右下角水印
+      'banner-bottom': 经典纯白下边缘横幅
+    font_size: 16 ~ 48
+    opacity: 0.1 ~ 1.0
+    color: 十六进制色值，默认 '#ffffff'
+    """
     try:
         im = Image.open(gif_path)
         frames = []
         durations = []
 
-        font_path = settings.STATIC_DIR / "fonts" / "NotoSansSC-Bold.ttf"
-        font = None
-        if font_path.exists():
-            font = ImageFont.truetype(str(font_path), size=24)
-        else:
-            font = ImageFont.load_default()
+        f_size = max(16, min(48, int(font_size)))
+        font = _get_cjk_font(f_size, bold=True)
+
+        fill_rgba = _hex_to_rgba(color, opacity)
+        lum = 0.299 * fill_rgba[0] + 0.587 * fill_rgba[1] + 0.114 * fill_rgba[2]
+        stroke_rgba = (0, 0, 0, int(220 * max(0.2, opacity))) if lum > 128 else (255, 255, 255, int(220 * max(0.2, opacity)))
+        stroke_w = max(1, f_size // 10)
 
         for frame_idx in range(getattr(im, "n_frames", 1)):
             im.seek(frame_idx)
             frame_rgba = im.convert("RGBA")
             w, h = frame_rgba.size
 
-            # 动态字体大小，并按画布宽度将长文案拆成最多两行。
-            text_len = max(1, len(caption))
-            font_size = max(16, min(30, int(w / (text_len + 2))))
-            if font_path.exists():
-                font = ImageFont.truetype(str(font_path), size=font_size)
-
-            max_chars = max(6, int((w - 32) / max(font_size * 0.58, 1)))
+            max_chars = max(6, int((w - 24) / max(f_size * 0.58, 1)))
             lines = wrap(caption, width=max_chars, break_long_words=True, break_on_hyphens=False) or [caption]
             if len(lines) > 2:
                 lines = lines[:2]
                 lines[-1] = lines[-1][:-1].rstrip() + "…"
 
-            line_height = max(font_size + 10, 28)
-            panel_height = line_height * len(lines) + 18
-            canvas = Image.new("RGBA", (w, h + panel_height), (255, 255, 255, 255))
-            canvas.alpha_composite(frame_rgba, (0, 0))
-            draw = ImageDraw.Draw(canvas)
-            for line_idx, line in enumerate(lines):
-                bbox = draw.textbbox((0, 0), line, font=font)
-                text_w = bbox[2] - bbox[0]
-                text_h = bbox[3] - bbox[1]
-                x = (w - text_w) // 2
-                y = h + 9 + line_idx * line_height + max(0, (line_height - text_h) // 2)
-                draw.text(
-                    (x, y),
-                    line,
-                    font=font,
-                    fill=(15, 23, 42, 255),
-                    stroke_width=1,
-                    stroke_fill=(255, 255, 255, 255),
-                )
+            line_height = max(f_size + 8, 24)
+            total_text_h = line_height * len(lines)
 
-            frames.append(canvas)
+            if pos == "banner-bottom":
+                panel_height = total_text_h + 18
+                canvas = Image.new("RGBA", (w, h + panel_height), (255, 255, 255, 255))
+                canvas.alpha_composite(frame_rgba, (0, 0))
+                draw = ImageDraw.Draw(canvas)
+                for line_idx, line in enumerate(lines):
+                    bbox = draw.textbbox((0, 0), line, font=font)
+                    text_w = bbox[2] - bbox[0]
+                    x = (w - text_w) // 2
+                    y = h + 9 + line_idx * line_height
+                    draw.text((x, y), line, font=font, fill=(15, 23, 42, 255), stroke_width=1, stroke_fill=(255, 255, 255, 255))
+                frames.append(canvas)
+            else:
+                overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+                draw = ImageDraw.Draw(overlay)
+
+                if pos == "top":
+                    start_y = 12
+                elif pos == "center":
+                    start_y = max(8, (h - total_text_h) // 2)
+                elif pos == "top-left":
+                    start_y = 12
+                elif pos == "bottom-right":
+                    start_y = max(8, h - total_text_h - 14)
+                else:
+                    start_y = max(8, h - total_text_h - 14)
+
+                for line_idx, line in enumerate(lines):
+                    bbox = draw.textbbox((0, 0), line, font=font)
+                    text_w = bbox[2] - bbox[0]
+                    text_h = bbox[3] - bbox[1]
+
+                    if pos == "top-left":
+                        x = 12
+                    elif pos == "bottom-right":
+                        x = max(8, w - text_w - 12)
+                    else:
+                        x = max(4, (w - text_w) // 2)
+
+                    y = start_y + line_idx * line_height
+
+                    pill_bg = (0, 0, 0, int(85 * opacity)) if lum > 128 else (255, 255, 255, int(85 * opacity))
+                    draw.rounded_rectangle((x - 6, y - 2, x + text_w + 6, y + text_h + 3), radius=6, fill=pill_bg)
+
+                    draw.text(
+                        (x, y),
+                        line,
+                        font=font,
+                        fill=fill_rgba,
+                        stroke_width=stroke_w,
+                        stroke_fill=stroke_rgba,
+                    )
+
+                frame_rgba.alpha_composite(overlay)
+                frames.append(frame_rgba)
+
             durations.append(im.info.get("duration", 100) / 1000.0)
 
         avg_duration = sum(durations) / max(1, len(durations))
@@ -659,3 +748,96 @@ async def text_to_image(
         "width": card_w,
         "height": card_h
     }
+
+
+@router.post("/matting")
+async def image_matting(
+    current_openid: CurrentOpenid,
+    file: UploadFile = File(...),
+    bg_mode: str = Form("transparent"),
+):
+    """【智能抠图与背景替换】智能分离主体前景，支持透明底、纯白、证件红/蓝底或自定义背景色"""
+    image_bytes = await read_limited_upload(file, settings.MAX_IMAGE_UPLOAD_MB)
+    open_validated_image(image_bytes, allow_animation=False)
+
+    task_id = uuid.uuid4().hex
+    task_dir = settings.OUTPUT_DIR / task_id
+    task_dir.mkdir(parents=True, exist_ok=True)
+    out_path = task_dir / "matting_result.png"
+
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img_bgr is None:
+        raise HTTPException(status_code=400, detail="无法解析上传的图片")
+
+    h, w = img_bgr.shape[:2]
+    max_dim = 800
+    scale = 1.0
+    if max(h, w) > max_dim:
+        scale = max_dim / max(h, w)
+        work_img = cv2.resize(img_bgr, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+    else:
+        work_img = img_bgr
+
+    wh, ww = work_img.shape[:2]
+    mask = np.zeros((wh, ww), np.uint8)
+    bgdModel = np.zeros((1, 65), np.float64)
+    fgdModel = np.zeros((1, 65), np.float64)
+
+    pad_x = max(4, int(ww * 0.05))
+    pad_y = max(4, int(wh * 0.05))
+    rect = (pad_x, pad_y, ww - pad_x * 2, wh - pad_y * 2)
+
+    try:
+        cv2.grabCut(work_img, mask, rect, bgdModel, fgdModel, 3, cv2.GC_INIT_WITH_RECT)
+        alpha = np.where((mask == 2) | (mask == 0), 0, 255).astype('uint8')
+        alpha = cv2.GaussianBlur(alpha, (5, 5), 0)
+    except Exception:
+        gray = cv2.cvtColor(work_img, cv2.COLOR_BGR2GRAY)
+        _, alpha = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
+        alpha = cv2.GaussianBlur(alpha, (3, 3), 0)
+
+    if scale != 1.0:
+        alpha = cv2.resize(alpha, (w, h), interpolation=cv2.INTER_LINEAR)
+
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    fg_pil = Image.fromarray(img_rgb)
+    alpha_pil = Image.fromarray(alpha)
+
+    bg_presets = {
+        "transparent": None,
+        "white": (255, 255, 255),
+        "red": (216, 40, 33),
+        "blue": (32, 143, 229),
+        "green": (0, 255, 0),
+    }
+
+    if bg_mode == "transparent" or (bg_mode not in bg_presets and not bg_mode.startswith("#")):
+        result = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        result.paste(fg_pil, (0, 0), mask=alpha_pil)
+        result.save(out_path, format="PNG")
+    else:
+        bg_rgb = bg_presets.get(bg_mode)
+        if not bg_rgb and bg_mode.startswith("#"):
+            try:
+                bg_rgba = _hex_to_rgba(bg_mode)
+                bg_rgb = bg_rgba[:3]
+            except Exception:
+                bg_rgb = (255, 255, 255)
+        elif not bg_rgb:
+            bg_rgb = (255, 255, 255)
+
+        bg_canvas = Image.new("RGBA", (w, h), bg_rgb + (255,))
+        bg_canvas.paste(fg_pil, (0, 0), mask=alpha_pil)
+        result = bg_canvas.convert("RGB")
+        result.save(out_path, format="PNG")
+
+    file_size_kb = round(out_path.stat().st_size / 1024, 1)
+    return {
+        "success": True,
+        "task_id": task_id,
+        "output_url": f"/outputs/{task_id}/matting_result.png",
+        "file_size_kb": file_size_kb,
+        "bg_mode": bg_mode
+    }
+

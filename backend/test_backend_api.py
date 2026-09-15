@@ -441,3 +441,29 @@ def test_convert_toolkit_endpoints(client: TestClient):
     assert card_res.status_code == 200
     assert card_res.json()["success"] is True
     assert "image_url" in card_res.json()
+
+
+def test_image_matting_and_watermark_options(client: TestClient):
+    _, headers = login(client)
+    # Test matting
+    mat_res = client.post(
+        "/api/convert/matting",
+        files={"file": ("circle.png", png_bytes("red"), "image/png")},
+        data={"bg_mode": "blue"},
+        headers=headers,
+    )
+    assert mat_res.status_code == 200
+    assert mat_res.json()["success"] is True
+    assert "output_url" in mat_res.json()
+    assert mat_res.json()["bg_mode"] == "blue"
+
+    # Test matting transparent
+    mat_trans_res = client.post(
+        "/api/convert/matting",
+        files={"file": ("circle.png", png_bytes("blue"), "image/png")},
+        data={"bg_mode": "transparent"},
+        headers=headers,
+    )
+    assert mat_trans_res.status_code == 200
+    assert mat_trans_res.json()["success"] is True
+

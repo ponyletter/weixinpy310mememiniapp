@@ -36,8 +36,8 @@ class Settings(BaseSettings):
     JWT_SECRET: str = ""
     AUTH_TOKEN_TTL_SECONDS: int = 7 * 24 * 60 * 60
 
-    MAX_IMAGE_UPLOAD_MB: int = 10
-    MAX_VIDEO_UPLOAD_MB: int = 30
+    MAX_IMAGE_UPLOAD_MB: int = 25
+    MAX_VIDEO_UPLOAD_MB: int = 100
     MAX_IMAGE_PIXELS: int = 25_000_000
     MAX_GIF_FRAMES: int = 120
     MAX_IMAGES_PER_GIF: int = 9

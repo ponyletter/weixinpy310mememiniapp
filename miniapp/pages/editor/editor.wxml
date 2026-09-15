@@ -71,6 +71,7 @@
     </view>
     <view class="canvas-tip">
       <text wx:if="{{isBrushActive}}" style="color: #ef4444; font-weight: 600;">涂鸦模式已开启，直接在画布上手绘涂鸦</text>
+      <text wx:elif="{{activeTab === 'mosaic'}}" style="color: #4f46e5; font-weight: 600;">马赛克模式已开启，在图片上涂抹进行打码遮挡</text>
       <text wx:elif="{{activeTab === 'crop' && cropSubTab === 'crop'}}" style="color: #4f46e5; font-weight: 600;">拖拽白框调整裁剪区域，点击“确认裁剪”生效</text>
       <text wx:elif="{{activeTab === 'crop'}}" style="color: #4f46e5; font-weight: 600;">单指可拖拽底图平移，搭配滑块缩放与调色</text>
       <text wx:else>选中贴纸/文字后可拖动、缩放或旋转</text>
@@ -128,6 +129,9 @@
       </view>
       <view class="f-tab {{activeTab === 'brush' ? 'active' : ''}}" bindtap="switchTab" data-tab="brush">
         <text>画笔</text>
+      </view>
+      <view class="f-tab {{activeTab === 'mosaic' ? 'active' : ''}}" bindtap="switchTab" data-tab="mosaic">
+        <text>🏁</text><text>马赛克</text>
       </view>
     </view>
 
@@ -398,6 +402,34 @@
           <view class="width-item {{brushWidth === 2 ? 'active' : ''}}" bindtap="selectBrushWidth" data-w="2">细</view>
           <view class="width-item {{brushWidth === 5 ? 'active' : ''}}" bindtap="selectBrushWidth" data-w="5">中</view>
           <view class="width-item {{brushWidth === 10 ? 'active' : ''}}" bindtap="selectBrushWidth" data-w="10">粗</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Tab 内容 5: 马赛克打码面板 -->
+    <view wx:if="{{activeTab === 'mosaic'}}" class="panel-content">
+      <view class="brush-top-bar">
+        <text class="mosaic-tip-text">🏁 拖动涂抹即可打码遮挡敏感区域</text>
+        <button class="btn-xs" bindtap="undoMosaic">↩ 撤销</button>
+        <button class="btn-xs" bindtap="redoMosaic">↪ 前进</button>
+        <button class="btn-xs" bindtap="clearMosaic">清空</button>
+      </view>
+      <view class="mosaic-settings-box">
+        <view class="mosaic-row">
+          <text class="mosaic-sub-label">笔刷粗细:</text>
+          <view class="mosaic-chips">
+            <view class="mosaic-chip {{mosaicWidth === 16 ? 'active' : ''}}" bindtap="setMosaicWidth" data-w="16">细 16px</view>
+            <view class="mosaic-chip {{mosaicWidth === 28 ? 'active' : ''}}" bindtap="setMosaicWidth" data-w="28">中 28px</view>
+            <view class="mosaic-chip {{mosaicWidth === 44 ? 'active' : ''}}" bindtap="setMosaicWidth" data-w="44">粗 44px</view>
+          </view>
+        </view>
+        <view class="mosaic-row">
+          <text class="mosaic-sub-label">马赛克颗粒:</text>
+          <view class="mosaic-chips">
+            <view class="mosaic-chip {{mosaicBlockSize === 8 ? 'active' : ''}}" bindtap="setMosaicBlock" data-bs="8">精细 8px</view>
+            <view class="mosaic-chip {{mosaicBlockSize === 14 ? 'active' : ''}}" bindtap="setMosaicBlock" data-bs="14">标准 14px</view>
+            <view class="mosaic-chip {{mosaicBlockSize === 22 ? 'active' : ''}}" bindtap="setMosaicBlock" data-bs="22">重度 22px</view>
+          </view>
         </view>
       </view>
     </view>

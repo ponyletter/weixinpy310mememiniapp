@@ -60,7 +60,11 @@ Page({
 
     // 元素属性控制条 (当前选中元素)
     selectedScale: 1.0,
-    selectedRotate: 0
+    selectedRotate: 0,
+
+    // 马赛克画笔与颗粒设置
+    mosaicWidth: 28,
+    mosaicBlockSize: 14
   },
 
   onLoad(options) {
@@ -69,6 +73,8 @@ Page({
     this.elements = []; // 画布上的所有图元
     this.brushStrokes = []; // 涂鸦线条
     this.brushRedoStack = []; // 涂鸦前进/恢复历史
+    this.mosaicStrokes = []; // 马赛克涂抹线条
+    this.mosaicRedoStack = []; // 马赛克前进恢复历史
     this.elementRedoStack = []; // 图元前进/恢复历史
     this.undoStack = []; // 撤销历史
     this.bgImageObj = null;
@@ -206,6 +212,34 @@ Page({
         } catch (err) {
           console.warn('调色滤镜像素处理跳过:', err);
         }
+      }
+    }
+
+    // 2.2 绘制马赛克局部打码层
+    if (this.mosaicStrokes && this.mosaicStrokes.length > 0) {
+      for (const stroke of this.mosaicStrokes) {
+        const bs = stroke.blockSize || 14;
+        const rad = (stroke.width || 28) / 2;
+        ctx.save();
+        for (const pt of stroke.points) {
+          const minX = Math.floor((pt.x - rad) / bs) * bs;
+          const maxX = Math.floor((pt.x + rad) / bs) * bs;
+          const minY = Math.floor((pt.y - rad) / bs) * bs;
+          const maxY = Math.floor((pt.y + rad) / bs) * bs;
+
+          for (let bx = minX; bx <= maxX; bx += bs) {
+            for (let by = minY; by <= maxY; by += bs) {
+              const hash = Math.abs(Math.sin(bx * 12.9898 + by * 78.233) * 43758.5453);
+              const lum = Math.floor((hash - Math.floor(hash)) * 80) + 110;
+              ctx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
+              ctx.fillRect(bx, by, bs, bs);
+              ctx.strokeStyle = `rgba(0, 0, 0, 0.08)`;
+              ctx.lineWidth = 0.5;
+              ctx.strokeRect(bx, by, bs, bs);
+            }
+          }
+        }
+        ctx.restore();
       }
     }
 
@@ -418,6 +452,19 @@ Page({
       return;
     }
 
+    if (this.data.activeTab === 'mosaic') {
+      // 马赛克模式
+      this.currentMosaicStroke = {
+        width: this.data.mosaicWidth || 28,
+        blockSize: this.data.mosaicBlockSize || 14,
+        points: [{ x, y }]
+      };
+      this.mosaicStrokes.push(this.currentMosaicStroke);
+      this.mosaicRedoStack = [];
+      this.renderCanvas();
+      return;
+    }
+
     // 检查是否点中了当前选中元素的右上角删除按钮 (✕)
     const selectedEl = this.elements.find(el => el.id === this.data.selectedElementId);
     if (selectedEl && selectedEl._boxW) {
@@ -486,6 +533,12 @@ Page({
       return;
     }
 
+    if (this.data.activeTab === 'mosaic' && this.currentMosaicStroke) {
+      this.currentMosaicStroke.points.push({ x, y });
+      this.renderCanvas();
+      return;
+    }
+
     if (this.isBgDragging) {
       const dx = x - this.bgDragStartX;
       const dy = y - this.bgDragStartY;
@@ -511,6 +564,7 @@ Page({
     this.isDragging = false;
     this.isBgDragging = false;
     this.currentStroke = null;
+    this.currentMosaicStroke = null;
   },
 
   // --- 添加图元逻辑 ---
@@ -785,18 +839,64 @@ Page({
     wx.showToast({ title: '涂鸦已清空', icon: 'none' });
   },
 
+  // --- 马赛克打码工具设置 ---
+  setMosaicWidth(e) {
+    const w = Number(e.currentTarget.dataset.w);
+    this.setData({ mosaicWidth: w });
+  },
+
+  setMosaicBlock(e) {
+    const bs = Number(e.currentTarget.dataset.bs);
+    this.setData({ mosaicBlockSize: bs });
+  },
+
+  undoMosaic() {
+    if (this.mosaicStrokes && this.mosaicStrokes.length > 0) {
+      const stroke = this.mosaicStrokes.pop();
+      if (!this.mosaicRedoStack) this.mosaicRedoStack = [];
+      this.mosaicRedoStack.push(stroke);
+      this.renderCanvas();
+      wx.showToast({ title: '已撤销马赛克', icon: 'none', duration: 800 });
+    } else {
+      wx.showToast({ title: '无可撤销马赛克', icon: 'none' });
+    }
+  },
+
+  redoMosaic() {
+    if (this.mosaicRedoStack && this.mosaicRedoStack.length > 0) {
+      const stroke = this.mosaicRedoStack.pop();
+      this.mosaicStrokes.push(stroke);
+      this.renderCanvas();
+      wx.showToast({ title: '已恢复马赛克', icon: 'none', duration: 800 });
+    } else {
+      wx.showToast({ title: '无可恢复马赛克', icon: 'none' });
+    }
+  },
+
+  clearMosaic() {
+    if (this.mosaicStrokes && this.mosaicStrokes.length > 0) {
+      this.mosaicStrokes = [];
+      this.mosaicRedoStack = [];
+      this.renderCanvas();
+      wx.showToast({ title: '马赛克已清空', icon: 'none' });
+    }
+  },
+
   // --- 底部 Tab 切换 ---
   switchTab(e) {
     const tab = e.currentTarget.dataset.tab;
     const isBrush = tab === 'brush';
+    const isMosaic = tab === 'mosaic';
     this.setData({
       activeTab: tab,
       isBrushActive: isBrush,
-      selectedElementId: isBrush ? null : this.data.selectedElementId
+      selectedElementId: (isBrush || isMosaic) ? null : this.data.selectedElementId
     });
     this.renderCanvas();
     if (isBrush) {
       wx.showToast({ title: '已开启涂鸦模式', icon: 'none' });
+    } else if (isMosaic) {
+      wx.showToast({ title: '已开启马赛克打码', icon: 'none' });
     }
   },
 
@@ -1340,6 +1440,8 @@ Page({
           this.elements = [];
           this.brushStrokes = [];
           this.brushRedoStack = [];
+          this.mosaicStrokes = [];
+          this.mosaicRedoStack = [];
           this.elementRedoStack = [];
           this.setData({ selectedElementId: null });
           this.renderCanvas();
