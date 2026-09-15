@@ -24,16 +24,20 @@ Page({
     // 文字输入弹窗状态
     showTextModal: false,
     textInputVal: '',
-    textColor: '#ffffff',
+    textColor: '#1e293b',
     textBgColor: '#000000',
     textSize: 28,
     textHasOutline: true,
-    availableColors: ['#ffffff', '#1e293b', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'],
+    availableColors: ['#1e293b', '#ffffff', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'],
 
     // 涂鸦画笔状态
     isBrushActive: false,
-    brushColor: '#ef4444',
+    brushColor: '#1e293b',
     brushWidth: 4,
+
+    // 底图适配与裁剪控制
+    bgFitMode: 'contain', // 'contain' | 'cover'
+    bgScale: 1.0,
 
     // 元素属性控制条 (当前选中元素)
     selectedScale: 1.0,
@@ -42,6 +46,7 @@ Page({
 
   onLoad(options) {
     const src = options.src ? decodeURIComponent(options.src) : '';
+    const isCrop = options && options.mode === 'crop';
     this.elements = []; // 画布上的所有图元
     this.brushStrokes = []; // 涂鸦线条
     this.undoStack = []; // 撤销历史
@@ -55,7 +60,9 @@ Page({
     this.setData({
       bgImageSrc: src,
       canvasWidth: cWidth,
-      canvasHeight: cHeight
+      canvasHeight: cHeight,
+      activeTab: isCrop ? 'crop' : 'sticker',
+      bgFitMode: isCrop ? 'cover' : 'contain'
     });
 
     setTimeout(() => {
@@ -112,12 +119,13 @@ Page({
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
 
-    // 2. 绘制底图 (居中 Cover / Contain 适配)
+    // 2. 绘制底图 (居中 Cover / Contain 适配与缩放裁剪)
     if (this.bgImageObj) {
       const img = this.bgImageObj;
       const imgW = img.width || w;
       const imgH = img.height || h;
-      const scale = Math.min(w / imgW, h / imgH);
+      const fitRatio = this.data.bgFitMode === 'cover' ? Math.max(w / imgW, h / imgH) : Math.min(w / imgW, h / imgH);
+      const scale = fitRatio * (this.data.bgScale || 1.0);
       const drawW = imgW * scale;
       const drawH = imgH * scale;
       const drawX = (w - drawW) / 2;
@@ -204,8 +212,9 @@ Page({
       boxH = fontSize + 16;
 
       if (el.hasOutline) {
-        // 经典表情包文字黑边白字
-        ctx.strokeStyle = '#000000';
+        // 智能根据文字深浅选用描边颜色，避免深底或浅底时字迹无法辨识
+        const isDark = (el.color === '#1e293b' || el.color === '#000000');
+        ctx.strokeStyle = isDark ? '#ffffff' : '#000000';
         ctx.lineWidth = 4;
         ctx.lineJoin = 'round';
         ctx.strokeText(el.content, 0, 0);
@@ -670,18 +679,77 @@ Page({
     if (this.data.isBrushActive && this.brushStrokes.length > 0) {
       this.brushStrokes.pop();
       this.renderCanvas();
+      wx.showToast({ title: '已撤销笔画', icon: 'none', duration: 800 });
       return;
     }
     if (this.elements.length > 0) {
       this.elements.pop();
       this.setData({ selectedElementId: null });
       this.renderCanvas();
+      wx.showToast({ title: '已撤销元素', icon: 'none', duration: 800 });
     } else if (this.brushStrokes.length > 0) {
       this.brushStrokes.pop();
       this.renderCanvas();
+      wx.showToast({ title: '已撤销笔画', icon: 'none', duration: 800 });
     } else {
-      wx.showToast({ title: '已无可撤销内容', icon: 'none' });
+      wx.showToast({ title: '无可撤销内容', icon: 'none' });
     }
+  },
+
+  // --- 裁剪与底图适配控制 ---
+  setBgFitMode(e) {
+    const mode = e.currentTarget.dataset.mode;
+    this.setData({ bgFitMode: mode });
+    this.renderCanvas();
+  },
+
+  onBgScaleChange(e) {
+    const val = Number(e.detail.value);
+    this.setData({ bgScale: val });
+    this.renderCanvas();
+  },
+
+  resetCrop() {
+    this.setData({
+      bgFitMode: 'cover',
+      bgScale: 1.0
+    });
+    this.renderCanvas();
+    wx.showToast({ title: '已重置居中满幅', icon: 'success' });
+  },
+
+  // --- 保存到手机相册 ---
+  saveToAlbum() {
+    if (!this.canvas) return;
+    this.setData({ selectedElementId: null });
+    this.renderCanvas();
+
+    wx.showLoading({ title: '正在导出相册...' });
+    setTimeout(() => {
+      wx.canvasToTempFilePath({
+        canvas: this.canvas,
+        fileType: 'png',
+        quality: 1,
+        success: (res) => {
+          wx.hideLoading();
+          if (res.tempFilePath) {
+            wx.saveImageToPhotosAlbum({
+              filePath: res.tempFilePath,
+              success: () => {
+                wx.showToast({ title: '已保存至手机相册！', icon: 'success' });
+              },
+              fail: () => {
+                wx.showToast({ title: '保存失败，请授权相册权限', icon: 'none' });
+              }
+            });
+          }
+        },
+        fail: () => {
+          wx.hideLoading();
+          wx.showToast({ title: '导出失败', icon: 'none' });
+        }
+      });
+    }, 150);
   },
 
   clearAll() {

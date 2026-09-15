@@ -4,9 +4,17 @@ Page({
   data: {
     collectionId: '',
     collection: {},
+    displayItems: [],
+    searchKeyword: '',
     isOwner: false,
     detailLoading: false,
-    detailError: false
+    detailError: false,
+    showRenameModal: false,
+    targetRenameItem: null,
+    renameTitle: '',
+    showMoveModal: false,
+    targetMoveItem: null,
+    otherCollections: []
   },
 
   onLoad(options) {
@@ -91,18 +99,18 @@ Page({
               ...item,
               full_url: fullUrl,
               thumb_url: thumbUrl,
-              // 即使历史条目缺少/重复 id，也必须让每条表情拥有独立的 WXML key。
               render_key: `${item.id || item.gif_url || 'item'}-${index}`
             };
           });
-          // 详情页以实际返回的完整条目为准，避免沿用列表摘要中的旧 item_count。
           col.item_count = col.items.length;
+          this._allItems = col.items;
           this.setData({ 
             collection: col,
             isOwner: isOwner,
             detailLoading: false,
             detailError: false
           });
+          this.filterItems(this.data.searchKeyword);
           wx.setNavigationBarTitle({ title: col.title || '表情包合集' });
         } else {
           this.setData({ detailLoading: false, detailError: true });
@@ -121,6 +129,209 @@ Page({
 
   retryDetail() {
     if (this.data.collectionId) this.fetchDetail(this.data.collectionId);
+  },
+
+  // --- 搜索与过滤 ---
+  onSearchInput(e) {
+    const kw = (e.detail.value || '').trim().toLowerCase();
+    this.setData({ searchKeyword: kw });
+    this.filterItems(kw);
+  },
+
+  clearSearch() {
+    this.setData({ searchKeyword: '' });
+    this.filterItems('');
+  },
+
+  filterItems(kw) {
+    const all = this._allItems || [];
+    if (!kw) {
+      this.setData({ displayItems: all });
+    } else {
+      const filtered = all.filter(it => (it.title || '').toLowerCase().includes(kw));
+      this.setData({ displayItems: filtered });
+    }
+  },
+
+  // --- 排序上移与下移 ---
+  moveItemUp(e) {
+    const id = e.currentTarget.dataset.id;
+    const items = [...(this.data.collection.items || [])];
+    const idx = items.findIndex(it => it.id === id);
+    if (idx <= 0) return;
+    const temp = items[idx];
+    items[idx] = items[idx - 1];
+    items[idx - 1] = temp;
+    this.updateAndSyncOrder(items);
+  },
+
+  moveItemDown(e) {
+    const id = e.currentTarget.dataset.id;
+    const items = [...(this.data.collection.items || [])];
+    const idx = items.findIndex(it => it.id === id);
+    if (idx < 0 || idx >= items.length - 1) return;
+    const temp = items[idx];
+    items[idx] = items[idx + 1];
+    items[idx + 1] = temp;
+    this.updateAndSyncOrder(items);
+  },
+
+  updateAndSyncOrder(newItems) {
+    const col = { ...this.data.collection, items: newItems };
+    this._allItems = newItems;
+    this.setData({ collection: col });
+    this.filterItems(this.data.searchKeyword);
+
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+    const itemIds = newItems.map(it => it.id);
+    app.request({
+      url: `${app.globalData.baseURL}/api/collection/item/reorder`,
+      method: 'POST',
+      data: {
+        collection_id: this.data.collectionId,
+        item_ids: itemIds,
+        openid: openid
+      },
+      success: (res) => {
+        if (res.data && res.data.success) {
+          wx.showToast({ title: '排序已更新', icon: 'success', duration: 800 });
+        }
+      }
+    });
+  },
+
+  // --- 修改表情备注/改名 ---
+  openRenameModal(e) {
+    const item = e.currentTarget.dataset.item;
+    this.setData({
+      showRenameModal: true,
+      targetRenameItem: item,
+      renameTitle: item.title || ''
+    });
+  },
+
+  closeRenameModal() {
+    this.setData({ showRenameModal: false, targetRenameItem: null });
+  },
+
+  onInputRenameTitle(e) {
+    this.setData({ renameTitle: e.detail.value });
+  },
+
+  confirmRename() {
+    const item = this.data.targetRenameItem;
+    if (!item) return;
+    const newTitle = (this.data.renameTitle || '').trim();
+    if (!newTitle) {
+      wx.showToast({ title: '备注不能为空', icon: 'none' });
+      return;
+    }
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+    wx.showLoading({ title: '正在保存...' });
+    app.request({
+      url: `${app.globalData.baseURL}/api/collection/item/rename`,
+      method: 'POST',
+      data: {
+        item_id: item.id,
+        title: newTitle,
+        openid: openid
+      },
+      success: (res) => {
+        wx.hideLoading();
+        if (res.data && res.data.success) {
+          const items = (this.data.collection.items || []).map(it => it.id === item.id ? { ...it, title: newTitle } : it);
+          this._allItems = items;
+          this.setData({
+            'collection.items': items,
+            showRenameModal: false
+          });
+          this.filterItems(this.data.searchKeyword);
+          wx.showToast({ title: '修改成功', icon: 'success' });
+        } else {
+          wx.showToast({ title: (res.data && res.data.detail) || '修改失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络连接超时', icon: 'none' });
+      }
+    });
+  },
+
+  // --- 移动表情到其他合集 ---
+  openMoveModal(e) {
+    const item = e.currentTarget.dataset.item;
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+    wx.showLoading({ title: '加载合集中...' });
+    app.request({
+      url: `${app.globalData.baseURL}/api/collection/my?openid=${openid}`,
+      method: 'GET',
+      success: (res) => {
+        wx.hideLoading();
+        const list = (res.data && res.data.data) || [];
+        const others = list.filter(c => c.collection_id !== this.data.collectionId);
+        if (others.length === 0) {
+          wx.showModal({
+            title: '暂无其他合集',
+            content: '你还没有其他自建合集，可在首页生成动图并存入时新建一个合集！',
+            showCancel: false
+          });
+          return;
+        }
+        this.setData({
+          showMoveModal: true,
+          targetMoveItem: item,
+          otherCollections: others
+        });
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络连接异常', icon: 'none' });
+      }
+    });
+  },
+
+  closeMoveModal() {
+    this.setData({ showMoveModal: false, targetMoveItem: null });
+  },
+
+  confirmMoveTo(e) {
+    const targetColId = e.currentTarget.dataset.id;
+    const targetTitle = e.currentTarget.dataset.title;
+    const item = this.data.targetMoveItem;
+    if (!item || !targetColId) return;
+
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+    wx.showLoading({ title: '正在移动...' });
+    app.request({
+      url: `${app.globalData.baseURL}/api/collection/item/move`,
+      method: 'POST',
+      data: {
+        item_id: item.id,
+        target_collection_id: targetColId,
+        openid: openid
+      },
+      success: (res) => {
+        wx.hideLoading();
+        if (res.data && res.data.success) {
+          const items = (this.data.collection.items || []).filter(it => it.id !== item.id);
+          this._allItems = items;
+          this.setData({
+            'collection.items': items,
+            'collection.item_count': items.length,
+            showMoveModal: false
+          });
+          this.filterItems(this.data.searchKeyword);
+          wx.showToast({ title: `已移至【${targetTitle}】`, icon: 'success' });
+        } else {
+          wx.showToast({ title: (res.data && res.data.detail) || '移动失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络超时', icon: 'none' });
+      }
+    });
   },
 
   formatUrl(url) {

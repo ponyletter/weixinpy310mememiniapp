@@ -142,14 +142,29 @@ def init_db():
                 preset_key TEXT DEFAULT '',
                 text_bottom TEXT DEFAULT '',
                 fps INTEGER DEFAULT 8,
-                status TEXT DEFAULT 'pending',
+                status TEXT DEFAULT 'processing',
                 progress INTEGER DEFAULT 0,
                 gif_url TEXT DEFAULT '',
                 sprite_url TEXT DEFAULT '',
                 error_message TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                duration_seconds REAL DEFAULT 0.0,
+                custom_title TEXT DEFAULT '',
+                frame_count INTEGER DEFAULT 16,
+                resolution TEXT DEFAULT '240x240'
             )
         ''')
+
+        for col, col_def in [
+            ("duration_seconds", "REAL DEFAULT 0.0"),
+            ("custom_title", "TEXT DEFAULT ''"),
+            ("frame_count", "INTEGER DEFAULT 16"),
+            ("resolution", "TEXT DEFAULT '240x240'"),
+        ]:
+            try:
+                cursor.execute(f"ALTER TABLE meme_tasks ADD COLUMN {col} {col_def};")
+            except Exception:
+                pass
 
         # 7. 表情包合集表 (支持微信群分享与分类管理)
         cursor.execute('''
@@ -721,6 +736,108 @@ def delete_meme_task(task_id: str, openid: str = "") -> bool:
         conn.commit()
     return True
 
+def rename_meme_task(task_id: str, title: str, openid: str = "") -> bool:
+    """修改历史作品的标题或备注"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if openid:
+            cursor.execute("UPDATE meme_tasks SET custom_title = ? WHERE task_id = ? AND openid = ?", (title.strip(), task_id, openid))
+        else:
+            cursor.execute("UPDATE meme_tasks SET custom_title = ? WHERE task_id = ?", (title.strip(), task_id))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="作品不存在或无权修改")
+        conn.commit()
+    return True
+
+def get_estimated_generation_duration() -> float:
+    """根据近期已完成任务的实际耗时，计算动态加权平均预估秒数（平滑估计）"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT AVG(duration_seconds) FROM (
+                SELECT duration_seconds FROM meme_tasks
+                WHERE status = 'completed' AND duration_seconds IS NOT NULL AND duration_seconds > 0
+                ORDER BY created_at DESC LIMIT 10
+            )
+        ''')
+        row = cursor.fetchone()
+        if row and row[0] is not None and float(row[0]) > 0:
+            avg_sec = float(row[0])
+            return max(15.0, min(90.0, round(avg_sec, 1)))
+    return 32.0
+
+def move_collection_item(item_id: int, target_collection_id: str, openid: str = "") -> bool:
+    """将指定表情从原合集移动至新的合集"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        # 验证目标合集存在且属于当前用户
+        cursor.execute("SELECT openid, is_public FROM collections WHERE collection_id = ?", (target_collection_id,))
+        target_col = cursor.fetchone()
+        if not target_col:
+            raise HTTPException(status_code=404, detail="目标合集不存在")
+        if target_col["is_public"] == 1 or target_col["openid"] in ("official", "system"):
+            raise HTTPException(status_code=403, detail="不能移动到官方精选合集")
+        if openid and target_col["openid"] != openid:
+            raise HTTPException(status_code=403, detail="无权操作目标合集")
+
+        # 验证当前表情存在且属于当前用户
+        cursor.execute('''
+            SELECT ci.collection_id, c.openid 
+            FROM collection_items ci
+            JOIN collections c ON ci.collection_id = c.collection_id
+            WHERE ci.id = ?
+        ''', (item_id,))
+        src_item = cursor.fetchone()
+        if not src_item:
+            raise HTTPException(status_code=404, detail="表情条目不存在")
+        if openid and src_item["openid"] != openid:
+            raise HTTPException(status_code=403, detail="无权操作该表情")
+
+        cursor.execute("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM collection_items WHERE collection_id = ?", (target_collection_id,))
+        next_order = cursor.fetchone()[0]
+
+        cursor.execute("UPDATE collection_items SET collection_id = ?, sort_order = ? WHERE id = ?", (target_collection_id, next_order, item_id))
+        conn.commit()
+    return True
+
+def update_collection_item_title(item_id: int, title: str, openid: str = "") -> bool:
+    """修改合集中单张表情的备注或名称"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT c.openid, c.is_public
+            FROM collection_items ci
+            JOIN collections c ON ci.collection_id = c.collection_id
+            WHERE ci.id = ?
+        ''', (item_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="表情条目不存在")
+        if row["is_public"] == 1 or row["openid"] in ("official", "system"):
+            raise HTTPException(status_code=403, detail="官方精选表情不可修改")
+        if openid and row["openid"] != openid:
+            raise HTTPException(status_code=403, detail="无权修改该表情")
+        cursor.execute("UPDATE collection_items SET title = ? WHERE id = ?", (title.strip(), item_id))
+        conn.commit()
+    return True
+
+def reorder_collection_items(collection_id: str, item_ids: List[int], openid: str = "") -> bool:
+    """为合集内的表情列表批量重新排序"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT openid, is_public FROM collections WHERE collection_id = ?", (collection_id,))
+        col = cursor.fetchone()
+        if not col:
+            raise HTTPException(status_code=404, detail="合集不存在")
+        if col["is_public"] == 1 or col["openid"] in ("official", "system"):
+            raise HTTPException(status_code=403, detail="官方精选合集不可排序")
+        if openid and col["openid"] != openid:
+            raise HTTPException(status_code=403, detail="无权排序该合集")
+        for idx, i_id in enumerate(item_ids, start=1):
+            cursor.execute("UPDATE collection_items SET sort_order = ? WHERE id = ? AND collection_id = ?", (idx, i_id, collection_id))
+        conn.commit()
+    return True
+
 def add_item_to_collection(collection_id: str, gif_url: str, title: str = "", openid: str = "") -> Dict[str, Any]:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -781,10 +898,12 @@ def get_collection_detail(collection_id: str) -> Optional[Dict[str, Any]]:
         items = [dict(r) for r in cursor.fetchall()]
         for it in items:
             it["thumb_url"] = get_fast_thumb_url(it.get("gif_url") or "")
+            it["created_at"] = format_datetime_china(it.get("created_at"))
 
         col["items"] = items
         col["item_count"] = len(items)
         col["cover_url"] = get_fast_thumb_url(col.get("cover_url") or "")
+        col["created_at"] = format_datetime_china(col.get("created_at"))
         return col
 
 def get_user_collections(openid: str) -> List[Dict[str, Any]]:

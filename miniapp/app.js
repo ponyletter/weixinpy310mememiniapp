@@ -18,6 +18,7 @@ App({
     return {
       fastMode: true,
       resolution: '240x240',
+      frameCount: 16,
       fps: 8,
       smartCompress: true,
       loopCount: 0

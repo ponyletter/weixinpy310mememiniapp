@@ -2,13 +2,30 @@ const app = getApp();
 
 Page({
   data: {
-    tab: 'video', // 'video' | 'images' | 'caption'
+    tab: 'video', // 'video' | 'images' | 'caption' | 'stitch' | 'compress' | 'card'
     videoPath: '',
+    videoDuration: 3.0,
     multiImages: [],
     srcGifPath: '',
     captionText: '',
     isConverting: false,
-    remixResultUrl: ''
+    remixResultUrl: '',
+
+    // 4. 长图拼接
+    stitchImages: [],
+    stitchMode: 'vertical', // 'vertical' | 'horizontal' | 'subtitle'
+    subtitleRatio: 0.25,
+
+    // 5. 动图与图片瘦身
+    compressSrcPath: '',
+    compressTargetKb: 500,
+
+    // 6. 金句卡片生成器
+    cardText: '',
+    cardTheme: 'classic', // 'classic' | 'dark' | 'gold' | 'cute' | 'minimal'
+    cardTitle: '',
+    cardAuthor: '',
+    cardFontSize: 32
   },
 
   onLoad(options) {
@@ -29,6 +46,10 @@ Page({
 
   onInputCaption(e) {
     this.setData({ captionText: e.detail.value });
+  },
+
+  onVideoDurationChange(e) {
+    this.setData({ videoDuration: Number(e.detail.value) });
   },
 
   // 1. 视频转动图
@@ -64,7 +85,7 @@ Page({
       name: 'video',
       formData: {
         caption: this.data.captionText,
-        duration: 3.0,
+        duration: this.data.videoDuration || 3.0,
         fps: 10,
         width: 240
       },
@@ -221,6 +242,219 @@ Page({
         wx.hideLoading();
         this.setData({ isConverting: false });
         wx.showToast({ title: '网络超时', icon: 'none' });
+      }
+    });
+  },
+
+  // --- 4. 长图智能拼接 ---
+  chooseStitchImages() {
+    wx.chooseMedia({
+      count: 9 - this.data.stitchImages.length,
+      mediaType: ['image'],
+      success: (res) => {
+        if (res.tempFiles && res.tempFiles.length > 0) {
+          const newPaths = res.tempFiles.map(f => f.tempFilePath);
+          this.setData({
+            stitchImages: [...this.data.stitchImages, ...newPaths]
+          });
+        }
+      }
+    });
+  },
+
+  removeStitchImage(e) {
+    if (this.data.isConverting) return;
+    const index = Number(e.currentTarget.dataset.index);
+    const stitchImages = this.data.stitchImages.filter((_, i) => i !== index);
+    this.setData({ stitchImages });
+  },
+
+  setStitchMode(e) {
+    const mode = e.currentTarget.dataset.mode;
+    this.setData({ stitchMode: mode });
+  },
+
+  onSubtitleRatioChange(e) {
+    this.setData({ subtitleRatio: Number(e.detail.value) });
+  },
+
+  executeStitch() {
+    if (this.data.stitchImages.length < 2) {
+      wx.showToast({ title: '至少需要2张图片进行拼接', icon: 'none' });
+      return;
+    }
+
+    this.setData({ isConverting: true });
+    wx.showLoading({ title: '正在拼接长图...' });
+
+    // 逐张分片暂存后合并
+    const stageUploads = this.data.stitchImages.map(filePath => new Promise((resolve, reject) => {
+      app.uploadFile({
+        url: `${app.globalData.baseURL}/api/convert/images-to-gif/frame`,
+        filePath: filePath,
+        name: 'file',
+        success: (res) => {
+          try {
+            const data = JSON.parse(res.data);
+            if (res.statusCode === 200 && data.upload_id) resolve(data.upload_id);
+            else reject(new Error(data.detail || '图片上传失败'));
+          } catch (err) { reject(err); }
+        },
+        fail: reject
+      });
+    }));
+
+    Promise.all(stageUploads).then(uploadIds => {
+      app.request({
+        url: `${app.globalData.baseURL}/api/convert/stitch-images`,
+        method: 'POST',
+        header: { 'content-type': 'application/x-www-form-urlencoded' },
+        data: {
+          upload_ids: JSON.stringify(uploadIds),
+          mode: this.data.stitchMode,
+          subtitle_ratio: this.data.subtitleRatio,
+          spacing: 2
+        },
+        success: (res) => {
+          wx.hideLoading();
+          this.setData({ isConverting: false });
+          const data = res.data;
+          if (data && data.success) {
+            this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.image_url}` });
+            wx.showToast({ title: '长图拼接完成！', icon: 'success' });
+          } else {
+            wx.showToast({ title: (data && data.detail) || '拼接失败', icon: 'none' });
+          }
+        },
+        fail: () => {
+          wx.hideLoading();
+          this.setData({ isConverting: false });
+          wx.showToast({ title: '网络连接失败', icon: 'none' });
+        }
+      });
+    }).catch((err) => {
+      wx.hideLoading();
+      this.setData({ isConverting: false });
+      wx.showToast({ title: err.message || '图片上传失败', icon: 'none' });
+    });
+  },
+
+  // --- 5. 动图与图片瘦身 ---
+  chooseCompressImage() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      success: (res) => {
+        if (res.tempFiles && res.tempFiles.length > 0) {
+          this.setData({ compressSrcPath: res.tempFiles[0].tempFilePath });
+        }
+      }
+    });
+  },
+
+  clearCompressImage() {
+    this.setData({ compressSrcPath: '' });
+  },
+
+  setCompressTargetKb(e) {
+    const kb = Number(e.currentTarget.dataset.kb);
+    this.setData({ compressTargetKb: kb });
+  },
+
+  executeCompress() {
+    if (!this.data.compressSrcPath) {
+      wx.showToast({ title: '请选择需要压缩的文件', icon: 'none' });
+      return;
+    }
+
+    this.setData({ isConverting: true });
+    wx.showLoading({ title: '正在极速智能瘦身...' });
+
+    app.uploadFile({
+      url: `${app.globalData.baseURL}/api/convert/compress-image`,
+      filePath: this.data.compressSrcPath,
+      name: 'file',
+      formData: {
+        target_kb: this.data.compressTargetKb || 500
+      },
+      success: (res) => {
+        wx.hideLoading();
+        this.setData({ isConverting: false });
+        let data = res.data;
+        try { data = JSON.parse(data); } catch(e) {}
+        if (data && data.success) {
+          this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.output_url}` });
+          wx.showToast({ title: `瘦身成功！(${data.file_size_kb}KB)`, icon: 'success' });
+        } else {
+          wx.showToast({ title: (data && data.detail) || '压缩失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        this.setData({ isConverting: false });
+        wx.showToast({ title: '网络传输超时', icon: 'none' });
+      }
+    });
+  },
+
+  // --- 6. 金句梗图卡片生成器 ---
+  onInputCardText(e) {
+    this.setData({ cardText: e.detail.value });
+  },
+
+  onInputCardTitle(e) {
+    this.setData({ cardTitle: e.detail.value });
+  },
+
+  onInputCardAuthor(e) {
+    this.setData({ cardAuthor: e.detail.value });
+  },
+
+  selectCardTheme(e) {
+    const theme = e.currentTarget.dataset.theme;
+    this.setData({ cardTheme: theme });
+  },
+
+  onCardFontSizeChange(e) {
+    this.setData({ cardFontSize: Number(e.detail.value) });
+  },
+
+  executeGenerateCard() {
+    const text = (this.data.cardText || '').trim();
+    if (!text) {
+      wx.showToast({ title: '请输入金句正文', icon: 'none' });
+      return;
+    }
+
+    this.setData({ isConverting: true });
+    wx.showLoading({ title: '正在排版精美卡片...' });
+
+    app.request({
+      url: `${app.globalData.baseURL}/api/convert/text-to-image`,
+      method: 'POST',
+      header: { 'content-type': 'application/x-www-form-urlencoded' },
+      data: {
+        text: text,
+        theme: this.data.cardTheme || 'classic',
+        title: (this.data.cardTitle || '').trim(),
+        author: (this.data.cardAuthor || '').trim(),
+        font_size: this.data.cardFontSize || 32
+      },
+      success: (res) => {
+        wx.hideLoading();
+        this.setData({ isConverting: false });
+        const data = res.data;
+        if (data && data.success) {
+          this.setData({ remixResultUrl: `${app.globalData.baseURL}${data.image_url}` });
+          wx.showToast({ title: '卡片生成成功！', icon: 'success' });
+        } else {
+          wx.showToast({ title: (data && data.detail) || '生成失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        this.setData({ isConverting: false });
+        wx.showToast({ title: '网络连接超时', icon: 'none' });
       }
     });
   },

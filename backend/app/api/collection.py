@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from app.database import (
     create_collection,
     add_item_to_collection,
@@ -8,7 +8,10 @@ from app.database import (
     get_user_collections,
     get_public_collections,
     delete_collection,
-    delete_collection_item
+    delete_collection_item,
+    move_collection_item,
+    update_collection_item_title,
+    reorder_collection_items
 )
 from app.security import CurrentOpenid, require_same_user
 
@@ -39,6 +42,21 @@ class DeleteItemRequest(BaseModel):
     item_id: int
     openid: Optional[str] = ""
 
+class MoveItemRequest(BaseModel):
+    item_id: int
+    target_collection_id: str
+    openid: Optional[str] = ""
+
+class RenameItemRequest(BaseModel):
+    item_id: int
+    title: str = Field(min_length=1, max_length=80)
+    openid: Optional[str] = ""
+
+class ReorderItemsRequest(BaseModel):
+    collection_id: str
+    item_ids: List[int] = Field(min_length=1)
+    openid: Optional[str] = ""
+
 @router.post("/create")
 def create_new_collection(req: CreateCollectionRequest, current_openid: CurrentOpenid):
     """创建新的表情包合集/小抽屉"""
@@ -63,6 +81,27 @@ def delete_item(req: DeleteItemRequest, current_openid: CurrentOpenid):
     openid = require_same_user(req.openid, current_openid)
     delete_collection_item(req.item_id, openid)
     return {"success": True, "message": "表情条目已删除"}
+
+@router.post("/item/move")
+def move_item(req: MoveItemRequest, current_openid: CurrentOpenid):
+    """将表情从当前合集移动到目标合集"""
+    openid = require_same_user(req.openid, current_openid)
+    move_collection_item(req.item_id, req.target_collection_id, openid)
+    return {"success": True, "message": "表情已成功移动至新合集"}
+
+@router.post("/item/rename")
+def rename_item(req: RenameItemRequest, current_openid: CurrentOpenid):
+    """修改合集中单张表情的备注/名称"""
+    openid = require_same_user(req.openid, current_openid)
+    update_collection_item_title(req.item_id, req.title.strip(), openid)
+    return {"success": True, "message": "表情备注已更新", "new_title": req.title.strip()}
+
+@router.post("/item/reorder")
+def reorder_items(req: ReorderItemsRequest, current_openid: CurrentOpenid):
+    """合集表情自定义调整排序"""
+    openid = require_same_user(req.openid, current_openid)
+    reorder_collection_items(req.collection_id, req.item_ids, openid)
+    return {"success": True, "message": "表情排序已保存"}
 
 @router.post("/add-item")
 def add_gif_to_collection(req: AddItemRequest, current_openid: CurrentOpenid):

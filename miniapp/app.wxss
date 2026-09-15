@@ -126,6 +126,12 @@ button::after {
   gap: 14rpx;
 }
 
+.grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12rpx;
+}
+
 /* 渐变高亮按钮 (科技蓝紫，清爽克制) */
 .btn-primary {
   background: linear-gradient(135deg, #6c5ce7 0%, #5145cd 100%);

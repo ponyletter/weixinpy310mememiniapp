@@ -18,6 +18,18 @@
     <text class="fav-close" bindtap="dismissFavoriteTip">✕</text>
   </view>
 
+  <!-- 微信好友分享专属动图顶部横幅 -->
+  <view wx:if="{{sharedFromFriend}}" class="shared-friend-banner">
+    <view class="shared-banner-left">
+      <text class="shared-banner-icon">🎁</text>
+      <view class="shared-banner-info">
+        <text class="shared-banner-title">好友为你定制的专属动图</text>
+        <text class="shared-banner-sub">【{{sharedGifTitle || caption}}】已就绪，可直接保存相册或制作同款</text>
+      </view>
+    </view>
+    <text class="shared-banner-close" bindtap="dismissSharedBanner">✕</text>
+  </view>
+
   <!-- 顶部状态栏：紧凑单行 -->
   <view class="top-bar-compact">
     <view class="quota-row">
@@ -39,6 +51,17 @@
       <text class="tpl-current-desc">{{selectedTemplateDesc}}</text>
     </view>
     <text class="tpl-switch-btn">更换 ›</text>
+  </view>
+
+  <!-- 生成规格选择器快捷栏（帧数与分辨率） -->
+  <view class="specs-selector-bar" bindtap="openSpecsSheet">
+    <view class="specs-current">
+      <text class="specs-icon">⚙️</text>
+      <text class="specs-tag-pill">{{currentFrameCount}} 帧动作</text>
+      <text class="specs-tag-pill">{{currentResolution}} 尺寸</text>
+      <text class="specs-hint">点击定制帧数/尺寸</text>
+    </view>
+    <text class="specs-arrow">设置 ›</text>
   </view>
 
   <!-- ★ 核心区域：形象设定 (照片参考 / 在线手绘) -->
@@ -172,8 +195,9 @@
         <progress percent="{{progress}}" stroke-width="7" border-radius="5" activeColor="#4f46e5" backgroundColor="#f1f5f9" />
       </view>
       <view class="stage-text">{{stageText}} ({{progress}}%)</view>
+      <view class="time-elapsed-tag">已耗时 {{elapsedSeconds}} 秒 · 预计共 {{estimatedSeconds}} 秒</view>
       <view class="stage-tip">
-        <text>可以暂时离开，稍后回来继续查看结果。</text>
+        <text>根据近期生成平均速度智能预估，请耐心等待或稍后回来查看</text>
       </view>
     </view>
 
@@ -328,6 +352,37 @@
         </view>
       </view>
       <button class="btn-primary btn-fs-save" bindtap="saveAndSyncFullScreenSketch">✅ 完成手绘并应用</button>
+    </view>
+  </view>
+
+  <!-- 生成规格配置底部抽屉 -->
+  <view wx:if="{{showSpecsSheet}}" class="drawer-mask" bindtap="closeSpecsSheet">
+    <view class="drawer-panel specs-drawer-panel" catchtap="stopBubble">
+      <view class="drawer-header">
+        <text class="drawer-title">动图生成规格设置</text>
+        <text class="drawer-close" bindtap="closeSpecsSheet">✕ 完成</text>
+      </view>
+      <view class="specs-drawer-body">
+        <view class="specs-section">
+          <view class="specs-section-title">连击帧数 (动作细致度)</view>
+          <view class="specs-pill-group">
+            <view class="specs-pill {{currentFrameCount === 2 ? 'active' : ''}}" bindtap="selectFrameCount" data-count="2">2帧 (简易极速)</view>
+            <view class="specs-pill {{currentFrameCount === 4 ? 'active' : ''}}" bindtap="selectFrameCount" data-count="4">4帧 (动感分镜)</view>
+            <view class="specs-pill {{currentFrameCount === 8 ? 'active' : ''}}" bindtap="selectFrameCount" data-count="8">8帧 (流畅动态)</view>
+            <view class="specs-pill {{currentFrameCount === 9 ? 'active' : ''}}" bindtap="selectFrameCount" data-count="9">9帧 (九宫格动图)</view>
+            <view class="specs-pill {{currentFrameCount === 16 ? 'active' : ''}}" bindtap="selectFrameCount" data-count="16">16帧 (丝滑连环画/默认)</view>
+          </view>
+        </view>
+        <view class="specs-section">
+          <view class="specs-section-title">画面输出尺寸</view>
+          <view class="specs-pill-group">
+            <view class="specs-pill {{currentResolution === '180x180' ? 'active' : ''}}" bindtap="selectResolution" data-res="180x180">轻量 180×180</view>
+            <view class="specs-pill {{currentResolution === '240x240' ? 'active' : ''}}" bindtap="selectResolution" data-res="240x240">标准 240×240 (微信推荐)</view>
+            <view class="specs-pill {{currentResolution === '320x320' ? 'active' : ''}}" bindtap="selectResolution" data-res="320x320">高清 320×320</view>
+            <view class="specs-pill {{currentResolution === '480x480' ? 'active' : ''}}" bindtap="selectResolution" data-res="480x480">超清 480×480 (大图)</view>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
 </view>

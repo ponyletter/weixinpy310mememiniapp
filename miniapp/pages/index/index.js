@@ -29,14 +29,40 @@ Page({
     userCollections: [],
     selectedColId: '',
     newColTitle: '',
-    showAdvDesc: false
+    showAdvDesc: false,
+
+    // 动态生成规格控制
+    currentFrameCount: 16,
+    currentResolution: '240x240',
+    showSpecsSheet: false,
+
+    // 动态拟合耗时进度条
+    elapsedSeconds: 0,
+    estimatedSeconds: 32,
+
+    // 好友分享成品直出
+    sharedFromFriend: false,
+    sharedGifTitle: ''
   },
 
   onLoad(options) {
     if (options && options.inviter) {
       app.globalData.inviterCode = options.inviter;
     }
-    if (options && options.ref_tpl) {
+    // 微信好友点击分享链接：优先直出动图成品，彻底杜绝跳过成品直接载入模板的体验 Bug
+    if (options && options.share_gif) {
+      const sharedUrl = decodeURIComponent(options.share_gif);
+      const sharedTitle = options.share_title ? decodeURIComponent(options.share_title) : '专属动图';
+      this.setData({
+        gifResultUrl: sharedUrl,
+        caption: sharedTitle,
+        sharedFromFriend: true,
+        sharedGifTitle: sharedTitle
+      });
+      if (options.ref_tpl) {
+        wx.setStorageSync('preselect_tpl', { id: options.ref_tpl });
+      }
+    } else if (options && options.ref_tpl) {
       wx.setStorageSync('preselect_tpl', { id: options.ref_tpl });
     }
     const dismissed = wx.getStorageSync('dismiss_fav_tip');
@@ -52,6 +78,11 @@ Page({
   onShow() {
     this.updateQuotaInfo();
     this.checkResumeActiveTask();
+    const cfg = app.getGifConfig();
+    this.setData({
+      currentFrameCount: cfg.frameCount || 16,
+      currentResolution: cfg.resolution || '240x240'
+    });
     if (app.globalData.tempEditedImage) {
       this.setData({
         refImagePath: app.globalData.tempEditedImage
@@ -218,19 +249,47 @@ Page({
           }
         },
         fail: (err) => {
-          console.log('裁剪取消或失败:', err);
+          console.log('裁剪取消或不支持，转用内置裁剪画板:', err);
+          this.openImageEditor(true);
         }
       });
     } else {
-      wx.showToast({ title: '当前微信版本不支持内置裁剪', icon: 'none' });
+      this.openImageEditor(true);
     }
   },
 
-  openImageEditor() {
+  openImageEditor(isCropMode = false) {
     const src = this.data.refImagePath ? encodeURIComponent(this.data.refImagePath) : '';
+    const modeParam = (isCropMode === true || (isCropMode && isCropMode.type === undefined && isCropMode)) ? '&mode=crop' : '';
     wx.navigateTo({
-      url: `/pages/editor/editor?src=${src}`
+      url: `/pages/editor/editor?src=${src}${modeParam}`
     });
+  },
+
+  openSpecsSheet() {
+    this.setData({ showSpecsSheet: true });
+  },
+
+  closeSpecsSheet() {
+    this.setData({ showSpecsSheet: false });
+  },
+
+  selectFrameCount(e) {
+    const count = Number(e.currentTarget.dataset.count);
+    app.setGifConfig({ frameCount: count });
+    this.setData({ currentFrameCount: count });
+    wx.showToast({ title: `已设为 ${count} 帧`, icon: 'success' });
+  },
+
+  selectResolution(e) {
+    const res = e.currentTarget.dataset.res;
+    app.setGifConfig({ resolution: res });
+    this.setData({ currentResolution: res });
+    wx.showToast({ title: `已设为 ${res}`, icon: 'success' });
+  },
+
+  dismissSharedBanner() {
+    this.setData({ sharedFromFriend: false });
   },
 
   removeImage() {
@@ -497,23 +556,76 @@ Page({
     }
   },
 
+  startSmoothProgressBar(estDuration) {
+    if (this.smoothTimer) {
+      clearInterval(this.smoothTimer);
+      this.smoothTimer = null;
+    }
+    const targetSeconds = Math.max(15, estDuration || 32);
+    const startTime = Date.now();
+    this.setData({
+      elapsedSeconds: 0,
+      estimatedSeconds: targetSeconds,
+      progress: 6,
+      stageText: 'AI 极速渲染引擎启动中...'
+    });
+
+    this.smoothTimer = setInterval(() => {
+      if (!this.data.isGenerating) {
+        clearInterval(this.smoothTimer);
+        this.smoothTimer = null;
+        return;
+      }
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      let p = 6;
+      if (elapsed < targetSeconds) {
+        p = Math.min(88, Math.round(6 + (elapsed / targetSeconds) * 80));
+      } else {
+        const extra = elapsed - targetSeconds;
+        p = Math.min(95, Math.round(88 + (extra / 30) * 7));
+      }
+
+      let stage = this.data.stageText;
+      if (p < 25) {
+        stage = '正在解析形象并构建动态分镜...';
+      } else if (p < 55) {
+        stage = `正在逐帧生成 ${this.data.currentFrameCount} 帧动作序列...`;
+      } else if (p < 85) {
+        stage = '正在进行色彩量化与 GIF 编码封装...';
+      } else {
+        stage = '动图渲染即将就绪，正在呈现...';
+      }
+
+      this.setData({
+        elapsedSeconds: elapsed,
+        progress: Math.max(this.data.progress, p),
+        stageText: stage
+      });
+    }, 500);
+  },
+
   executeGeneratePipeline() {
     this.setData({
       isGenerating: true,
       progress: 5,
       stageText: '正在启动极速渲染引擎...',
       gifResultUrl: '',
-      gifLoaded: false
+      gifLoaded: false,
+      elapsedSeconds: 0
     });
 
     const gifConfig = app.getGifConfig();
+    const frameCount = gifConfig.frameCount || this.data.currentFrameCount || 16;
+    const resolution = gifConfig.resolution || this.data.currentResolution || '240x240';
+
     const formData = {
       action_type: this.data.selectedTemplate,
       character_desc: this.data.characterDesc,
       custom_caption: this.data.caption,
       custom_action: this.data.customActionText ? this.data.customActionText.trim() : '',
       fps: gifConfig.fps || 8,
-      resolution: gifConfig.resolution || '240x240',
+      resolution: resolution,
+      frame_count: frameCount,
       fast_mode: gifConfig.fastMode ? '1' : '0',
       loop_count: gifConfig.loopCount || 0,
       openid: app.globalData.openid || '',
@@ -602,11 +714,17 @@ Page({
 
     if (data && data.data && data.data.task_id) {
       const taskId = data.data.task_id;
-      this.setData({ taskId });
+      const est = (data.data && data.data.estimated_duration) ? Math.round(data.data.estimated_duration) : 32;
+      this.setData({ 
+        taskId,
+        estimatedSeconds: est,
+        elapsedSeconds: 0
+      });
       wx.setStorageSync('active_meme_task', {
         taskId: taskId,
         timestamp: Date.now()
       });
+      this.startSmoothProgressBar(est);
       this.pollTaskStatus(taskId);
       this.updateQuotaInfo();
     } else {
@@ -658,6 +776,10 @@ Page({
             if (tInfo.status === 'completed') {
               // 【核心修复】：瞬间加锁！确保整个生命周期只执行一次成功交付与单次Toast
               this._isTaskFinalized = true;
+              if (this.smoothTimer) {
+                clearInterval(this.smoothTimer);
+                this.smoothTimer = null;
+              }
               if (this.pollTimeout) {
                 clearTimeout(this.pollTimeout);
                 this.pollTimeout = null;
@@ -678,6 +800,10 @@ Page({
               return;
             } else if (tInfo.status === 'failed') {
               this._isTaskFinalized = true;
+              if (this.smoothTimer) {
+                clearInterval(this.smoothTimer);
+                this.smoothTimer = null;
+              }
               if (this.pollTimeout) {
                 clearTimeout(this.pollTimeout);
                 this.pollTimeout = null;
@@ -686,11 +812,18 @@ Page({
               this.handleGenerateError(tInfo.error || "生成异常");
               return;
             } else {
-              // 仍处于处理中，更新进度条
-              this.setData({
-                progress: tInfo.progress || 10,
-                stageText: tInfo.stage_text || '逐帧渲染处理中...'
-              });
+              // 仍处于处理中，更新状态文本，保持平滑递增的拟合进度
+              const svrProgress = tInfo.progress || 10;
+              const updateData = {
+                stageText: tInfo.stage_text || this.data.stageText
+              };
+              if (svrProgress > this.data.progress) {
+                updateData.progress = svrProgress;
+              }
+              if (tInfo.estimated_duration && !this.data.estimatedSeconds) {
+                updateData.estimatedSeconds = Math.round(tInfo.estimated_duration);
+              }
+              this.setData(updateData);
             }
           }
         },
@@ -713,6 +846,10 @@ Page({
 
   handleGenerateError(msg) {
     this._isTaskFinalized = true;
+    if (this.smoothTimer) {
+      clearInterval(this.smoothTimer);
+      this.smoothTimer = null;
+    }
     if (this.pollTimeout) {
       clearTimeout(this.pollTimeout);
       this.pollTimeout = null;
@@ -1023,6 +1160,10 @@ Page({
 
   onUnload() {
     this._isTaskFinalized = true;
+    if (this.smoothTimer) {
+      clearInterval(this.smoothTimer);
+      this.smoothTimer = null;
+    }
     if (this.pollTimeout) {
       clearTimeout(this.pollTimeout);
       this.pollTimeout = null;
@@ -1038,12 +1179,12 @@ Page({
     const user = (app.globalData && app.globalData.userInfo) || {};
     const inviteCode = user.invite_code || app.globalData.inviterCode || '';
     
-    // 如果当前已有生成好的动图，卡片直出动图封面并引导做同款
+    // 如果当前已有生成好的动图，卡片直出动图封面并携带 share_gif 与 share_title 参数，好友点击后直达动图成品
     if (this.data.gifResultUrl) {
       const titleTag = this.data.caption || this.data.selectedTemplateTitle || '专属';
       return {
         title: `🔥 快接招！我刚用 AI 做了【${titleTag}】表情包，快来看看！`,
-        path: `/pages/index/index?inviter=${inviteCode}&ref_tpl=${this.data.selectedTemplate}`,
+        path: `/pages/index/index?inviter=${inviteCode}&share_gif=${encodeURIComponent(this.data.gifResultUrl)}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${this.data.selectedTemplate}`,
         imageUrl: this.data.gifResultUrl
       };
     }

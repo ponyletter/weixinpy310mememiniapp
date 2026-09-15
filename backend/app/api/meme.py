@@ -12,7 +12,15 @@ from app.config import settings
 from app.core.sprite_processor import SpriteProcessor
 from app.core.prompt_templates import PROMPT_TEMPLATES
 from app.core.wechat_service import WeChatService
-from app.database import check_and_deduct_quota, refund_quota, get_db, delete_meme_task
+from app.database import (
+    check_and_deduct_quota,
+    refund_quota,
+    get_db,
+    delete_meme_task,
+    rename_meme_task,
+    get_estimated_generation_duration,
+    format_datetime_china,
+)
 from app.security import CurrentOpenid, require_same_user
 from app.upload_utils import open_validated_image, read_limited_upload
 from pydantic import BaseModel
@@ -350,26 +358,46 @@ async def run_generate_pipeline(
     openid: str = "",
     custom_action: str = "",
     deducted_from: str = "free",
+    frame_count: int = 16,
+    resolution: str = "240x240",
 ):
     """后台异步执行完整的生图、切割与动图合成流水线"""
     import io
+    import time
     import base64
     import httpx
 
+    start_time = time.time()
+    frame_count = int(frame_count) if frame_count in (2, 4, 8, 9, 16) else 16
+    grid_rows_cols = {
+        2: (1, 2),
+        4: (2, 2),
+        8: (2, 4),
+        9: (3, 3),
+        16: (4, 4),
+    }
+    rows, cols = grid_rows_cols.get(frame_count, (4, 4))
+    try:
+        target_size_px = int(str(resolution).lower().split('x')[0])
+        target_size_px = max(120, min(720, target_size_px))
+    except Exception:
+        target_size_px = 256
+
     try:
         # 阶段 1：组装提示词
-        stage_desc = "阶段 1/4: 结合手绘草图造型与动作语义对齐..." if is_sketch else "阶段 1/4: 组装角色提示词与人设语义对齐..."
+        stage_desc = f"阶段 1/4: 结合手绘草图造型与动作语义对齐 ({frame_count}帧)..." if is_sketch else f"阶段 1/4: 组装角色提示词与人设语义对齐 ({frame_count}帧)..."
         TASK_STORE[task_id] = {
             "openid": openid,
             "status": "processing",
             "progress": 10,
             "stage": "prompt",
-            "stage_text": stage_desc
+            "stage_text": stage_desc,
+            "estimated_duration": get_estimated_generation_duration()
         }
 
         has_image = ref_image_bytes is not None and len(ref_image_bytes) > 0
         template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
-        prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch, custom_action.strip())
+        prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch, custom_action.strip(), frame_count=frame_count)
 
         # 阶段 2：请求画质渲染引擎出图
         TASK_STORE[task_id] = {
@@ -377,7 +405,8 @@ async def run_generate_pipeline(
             "status": "processing",
             "progress": 25,
             "stage": "drawing",
-            "stage_text": "阶段 2/4: 智能画质渲染引擎正在逐帧绘制 16 宫格动图..."
+            "stage_text": f"阶段 2/4: 智能画质渲染引擎正在绘制 {frame_count} 帧动作拆解图...",
+            "estimated_duration": get_estimated_generation_duration()
         }
 
         headers = {
@@ -439,7 +468,8 @@ async def run_generate_pipeline(
             "status": "processing",
             "progress": 75,
             "stage": "slicing",
-            "stage_text": "阶段 3/4: 多尺度主间隙物理网格切割与角色紧致包络裁剪..."
+            "stage_text": f"阶段 3/4: 多尺度主间隙物理网格切割 ({rows}×{cols}, {target_size_px}px)...",
+            "estimated_duration": get_estimated_generation_duration()
         }
 
         task_dir = settings.OUTPUT_DIR / task_id
@@ -451,9 +481,10 @@ async def run_generate_pipeline(
         frames = await asyncio.to_thread(
             SpriteProcessor.slice_grid,
             source_image,
-            rows=4,
-            cols=4,
+            rows=rows,
+            cols=cols,
             padding_percent=padding_percent,
+            target_size_px=target_size_px,
         )
 
         # 阶段 4：固定色差泛洪去底与动图生成
@@ -462,7 +493,8 @@ async def run_generate_pipeline(
             "status": "processing",
             "progress": 90,
             "stage": "assembling",
-            "stage_text": "阶段 4/4: 固定色差泛洪去底并封装微信 GIF 动图..."
+            "stage_text": "阶段 4/4: 固定色差泛洪去底并封装微信 GIF 动图...",
+            "estimated_duration": get_estimated_generation_duration()
         }
 
         gif_path = task_dir / "meme_result.gif"
@@ -498,6 +530,12 @@ async def run_generate_pipeline(
             except Exception:
                 pass
 
+        # 计算并保存实际完成总耗时 (秒)
+        duration_seconds = round(time.time() - start_time, 1)
+        stats["duration_seconds"] = duration_seconds
+        stats["frame_count"] = len(frames)
+        stats["resolution"] = f"{target_size_px}x{target_size_px}"
+
         # 完成
         TASK_STORE[task_id] = {
             "openid": openid,
@@ -513,7 +551,8 @@ async def run_generate_pipeline(
                 "input_url": f"/outputs/{task_id}/input_sprite.png",
                 "caption": custom_caption,
                 "frames": frame_preview_urls,
-                "stats": stats
+                "stats": stats,
+                "duration_seconds": duration_seconds
             }
         }
 
@@ -527,9 +566,10 @@ async def run_generate_pipeline(
                     conn.execute('''
                         UPDATE meme_tasks
                         SET prompt = ?, preset_key = ?, text_bottom = ?, fps = ?, status = 'completed',
-                            progress = 100, gif_url = ?, sprite_url = ?, error_message = ''
+                            progress = 100, gif_url = ?, sprite_url = ?, error_message = '',
+                            duration_seconds = ?, frame_count = ?, resolution = ?
                         WHERE task_id = ? AND openid = ?
-                    ''', (prompt, action_type, custom_caption, fps, f"/outputs/{task_id}/meme_result.gif", f"/outputs/{task_id}/input_sprite.png", task_id, openid))
+                    ''', (prompt, action_type, custom_caption, fps, f"/outputs/{task_id}/meme_result.gif", f"/outputs/{task_id}/input_sprite.png", duration_seconds, frame_count, resolution, task_id, openid))
                     conn.commit()
             except Exception:
                 pass
@@ -590,6 +630,7 @@ async def generate_async(
     is_sketch: bool = Form(False),
     openid: Optional[str] = Form(""),
     resolution: Optional[str] = Form("240x240"),
+    frame_count: int = Form(16),
     fast_mode: Optional[str] = Form("1"),
     loop_count: Optional[int] = Form(0),
 ):
@@ -597,6 +638,8 @@ async def generate_async(
     authenticated_openid = require_same_user(openid, current_openid)
     if not 1 <= fps <= 30 or not 0 <= padding_percent <= 20:
         raise HTTPException(status_code=400, detail="fps 或边距参数超出允许范围")
+    if frame_count not in (2, 4, 8, 9, 16):
+        frame_count = 16
     if len(custom_caption) > 80 or len(character_desc) > 500 or len(custom_action or "") > 300:
         raise HTTPException(status_code=400, detail="输入文字过长")
 
@@ -610,13 +653,15 @@ async def generate_async(
         raise HTTPException(status_code=403, detail=quota_res.get("error", "制作次数已耗尽，请签到或开通尝鲜包！"))
 
     task_id = uuid.uuid4().hex
+    estimated_duration = get_estimated_generation_duration()
 
     TASK_STORE[task_id] = {
         "openid": authenticated_openid,
         "status": "processing",
         "progress": 5,
         "stage": "init",
-        "stage_text": "正在初始化任务..."
+        "stage_text": "正在初始化任务...",
+        "estimated_duration": estimated_duration
     }
     if len(TASK_STORE) > 1000:
         for old_task_id, old_task in list(TASK_STORE.items()):
@@ -627,9 +672,9 @@ async def generate_async(
     try:
         with get_db() as conn:
             conn.execute('''
-                INSERT INTO meme_tasks (task_id, openid, preset_key, text_bottom, fps, status, progress)
-                VALUES (?, ?, ?, ?, ?, 'processing', 5)
-            ''', (task_id, authenticated_openid, action_type, custom_caption, fps))
+                INSERT INTO meme_tasks (task_id, openid, preset_key, text_bottom, fps, status, progress, frame_count, resolution)
+                VALUES (?, ?, ?, ?, ?, 'processing', 5, ?, ?)
+            ''', (task_id, authenticated_openid, action_type, custom_caption, fps, frame_count, resolution))
             conn.commit()
     except Exception:
         refund_quota(authenticated_openid, quota_res.get("deducted_from", "free"))
@@ -650,6 +695,8 @@ async def generate_async(
         openid=authenticated_openid,
         custom_action=custom_action or "",
         deducted_from=quota_res.get("deducted_from", "free"),
+        frame_count=frame_count,
+        resolution=resolution or "240x240",
     ))
 
     return {
@@ -657,7 +704,8 @@ async def generate_async(
         "message": "task_started",
         "data": {
             "task_id": task_id,
-            "status": "processing"
+            "status": "processing",
+            "estimated_duration": estimated_duration
         }
     }
 
@@ -672,6 +720,8 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
         if task_info.get("openid") != current_openid:
             raise HTTPException(status_code=404, detail="任务不存在")
         public_task_info = {key: value for key, value in task_info.items() if key != "openid"}
+        if "estimated_duration" not in public_task_info:
+            public_task_info["estimated_duration"] = get_estimated_generation_duration()
         return {
             "code": 0,
             "data": public_task_info
@@ -680,7 +730,7 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
     # 再查磁盘是否已有历史成果 (如 df4492bd 等)
     with get_db() as conn:
         owner = conn.execute(
-            "SELECT openid, status, progress FROM meme_tasks WHERE task_id = ?", (task_id,)
+            "SELECT openid, status, progress, duration_seconds FROM meme_tasks WHERE task_id = ?", (task_id,)
         ).fetchone()
     if not owner or owner["openid"] != current_openid:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -702,7 +752,8 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
                     "stats": {
                         "frame_count": len(frame_urls),
                         "file_size_kb": round((task_dir / "meme_result.gif").stat().st_size / 1024, 1),
-                        "duration_per_frame_ms": 125
+                        "duration_per_frame_ms": 125,
+                        "duration_seconds": owner["duration_seconds"] or 0.0
                     }
                 }
             }
@@ -716,6 +767,7 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
                 "progress": owner["progress"],
                 "stage": "queued",
                 "stage_text": "任务正在处理中...",
+                "estimated_duration": get_estimated_generation_duration()
             },
         }
     if owner["status"] == "failed":
@@ -756,10 +808,10 @@ def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
         cursor = conn.cursor()
         # 绝不暴露 prompt 字段给前端，保障系统提示词与私密安全性
         cursor.execute("""
-            SELECT task_id, openid, preset_key, text_bottom, fps, status, progress, gif_url, sprite_url, created_at 
+            SELECT task_id, openid, preset_key, text_bottom, custom_title, fps, status, progress, gif_url, sprite_url, duration_seconds, frame_count, resolution, created_at 
             FROM meme_tasks 
             WHERE openid = ? AND status = 'completed'
-            ORDER BY created_at DESC LIMIT 30
+            ORDER BY created_at DESC LIMIT 50
         """, (openid.strip(),))
         rows = [dict(r) for r in cursor.fetchall()]
 
@@ -774,10 +826,18 @@ def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
     }
 
     for row in rows:
-        title = (row.get("text_bottom") or "").strip()
-        if not title:
+        custom = (row.get("custom_title") or "").strip()
+        text_bottom = (row.get("text_bottom") or "").strip()
+        if custom:
+            title = custom
+        elif text_bottom:
+            title = text_bottom
+        else:
             title = tpl_map.get(row.get("preset_key") or "", "精选个性动图")
         row["display_title"] = title
+
+        # 格式化展示时间为中国标准时间 (CST UTC+8)，杜绝 UTC 导致的时间前移或未来时间错觉
+        row["created_at"] = format_datetime_china(row.get("created_at"))
 
         # 极速轻量缩略图 thumb_url (仅~8KB，相比动图提速50倍以上)
         task_id = row.get("task_id")
@@ -796,6 +856,34 @@ def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
         row.pop("prompt", None)
 
     return {"code": 0, "data": rows}
+
+class RenameMemeRequest(BaseModel):
+    task_id: str
+    title: str
+    openid: Optional[str] = ""
+
+@router.post("/rename")
+@router.post("/meme/rename")
+def rename_meme(req: RenameMemeRequest, current_openid: CurrentOpenid):
+    """为历史作品添加或修改备注/名称"""
+    if not req.task_id or not req.title.strip():
+        raise HTTPException(status_code=400, detail="任务ID和新名称不能为空")
+    if len(req.title) > 60:
+        raise HTTPException(status_code=400, detail="名称长度不能超过 60 个字")
+    openid = require_same_user(req.openid, current_openid)
+    rename_meme_task(req.task_id, req.title.strip(), openid)
+    return {"success": True, "message": "作品备注修改成功", "new_title": req.title.strip()}
+
+@router.get("/estimate")
+@router.get("/meme/estimate")
+def get_estimate_duration():
+    """获取当前基于历史任务平均耗时动态拟合的预估制作时间（秒）"""
+    return {
+        "code": 0,
+        "data": {
+            "estimated_seconds": get_estimated_generation_duration()
+        }
+    }
 
 class DeleteMemeRequest(BaseModel):
     task_id: str

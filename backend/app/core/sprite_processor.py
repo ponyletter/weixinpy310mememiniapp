@@ -60,12 +60,12 @@ class SpriteProcessor:
         return cuts
 
     @classmethod
-    def slice_grid(cls, image: Image.Image, rows: int = 4, cols: int = 4, padding_percent: float = 0.03) -> List[Image.Image]:
+    def slice_grid(cls, image: Image.Image, rows: int = 4, cols: int = 4, padding_percent: float = 0.03, target_size_px: int = 256) -> List[Image.Image]:
         """
         多尺度自适应网格分割算法 (Robust Multi-scale Grid Slicing):
         1. 自动识别整图外边距与行间真实主隔离带，100% 保证人物与专属字幕被完整保留在同一帧内；
-        2. 计算 16 帧统一最大包络，剔除无效大白边，内容饱满紧凑；
-        3. 输出统一 256×256 标准微信表情动图，零残影、零抖动。
+        2. 计算统一最大包络，剔除无效大白边，内容饱满紧凑；
+        3. 支持自定义输出分辨率 (标准 240/256、高清 320、超大 480 等)，零残影、零抖动。
         """
         img_rgb = image.convert("RGB")
         img_np = np.array(img_rgb)
@@ -79,11 +79,11 @@ class SpriteProcessor:
         proj_y = np.sum(binary > 0, axis=1)
         proj_x = np.sum(binary > 0, axis=0)
 
-        # 1. 精准寻找 4 行与 4 列的真实分界线
+        # 1. 精准寻找行与列的真实分界线
         y_cuts = cls._find_optimal_dividers(proj_y, h, rows)
         x_cuts = cls._find_optimal_dividers(proj_x, w, cols)
 
-        # 2. 裁剪出 16 个完整单元格 (角色+自身字幕一体化提取)
+        # 2. 裁剪出每个完整单元格 (角色+自身字幕一体化提取)
         raw_crops = []
         for r in range(rows):
             for c in range(cols):
@@ -97,7 +97,7 @@ class SpriteProcessor:
                     crop = cell
                 raw_crops.append(crop)
 
-        # 3. 计算 16 帧全局最大包络，保持动画尺寸稳定
+        # 3. 计算全局最大包络，保持动画尺寸稳定
         max_w = max(c.width for c in raw_crops)
         max_h = max(c.height for c in raw_crops)
 
@@ -106,6 +106,7 @@ class SpriteProcessor:
         pad = max(4, int(max(max_w, max_h) * pad_ratio))
         target_size = max(max_w, max_h) + pad * 2
 
+        out_size = max(64, min(1024, int(target_size_px or 256)))
         uniform_frames = []
         for c in raw_crops:
             canvas = Image.new("RGBA", (target_size, target_size), (255, 255, 255, 255))
@@ -113,8 +114,8 @@ class SpriteProcessor:
             oy = (target_size - c.height) // 2
             canvas.paste(c.convert("RGBA"), (ox, oy))
 
-            # 缩放至统一标准的 256×256
-            canvas = canvas.resize((256, 256), Image.Resampling.LANCZOS)
+            # 缩放至目标分辨率
+            canvas = canvas.resize((out_size, out_size), Image.Resampling.LANCZOS)
             uniform_frames.append(canvas)
 
         return uniform_frames

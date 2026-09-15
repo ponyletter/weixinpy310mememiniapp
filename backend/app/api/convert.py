@@ -1,3 +1,4 @@
+import io
 import hashlib
 import asyncio
 import shutil
@@ -355,3 +356,255 @@ def _add_caption_to_gif(gif_path: Path, caption: str):
         imageio.mimsave(str(gif_path), frames, format="GIF", duration=avg_duration, loop=0)
     except Exception as e:
         raise HTTPException(status_code=422, detail="无法处理该动图") from e
+
+
+@router.post("/stitch-images")
+async def stitch_images(
+    current_openid: CurrentOpenid,
+    files: Optional[List[UploadFile]] = File(None),
+    upload_ids: Optional[str] = Form(None),
+    mode: str = Form("vertical"),
+    subtitle_ratio: float = Form(0.25),
+    spacing: int = Form(0),
+    max_width: int = Form(720),
+):
+    """【多图智能拼接】支持竖向长图、横向拼接、电影台词/字幕无缝拼接"""
+    loaded_images: list[Image.Image] = []
+    source_paths: list[Path] = []
+    stage_dir = _user_stage_dir(current_openid)
+
+    try:
+        if upload_ids:
+            import json
+            ids = []
+            try:
+                ids = json.loads(upload_ids)
+            except Exception:
+                ids = [x.strip() for x in upload_ids.split(",") if x.strip()]
+            for uid in ids:
+                source = ensure_within(stage_dir / f"{uid}.png", stage_dir)
+                if source.is_file():
+                    source_paths.append(source)
+                    loaded_images.append(open_validated_image(source.read_bytes(), allow_animation=False).convert("RGB"))
+        elif files:
+            for f in files:
+                b = await read_limited_upload(f, settings.MAX_IMAGE_UPLOAD_MB)
+                im = open_validated_image(b, allow_animation=False).convert("RGB")
+                loaded_images.append(im)
+
+        if len(loaded_images) < 2:
+            raise HTTPException(status_code=400, detail="拼接至少需要 2 张图片")
+        if len(loaded_images) > 20:
+            raise HTTPException(status_code=400, detail="最多支持 20 张图片拼接")
+        if mode not in ("vertical", "horizontal", "subtitle"):
+            mode = "vertical"
+
+        task_id = uuid.uuid4().hex
+        task_dir = settings.OUTPUT_DIR / task_id
+        task_dir.mkdir(parents=True, exist_ok=True)
+
+        if mode == "vertical":
+            target_w = min(max_width, max(im.width for im in loaded_images))
+            resized = []
+            for im in loaded_images:
+                h = int(im.height * (target_w / im.width))
+                resized.append(im.resize((target_w, h), Image.Resampling.LANCZOS))
+            total_h = sum(im.height for im in resized) + spacing * (len(resized) - 1)
+            canvas = Image.new("RGB", (target_w, total_h), (255, 255, 255))
+            curr_y = 0
+            for im in resized:
+                canvas.paste(im, (0, curr_y))
+                curr_y += im.height + spacing
+
+        elif mode == "horizontal":
+            target_h = min(max_width, max(im.height for im in loaded_images))
+            resized = []
+            for im in loaded_images:
+                w = int(im.width * (target_h / im.height))
+                resized.append(im.resize((w, target_h), Image.Resampling.LANCZOS))
+            total_w = sum(im.width for im in resized) + spacing * (len(resized) - 1)
+            canvas = Image.new("RGB", (total_w, target_h), (255, 255, 255))
+            curr_x = 0
+            for im in resized:
+                canvas.paste(im, (curr_x, 0))
+                curr_x += im.width + spacing
+
+        else:  # subtitle 模式 (经典影视截图台词拼接：第一张保留全部画面，后续每张仅截取底部字幕条)
+            ratio = max(0.1, min(0.6, float(subtitle_ratio)))
+            base_w = min(max_width, loaded_images[0].width)
+            base_h = int(loaded_images[0].height * (base_w / loaded_images[0].width))
+            first_img = loaded_images[0].resize((base_w, base_h), Image.Resampling.LANCZOS)
+            slices = [first_img]
+            for im in loaded_images[1:]:
+                scaled_h = int(im.height * (base_w / im.width))
+                scaled_im = im.resize((base_w, scaled_h), Image.Resampling.LANCZOS)
+                cut_y = int(scaled_h * (1.0 - ratio))
+                subtitle_crop = scaled_im.crop((0, cut_y, base_w, scaled_h))
+                slices.append(subtitle_crop)
+            total_h = sum(s.height for s in slices) + spacing * (len(slices) - 1)
+            canvas = Image.new("RGB", (base_w, total_h), (255, 255, 255))
+            curr_y = 0
+            for s in slices:
+                canvas.paste(s, (0, curr_y))
+                curr_y += s.height + spacing
+
+        out_path = task_dir / "stitched.jpg"
+        canvas.save(out_path, format="JPEG", quality=90)
+        file_size_kb = round(out_path.stat().st_size / 1024, 1)
+        return {
+            "success": True,
+            "task_id": task_id,
+            "image_url": f"/outputs/{task_id}/stitched.jpg",
+            "file_size_kb": file_size_kb,
+            "width": canvas.width,
+            "height": canvas.height,
+            "mode": mode
+        }
+    finally:
+        for p in source_paths:
+            p.unlink(missing_ok=True)
+
+
+@router.post("/compress-image")
+async def compress_image(
+    current_openid: CurrentOpenid,
+    file: UploadFile = File(...),
+    target_kb: int = Form(500),
+    max_width: int = Form(0),
+    quality: int = Form(80),
+):
+    """【图片/动图压缩瘦身】支持将超大图片或动图压缩至微信表情合规限制 (如 500KB 或 1MB)"""
+    file_bytes = await read_limited_upload(file, settings.MAX_IMAGE_UPLOAD_MB)
+    orig_size_kb = round(len(file_bytes) / 1024, 1)
+
+    task_id = uuid.uuid4().hex
+    task_dir = settings.OUTPUT_DIR / task_id
+    task_dir.mkdir(parents=True, exist_ok=True)
+
+    is_gif = False
+    try:
+        probe = Image.open(io.BytesIO(file_bytes))
+        is_gif = getattr(probe, "is_animated", False) or probe.format == "GIF"
+    except Exception:
+        pass
+
+    if is_gif:
+        out_path = task_dir / "compressed.gif"
+        im = Image.open(io.BytesIO(file_bytes))
+        frames = []
+        durations = []
+        scale_ratio = 1.0
+        if max_width > 0 and im.width > max_width:
+            scale_ratio = max_width / im.width
+        elif orig_size_kb > target_kb:
+            scale_ratio = min(1.0, (target_kb / orig_size_kb) ** 0.5)
+
+        for i in range(getattr(im, "n_frames", 1)):
+            im.seek(i)
+            frame = im.convert("RGBA")
+            if scale_ratio < 0.95:
+                nw = max(64, int(frame.width * scale_ratio))
+                nh = max(64, int(frame.height * scale_ratio))
+                frame = frame.resize((nw, nh), Image.Resampling.LANCZOS)
+            frames.append(frame)
+            durations.append(im.info.get("duration", 100) / 1000.0)
+
+        avg_dur = sum(durations) / max(1, len(durations))
+        imageio.mimsave(str(out_path), frames, format="GIF", duration=avg_dur, loop=0)
+        out_url = f"/outputs/{task_id}/compressed.gif"
+    else:
+        im = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+        if max_width > 0 and im.width > max_width:
+            nh = int(im.height * (max_width / im.width))
+            im = im.resize((max_width, nh), Image.Resampling.LANCZOS)
+
+        out_path = task_dir / "compressed.jpg"
+        q = max(30, min(95, quality))
+        im.save(out_path, format="JPEG", quality=q, optimize=True)
+        while out_path.stat().st_size / 1024 > target_kb and q > 35:
+            q -= 10
+            im.save(out_path, format="JPEG", quality=q, optimize=True)
+        out_url = f"/outputs/{task_id}/compressed.jpg"
+
+    file_size_kb = round(out_path.stat().st_size / 1024, 1)
+    return {
+        "success": True,
+        "task_id": task_id,
+        "output_url": out_url,
+        "file_size_kb": file_size_kb,
+        "original_size_kb": orig_size_kb
+    }
+
+
+@router.post("/text-to-image")
+async def text_to_image(
+    current_openid: CurrentOpenid,
+    text: str = Form(...),
+    theme: str = Form("classic"),
+    title: str = Form(""),
+    author: str = Form(""),
+    font_size: int = Form(32),
+):
+    """【金句台词卡片生成器】将金句、名言或梗图文案一键排版生成精致卡片"""
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="文本内容不能为空")
+    if len(text) > 300:
+        raise HTTPException(status_code=400, detail="文本内容不能超过 300 字")
+
+    task_id = uuid.uuid4().hex
+    task_dir = settings.OUTPUT_DIR / task_id
+    task_dir.mkdir(parents=True, exist_ok=True)
+
+    card_w = 640
+    themes = {
+        "classic": ((255, 255, 255), (15, 23, 42), (99, 102, 241)),
+        "dark": ((24, 24, 27), (244, 244, 245), (244, 63, 94)),
+        "gold": ((254, 252, 232), (113, 63, 18), (202, 138, 4)),
+        "cute": ((255, 241, 242), (159, 18, 57), (244, 63, 94)),
+        "minimal": ((248, 250, 252), (51, 65, 85), (79, 70, 229)),
+    }
+    bg_col, text_col, accent_col = themes.get(theme, themes["classic"])
+
+    font_path = settings.STATIC_DIR / "fonts" / "NotoSansSC-Bold.ttf"
+    f_size = max(20, min(56, font_size))
+    if font_path.exists():
+        body_font = ImageFont.truetype(str(font_path), size=f_size)
+        small_font = ImageFont.truetype(str(font_path), size=max(16, int(f_size * 0.6)))
+    else:
+        body_font = ImageFont.load_default()
+        small_font = ImageFont.load_default()
+
+    line_w = max(10, int((card_w - 100) / max(f_size * 0.9, 1)))
+    lines = wrap(text.strip(), width=line_w) or [text.strip()]
+    line_h = int(f_size * 1.6)
+
+    card_h = max(380, 140 + len(lines) * line_h + 100)
+    canvas = Image.new("RGB", (card_w, card_h), bg_col)
+    draw = ImageDraw.Draw(canvas)
+
+    draw.rectangle([36, 40, 42, card_h - 40], fill=accent_col)
+
+    curr_y = 60
+    if title.strip():
+        draw.text((64, curr_y), title.strip(), font=small_font, fill=accent_col)
+        curr_y += int(f_size * 0.9) + 20
+
+    for line in lines:
+        draw.text((64, curr_y), line, font=body_font, fill=text_col)
+        curr_y += line_h
+
+    footer_text = author.strip() or "动态表情工坊 · 灵感卡片"
+    draw.text((64, card_h - 60), f"— {footer_text}", font=small_font, fill=accent_col)
+
+    out_path = task_dir / "card.png"
+    canvas.save(out_path, format="PNG")
+    file_size_kb = round(out_path.stat().st_size / 1024, 1)
+
+    return {
+        "success": True,
+        "task_id": task_id,
+        "image_url": f"/outputs/{task_id}/card.png",
+        "file_size_kb": file_size_kb,
+        "width": card_w,
+        "height": card_h
+    }

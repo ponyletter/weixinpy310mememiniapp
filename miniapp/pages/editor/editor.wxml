@@ -6,6 +6,7 @@
       <view class="action-btn-sm btn-clear" bindtap="clearAll">清空</view>
     </view>
     <view class="nav-right-actions">
+      <view class="action-btn-sm btn-save-album" bindtap="saveToAlbum">保存相册</view>
       <button class="btn-save-apply" bindtap="finishAndApply">完成编辑</button>
     </view>
   </view>
@@ -24,7 +25,8 @@
       ></canvas>
     </view>
     <view class="canvas-tip">
-      <text wx:if="{{!isBrushActive}}">选中元素后可拖动、缩放或旋转</text>
+      <text wx:if="{{!isBrushActive && activeTab !== 'crop'}}">选中元素后可拖动、缩放或旋转</text>
+      <text wx:elif="{{activeTab === 'crop'}}" style="color: #4f46e5; font-weight: 600;">1:1 表情包标准画幅裁剪调节中</text>
       <text wx:else style="color: #ef4444; font-weight: 600;">涂鸦模式已开启，直接在画布上绘制</text>
     </view>
   </view>
@@ -66,6 +68,9 @@
   <view class="editor-bottom-panel">
     <!-- 功能分类 Tab 栏 -->
     <view class="feature-tabs">
+      <view class="f-tab {{activeTab === 'crop' ? 'active' : ''}}" bindtap="switchTab" data-tab="crop">
+        <text>✂️</text><text>裁剪</text>
+      </view>
       <view class="f-tab {{activeTab === 'sticker' ? 'active' : ''}}" bindtap="switchTab" data-tab="sticker">
         <text>😀</text><text>贴纸</text>
       </view>
@@ -78,6 +83,35 @@
       <view class="f-tab {{activeTab === 'brush' ? 'active' : ''}}" bindtap="switchTab" data-tab="brush">
         <text>画笔</text>
       </view>
+    </view>
+
+    <!-- Tab 内容 0: 裁剪与尺寸适配面板 -->
+    <view wx:if="{{activeTab === 'crop'}}" class="panel-content">
+      <view class="crop-mode-row">
+        <view class="crop-chip {{bgFitMode === 'cover' ? 'active' : ''}}" bindtap="setBgFitMode" data-mode="cover">
+          1:1 满幅裁切 (推荐)
+        </view>
+        <view class="crop-chip {{bgFitMode === 'contain' ? 'active' : ''}}" bindtap="setBgFitMode" data-mode="contain">
+          完整包含 (留白)
+        </view>
+        <button class="btn-xs btn-reset-crop" bindtap="resetCrop">重置</button>
+      </view>
+      <view class="crop-slider-row">
+        <text class="crop-slider-label">底图缩放:</text>
+        <slider
+          class="crop-slider"
+          min="0.5"
+          max="2.5"
+          step="0.05"
+          value="{{bgScale}}"
+          bindchanging="onBgScaleChange"
+          bindchange="onBgScaleChange"
+          block-size="16"
+          activeColor="#4f46e5"
+        />
+        <text class="crop-slider-val">{{bgScale}}x</text>
+      </view>
+      <view class="crop-hint-text">💡 已按 1:1 标准正方形画幅渲染，点击右上角「完成编辑」即可同步回首页！</view>
     </view>
 
     <!-- Tab 内容 1: 贴纸面板 -->
@@ -168,6 +202,7 @@
         <button class="btn-brush-state {{isBrushActive ? 'active' : ''}}" bindtap="toggleBrushMode">
           {{isBrushActive ? '正在绘制 · 点击结束' : '开始涂鸦'}}
         </button>
+        <button class="btn-xs" bindtap="undo">↩ 撤销</button>
         <button class="btn-xs" bindtap="clearBrush">清空涂鸦</button>
       </view>
       <view class="brush-settings">

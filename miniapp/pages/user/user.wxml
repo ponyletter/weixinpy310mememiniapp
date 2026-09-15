@@ -272,28 +272,50 @@
 
       <view class="config-divider"></view>
 
+      <!-- 动作分解帧数 -->
+      <view class="config-row-vertical">
+        <view class="config-label-row">
+          <text class="config-name">🎬 动作拆解帧数</text>
+          <text class="config-badge-desc">{{config.frameCount === 2 ? '2帧 (交替变换)' : config.frameCount === 4 ? '4帧 (快动感)' : config.frameCount === 8 ? '8帧 (经典)' : config.frameCount === 9 ? '9帧 (九宫格)' : '16帧 (细腻推荐)'}}</text>
+        </view>
+        <view class="seg-grid grid-5">
+          <view class="seg-item {{config.frameCount === 2 ? 'active' : ''}}" bindtap="setFrameCount" data-val="{{2}}">2帧</view>
+          <view class="seg-item {{config.frameCount === 4 ? 'active' : ''}}" bindtap="setFrameCount" data-val="{{4}}">4帧</view>
+          <view class="seg-item {{config.frameCount === 8 ? 'active' : ''}}" bindtap="setFrameCount" data-val="{{8}}">8帧</view>
+          <view class="seg-item {{config.frameCount === 9 ? 'active' : ''}}" bindtap="setFrameCount" data-val="{{9}}">9帧</view>
+          <view class="seg-item {{(!config.frameCount || config.frameCount === 16) ? 'active' : ''}}" bindtap="setFrameCount" data-val="{{16}}">16帧</view>
+        </view>
+      </view>
+
+      <view class="config-divider"></view>
+
       <!-- 尺寸分辨率 -->
       <view class="config-row-vertical">
         <view class="config-label-row">
-          <text class="config-name">📐 动图分辨率</text>
-          <text class="config-badge-desc">{{config.resolution === '240x240' ? '微信推荐标准' : config.resolution === '180x180' ? '超轻量省体积' : '高清画质'}}</text>
+          <text class="config-name">📐 动图尺寸分辨率</text>
+          <text class="config-badge-desc">{{config.resolution === '240x240' ? '标准 (微信推荐)' : config.resolution === '320x320' ? '高清 (细节饱满)' : config.resolution === '480x480' ? '超大高清特写' : '180×180 超轻量'}}</text>
         </view>
-        <view class="seg-grid grid-3">
+        <view class="seg-grid grid-4">
           <view 
             class="seg-item {{config.resolution === '240x240' ? 'active' : ''}}" 
             bindtap="setResolution" 
             data-val="240x240"
           >240×240</view>
           <view 
+            class="seg-item {{config.resolution === '320x320' ? 'active' : ''}}" 
+            bindtap="setResolution" 
+            data-val="320x320"
+          >320×320</view>
+          <view 
+            class="seg-item {{config.resolution === '480x480' ? 'active' : ''}}" 
+            bindtap="setResolution" 
+            data-val="480x480"
+          >480×480</view>
+          <view 
             class="seg-item {{config.resolution === '180x180' ? 'active' : ''}}" 
             bindtap="setResolution" 
             data-val="180x180"
           >180×180</view>
-          <view 
-            class="seg-item {{config.resolution === '300x300' ? 'active' : ''}}" 
-            bindtap="setResolution" 
-            data-val="300x300"
-          >300×300</view>
         </view>
       </view>
 
@@ -446,6 +468,17 @@
         <text class="btn-close-icon" bindtap="closeHistoryModal">✕</text>
       </view>
 
+      <!-- 搜索作品栏 -->
+      <view class="history-search-bar" style="padding: 12rpx 0 20rpx 0;">
+        <input 
+          class="form-input" 
+          placeholder="🔍 搜索作品备注、名称或台词..." 
+          value="{{historySearchQuery}}" 
+          bindinput="onSearchHistory"
+          style="font-size: 26rpx; height: 72rpx; border-radius: 36rpx; padding: 0 28rpx; background: #f1f5f9;"
+        />
+      </view>
+
       <scroll-view scroll-y class="history-scroll">
         <view wx:if="{{historyLoading}}" class="empty-state">
           <view class="empty-icon">⏳</view>
@@ -453,8 +486,8 @@
         </view>
         <view wx:elif="{{historyList.length === 0}}" class="empty-state">
           <view class="empty-icon">📂</view>
-          <view class="empty-text">暂无历史创作动图</view>
-          <view class="empty-sub">在首页输入灵感台词，即可秒级生成独家动图！</view>
+          <view class="empty-text">{{historySearchQuery ? '未找到匹配作品' : '暂无历史创作动图'}}</view>
+          <view class="empty-sub">{{historySearchQuery ? '换个关键词试试看吧' : '在首页输入灵感台词，即可秒级生成独家动图！'}}</view>
         </view>
         <view wx:else class="history-grid">
           <view 
@@ -469,22 +502,47 @@
                 mode="aspectFit" 
                 lazy-load="true"
               ></image>
-              <view class="history-play-tag">GIF</view>
+              <view class="history-play-tag">{{item.frame_count || 16}}帧</view>
             </view>
             <view class="history-meta">
               <view class="history-caption text-ellipsis">{{item.display_title || item.text_bottom || '精选动图'}}</view>
               <view class="history-date">{{item.created_at}}</view>
             </view>
             <view class="history-btns">
+              <button class="btn-xs-history btn-rename-history" bindtap="openRenameHistoryModal" data-item="{{item}}">改名/备注</button>
               <button class="btn-xs-history btn-save-album" bindtap="saveHistoryToAlbum" data-url="{{item.full_gif_url}}">保存相册</button>
               <button class="btn-xs-history btn-add-col" bindtap="openHistorySaveColModal" data-item="{{item}}">存入合集</button>
-              <button class="btn-xs-history btn-del-history" bindtap="deleteHistoryItem" data-id="{{item.task_id}}">删除作品</button>
+              <button class="btn-xs-history btn-del-history" bindtap="deleteHistoryItem" data-id="{{item.task_id}}">删除</button>
             </view>
           </view>
         </view>
       </scroll-view>
 
       <button class="btn-primary" style="margin-top: 20rpx; width: 100%;" bindtap="closeHistoryModal">完成浏览</button>
+    </view>
+  </view>
+
+  <!-- 作品重命名 / 添加备注弹窗 -->
+  <view wx:if="{{showRenameModal}}" class="modal-mask" bindtap="closeRenameModal">
+    <view class="modal-card card" style="max-width: 620rpx; width: 88%;" catchtap="stopBubble">
+      <view class="modal-header">
+        <text class="modal-title">✏️ 作品重命名 / 添加备注</text>
+        <text class="btn-close-icon" bindtap="closeRenameModal">✕</text>
+      </view>
+      <view style="margin: 24rpx 0 16rpx 0; font-size: 26rpx; color: #64748b;">设置易记的名称或备注，方便快捷搜索与整理：</view>
+      <input 
+        class="form-input" 
+        placeholder="例如：表白专用、暴击拳头、工作摸鱼" 
+        value="{{renameTitleInput}}" 
+        bindinput="onInputRename" 
+        maxlength="30"
+        focus="{{showRenameModal}}"
+        style="height: 80rpx; font-size: 28rpx;"
+      />
+      <view class="modal-actions" style="margin-top: 28rpx;">
+        <button class="btn-secondary" style="flex: 1;" bindtap="closeRenameModal">取消</button>
+        <button class="btn-primary" style="flex: 1;" bindtap="confirmRenameHistory">保存修改</button>
+      </view>
     </view>
   </view>
 

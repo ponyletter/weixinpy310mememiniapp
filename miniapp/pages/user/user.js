@@ -16,6 +16,7 @@ Page({
     config: {
       fastMode: true,
       resolution: '240x240',
+      frameCount: 16,
       fps: 8,
       smartCompress: true,
       loopCount: 0
@@ -46,6 +47,12 @@ Page({
     showHistoryModal: false,
     historyLoading: false,
     historyList: [],
+    historySearchQuery: '',
+
+    // 作品重命名 / 添加备注
+    showRenameModal: false,
+    renameTaskId: '',
+    renameTitleInput: '',
 
     // 历史存入合集
     showHistoryColModal: false,
@@ -263,10 +270,11 @@ Page({
 
   // ---------------- 历史创作记录 / 我的相册 ----------------
   openHistoryModal() {
-    const hasData = this.data.historyList && this.data.historyList.length > 0;
+    const hasData = this._allHistoryList && this._allHistoryList.length > 0;
     this.setData({
       showHistoryModal: true,
-      historyLoading: !hasData
+      historyLoading: !hasData,
+      historySearchQuery: ''
     });
     this.fetchHistory();
   },
@@ -279,6 +287,79 @@ Page({
     const openid = this.data.user.openid || app.globalData.openid || '';
     if (!openid) return;
     this.fetchHistory();
+  },
+
+  applyHistoryFilter(list, query) {
+    if (!query || !query.trim()) return list;
+    const q = query.trim().toLowerCase();
+    return list.filter(item => {
+      const title = (item.display_title || '').toLowerCase();
+      const text = (item.text_bottom || '').toLowerCase();
+      const custom = (item.custom_title || '').toLowerCase();
+      return title.includes(q) || text.includes(q) || custom.includes(q);
+    });
+  },
+
+  onSearchHistory(e) {
+    const q = e.detail.value;
+    const filtered = this.applyHistoryFilter(this._allHistoryList || [], q);
+    this.setData({
+      historySearchQuery: q,
+      historyList: filtered
+    });
+  },
+
+  openRenameHistoryModal(e) {
+    const item = e.currentTarget.dataset.item;
+    this.setData({
+      showRenameModal: true,
+      renameTaskId: item.task_id,
+      renameTitleInput: item.custom_title || item.display_title || item.text_bottom || ''
+    });
+  },
+
+  closeRenameModal() {
+    this.setData({
+      showRenameModal: false,
+      renameTaskId: '',
+      renameTitleInput: ''
+    });
+  },
+
+  onInputRename(e) {
+    this.setData({ renameTitleInput: e.detail.value });
+  },
+
+  confirmRenameHistory() {
+    const title = (this.data.renameTitleInput || '').trim();
+    if (!title) {
+      wx.showToast({ title: '请输入作品名称或备注', icon: 'none' });
+      return;
+    }
+    wx.showLoading({ title: '正在保存备注...' });
+    app.request({
+      url: `${app.globalData.baseURL}/api/meme/rename`,
+      method: 'POST',
+      data: {
+        task_id: this.data.renameTaskId,
+        title: title,
+        openid: app.globalData.openid || wx.getStorageSync('openid')
+      },
+      success: (res) => {
+        wx.hideLoading();
+        if (res.data && res.data.success) {
+          wx.showToast({ title: '备注修改成功', icon: 'success' });
+          this.closeRenameModal();
+          this.fetchHistorySilently();
+        } else {
+          wx.showToast({ title: (res.data && res.data.detail) || '修改失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络连接超时', icon: 'none' });
+      }
+    });
   },
 
   fetchHistory() {
@@ -313,7 +394,9 @@ Page({
                 created_at: item.created_at ? item.created_at.slice(0, 16) : '近期'
               };
             });
-          this.setData({ historyList: list });
+          this._allHistoryList = list;
+          const filtered = this.applyHistoryFilter(list, this.data.historySearchQuery);
+          this.setData({ historyList: filtered });
         }
       },
       fail: () => {
@@ -637,6 +720,11 @@ Page({
     this.setData({ ['config.fastMode']: e.detail.value });
   },
 
+  setFrameCount(e) {
+    const val = Number(e.currentTarget.dataset.val);
+    this.setData({ ['config.frameCount']: val });
+  },
+
   setResolution(e) {
     const val = e.currentTarget.dataset.val;
     this.setData({ ['config.resolution']: val });
@@ -660,6 +748,7 @@ Page({
     const defaultCfg = {
       fastMode: true,
       resolution: '240x240',
+      frameCount: 16,
       fps: 8,
       smartCompress: true,
       loopCount: 0

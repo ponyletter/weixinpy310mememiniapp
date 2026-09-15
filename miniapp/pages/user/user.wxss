@@ -933,6 +933,12 @@
   white-space: nowrap;
 }
 
+.btn-rename-history {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1rpx solid #bbf7d0;
+}
+
 .btn-save-album {
   background: #f1f5f9;
   color: #334155;
