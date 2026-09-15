@@ -39,16 +39,6 @@
       }
     ]
   },
-  "chatMaterials": [
-    {
-      "materialType": "image",
-      "pagePath": "pages/remix/remix"
-    },
-    {
-      "materialType": "video",
-      "pagePath": "pages/remix/remix"
-    }
-  ],
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
   "sitemapLocation": "sitemap.json"

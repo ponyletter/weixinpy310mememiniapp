@@ -53,8 +53,6 @@
     <text class="tpl-switch-btn">更换 ›</text>
   </view>
 
-  </view>
-
   <!-- ★ 核心区域：形象设定 (照片参考 / 在线手绘) -->
   <view class="hero-card card">
     <view class="mode-tabs">
