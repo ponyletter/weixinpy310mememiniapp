@@ -5,10 +5,26 @@ from typing import Optional, List, Dict, Any
 from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from app.config import settings
-from app.r2_storage import is_public_r2_url
+from app.r2_storage import is_public_r2_url, is_r2_enabled, task_public_url
 
 
 CHINA_TIMEZONE = ZoneInfo("Asia/Shanghai")
+
+
+def _durable_showcase_url(value: str) -> str:
+    """Use the final GIF URL for seeded showcase links when R2 is enabled."""
+    marker = "/outputs/"
+    if not is_r2_enabled() or marker not in value:
+        return value
+    relative = value.split(marker, 1)[1].strip("/").split("/", 1)
+    if len(relative) != 2:
+        return value
+    task_id, artifact = relative
+    if artifact == "meme_result.gif":
+        return task_public_url(task_id, artifact)
+    if artifact == "thumb.jpg" or artifact == "frames_pack.zip" or artifact.startswith("frames/"):
+        return task_public_url(task_id, "meme_result.gif")
+    return value
 
 
 def format_datetime_china(value: Any) -> Optional[str]:
@@ -314,6 +330,8 @@ def init_db():
         ]
 
         for col_id, openid, title, desc, cover, is_pub, items in official_collections:
+            cover = _durable_showcase_url(cover)
+            items = [(_durable_showcase_url(gif_url), item_title) for gif_url, item_title in items]
             cursor.execute('''
                 INSERT INTO collections (collection_id, openid, title, description, cover_url, is_public)
                 VALUES (?, ?, ?, ?, ?, ?)
