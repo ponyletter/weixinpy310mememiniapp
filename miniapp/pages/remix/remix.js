@@ -2,9 +2,7 @@ const app = getApp();
 
 const TOOL_META = {
   video: { id: 'video', name: '视频转GIF', icon: '📹' },
-  caption: { id: 'caption', name: '加字水印', icon: '💧' },
   compress: { id: 'compress', name: '图片瘦身', icon: '⚡' },
-  matting: { id: 'matting', name: '智能抠图', icon: '✂️' },
   picker: { id: 'picker', name: '图片取色', icon: '🔍' },
   images: { id: 'images', name: '多图合成', icon: '▦' },
   stitch: { id: 'stitch', name: '长图拼接', icon: '🎞️' },
@@ -13,7 +11,7 @@ const TOOL_META = {
 
 Page({
   data: {
-    tab: 'video', // 'video' | 'caption' | 'compress' | 'matting' | 'picker' | 'images' | 'stitch' | 'card'
+    tab: 'video', // 'video' | 'compress' | 'picker' | 'images' | 'stitch' | 'card'
     recentTools: [],
 
     // 1. 视频转动图
@@ -23,40 +21,27 @@ Page({
     videoDuration: 3.0,
     uploadPercent: 0,
 
-    // 通用字幕 / 水印参数 (视频和动图公用)
+    // 通用字幕
     captionText: '',
-    captionPos: 'bottom', // 'bottom' | 'top' | 'center' | 'top-left' | 'bottom-right' | 'banner-bottom'
-    captionFontSize: 24, // 18, 24, 30, 38
-    captionOpacity: 1.0, // 1.0, 0.8, 0.6, 0.4
-    captionColor: '#ffffff', // '#ffffff', '#facc15', '#ef4444', '#0f172a'
 
-    // 2. 动图/图片加字水印 (原表情包改字升级)
-    srcGifPath: '',
-    suggestions: [],
-
-    // 3. 多图连续合成动图
+    // 多图连续合成动图
     multiImages: [],
 
-    // 4. 长图拼接
+    // 长图拼接
     stitchImages: [],
     stitchMode: 'vertical', // 'vertical' | 'horizontal' | 'subtitle'
     subtitleRatio: 0.25,
 
-    // 5. 图片与动图瘦身压缩
+    // 图片与动图瘦身压缩
     compressSrcPath: '',
     compressFileSizeStr: '',
-    compressQuality: 75, // 10% ~ 95%
+    compressQuality: 75, // 15% ~ 95%
     compressTargetKb: 500,
     compressOrigSizeKb: 0,
     compressNewSizeKb: 0,
     compressRatioStr: '',
 
-    // 6. 智能抠图换背景
-    mattingSrcPath: '',
-    mattingBgMode: 'transparent', // 'transparent' | 'white' | 'red' | 'blue' | 'green'
-    mattingResultUrl: '',
-
-    // 7. 图片取色器 (RGB & HEX)
+    // 图片取色器 (RGB & HEX)
     pickerSrcPath: '',
     pickedHex: '#4F46E5',
     pickedRgb: 'rgb(79, 70, 229)',
@@ -64,7 +49,7 @@ Page({
     pickedY: 0,
     showPickerLens: false,
 
-    // 8. 金句卡片生成器
+    // 金句卡片生成器
     cardText: '',
     cardTheme: 'classic', // 'classic' | 'dark' | 'gold' | 'cute' | 'minimal'
     cardTitle: '',
@@ -77,25 +62,27 @@ Page({
   },
 
   onLoad(options) {
-    // 1. 初始化最近使用工具
+    // 1. 初始化最近使用工具，自动过滤已移除的工具
     let recents = wx.getStorageSync('remix_recent_tools');
-    if (!recents || !Array.isArray(recents) || recents.length === 0) {
-      recents = ['video', 'caption', 'compress', 'matting', 'picker'];
-      wx.setStorageSync('remix_recent_tools', recents);
+    if (Array.isArray(recents)) {
+      recents = recents.filter(id => TOOL_META[id]);
     }
+    if (!recents || !Array.isArray(recents) || recents.length === 0) {
+      recents = ['video', 'compress', 'picker', 'images', 'stitch'];
+    }
+    wx.setStorageSync('remix_recent_tools', recents);
     const recentTools = recents.map(id => TOOL_META[id]).filter(Boolean);
     this.setData({ recentTools });
 
-    if (options && options.tab && TOOL_META[options.tab]) {
-      this.setData({ tab: options.tab });
-      this.recordRecentTool(options.tab);
-    } else {
-      this.recordRecentTool(this.data.tab);
-    }
+    const initialTab = (options && options.tab && TOOL_META[options.tab]) ? options.tab : 'video';
+    this.setData({ tab: initialTab });
+    this.recordRecentTool(initialTab);
   },
 
   recordRecentTool(tab) {
-    let recents = wx.getStorageSync('remix_recent_tools') || ['video', 'caption', 'compress', 'matting'];
+    if (!TOOL_META[tab]) return;
+    let recents = wx.getStorageSync('remix_recent_tools') || ['video', 'compress', 'picker', 'images', 'stitch'];
+    recents = recents.filter(t => TOOL_META[t]);
     recents = [tab, ...recents.filter(t => t !== tab)].slice(0, 5);
     wx.setStorageSync('remix_recent_tools', recents);
     const recentTools = recents.map(id => TOOL_META[id]).filter(Boolean);
@@ -603,7 +590,7 @@ Page({
     });
   },
 
-  // ================= 6. 多图合成动图 =================
+  // ================= 4. 多图合成动图 =================
   chooseMultiImages() {
     wx.chooseMedia({
       count: 9 - this.data.multiImages.length,
@@ -619,6 +606,10 @@ Page({
     });
   },
 
+  clearMultiImages() {
+    this.setData({ multiImages: [], remixResultUrl: '' });
+  },
+
   removeMultiImage(e) {
     if (this.data.isConverting) return;
     const index = Number(e.currentTarget.dataset.index);
@@ -627,8 +618,12 @@ Page({
   },
 
   convertImagesToGif() {
+    if (this.data.multiImages.length === 0) {
+      this.chooseMultiImages();
+      return;
+    }
     if (this.data.multiImages.length < 2) {
-      wx.showToast({ title: '至少需要2张图片', icon: 'none' });
+      wx.showToast({ title: '至少需要 2 张照片进行合成', icon: 'none' });
       return;
     }
 
@@ -680,7 +675,7 @@ Page({
     });
   },
 
-  // ================= 7. 长图智能拼接 =================
+  // ================= 5. 长图智能拼接 =================
   chooseStitchImages() {
     wx.chooseMedia({
       count: 9 - this.data.stitchImages.length,
@@ -696,11 +691,15 @@ Page({
     });
   },
 
+  clearStitchImages() {
+    this.setData({ stitchImages: [], remixResultUrl: '' });
+  },
+
   removeStitchImage(e) {
     if (this.data.isConverting) return;
     const index = Number(e.currentTarget.dataset.index);
     const stitchImages = this.data.stitchImages.filter((_, i) => i !== index);
-    this.setData({ stitchImages });
+    this.setData({ stitchImages, remixResultUrl: '' });
   },
 
   setStitchMode(e) {
@@ -713,8 +712,12 @@ Page({
   },
 
   executeStitch() {
+    if (this.data.stitchImages.length === 0) {
+      this.chooseStitchImages();
+      return;
+    }
     if (this.data.stitchImages.length < 2) {
-      wx.showToast({ title: '至少需要2张图片进行拼接', icon: 'none' });
+      wx.showToast({ title: '至少需要 2 张图片进行拼接', icon: 'none' });
       return;
     }
 

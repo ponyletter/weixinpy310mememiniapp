@@ -2,7 +2,7 @@
   <view class="page-heading">
     <text class="page-eyebrow">图片百宝箱</text>
     <text class="page-title">全能表情与图片处理</text>
-    <text class="page-subtitle">视频截取动图、动图加水印、智能抠图换底、图片取色、深度瘦身与长图拼接。</text>
+    <text class="page-subtitle">视频截取动图、深度瘦身压缩、精准图片取色、多图合成、长图拼接与金句排版卡片。</text>
   </view>
 
   <!-- 顶部：最近使用快捷入口 -->
@@ -27,19 +27,13 @@
     </scroll-view>
   </view>
 
-  <!-- 8大工具导航网格 -->
+  <!-- 6大工具导航网格 (3列x2行规整布局) -->
   <view class="remix-tabs card">
     <view class="remix-tab {{tab === 'video' ? 'active' : ''}}" bindtap="switchTab" data-tab="video">
       <text class="remix-tab-icon">📹</text><text>视频转GIF</text>
     </view>
-    <view class="remix-tab {{tab === 'caption' ? 'active' : ''}}" bindtap="switchTab" data-tab="caption">
-      <text class="remix-tab-icon">💧</text><text>加字水印</text>
-    </view>
     <view class="remix-tab {{tab === 'compress' ? 'active' : ''}}" bindtap="switchTab" data-tab="compress">
       <text class="remix-tab-icon">⚡</text><text>图片瘦身</text>
-    </view>
-    <view class="remix-tab {{tab === 'matting' ? 'active' : ''}}" bindtap="switchTab" data-tab="matting">
-      <text class="remix-tab-icon">✂️</text><text>智能抠图</text>
     </view>
     <view class="remix-tab {{tab === 'picker' ? 'active' : ''}}" bindtap="switchTab" data-tab="picker">
       <text class="remix-tab-icon">🔍</text><text>图片取色</text>
@@ -62,7 +56,7 @@
     <view wx:if="{{!videoPath}}" class="upload-zone" bindtap="chooseVideo">
       <text class="upload-icon">📹</text>
       <text class="upload-title">选择或拍摄视频</text>
-      <text class="upload-sub">支持 MP4、MOV (支持长视频上传截取)</text>
+      <text class="upload-sub">支持 MP4、MOV (最长支持100MB长视频上传截取)</text>
     </view>
     <view wx:else class="selected-wrap">
       <video class="preview-video" src="{{videoPath}}" controls></video>
@@ -108,54 +102,10 @@
       />
     </view>
 
-    <!-- 水印文字输入 -->
+    <!-- 底部字幕输入 (简洁经典样式) -->
     <view class="form-item-remix">
-      <text class="form-label-remix">字幕 / 水印文案 <text class="optional-label">选填</text></text>
-      <input class="form-input-remix" placeholder="例如：绝了、哈哈哈哈" value="{{captionText}}" bindinput="onInputCaption" maxlength="80" />
-    </view>
-
-    <!-- 水印位置与排版设置 -->
-    <view wx:if="{{captionText}}" class="watermark-options-box">
-      <view class="wm-option-row">
-        <text class="wm-label">水印位置:</text>
-        <view class="wm-chips">
-          <view class="wm-chip {{captionPos === 'top' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="top">顶部居中</view>
-          <view class="wm-chip {{captionPos === 'center' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="center">画面中间</view>
-          <view class="wm-chip {{captionPos === 'bottom' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="bottom">底部居中</view>
-          <view class="wm-chip {{captionPos === 'top-left' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="top-left">左上角</view>
-          <view class="wm-chip {{captionPos === 'bottom-right' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="bottom-right">右下角</view>
-        </view>
-      </view>
-
-      <view class="wm-option-row">
-        <text class="wm-label">字号大小:</text>
-        <view class="wm-chips">
-          <view class="wm-chip {{captionFontSize === 18 ? 'active' : ''}}" bindtap="setCaptionFontSize" data-size="18">小 18px</view>
-          <view class="wm-chip {{captionFontSize === 24 ? 'active' : ''}}" bindtap="setCaptionFontSize" data-size="24">中 24px</view>
-          <view class="wm-chip {{captionFontSize === 30 ? 'active' : ''}}" bindtap="setCaptionFontSize" data-size="30">大 30px</view>
-          <view class="wm-chip {{captionFontSize === 38 ? 'active' : ''}}" bindtap="setCaptionFontSize" data-size="38">特大 38px</view>
-        </view>
-      </view>
-
-      <view class="wm-option-row">
-        <text class="wm-label">透明度:</text>
-        <view class="wm-chips">
-          <view class="wm-chip {{captionOpacity === 1.0 ? 'active' : ''}}" bindtap="setCaptionOpacity" data-op="1.0">100%</view>
-          <view class="wm-chip {{captionOpacity === 0.8 ? 'active' : ''}}" bindtap="setCaptionOpacity" data-op="0.8">80%</view>
-          <view class="wm-chip {{captionOpacity === 0.6 ? 'active' : ''}}" bindtap="setCaptionOpacity" data-op="0.6">60%</view>
-          <view class="wm-chip {{captionOpacity === 0.4 ? 'active' : ''}}" bindtap="setCaptionOpacity" data-op="0.4">40%</view>
-        </view>
-      </view>
-
-      <view class="wm-option-row">
-        <text class="wm-label">字体颜色:</text>
-        <view class="wm-chips">
-          <view class="wm-chip {{captionColor === '#ffffff' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#ffffff">纯白</view>
-          <view class="wm-chip {{captionColor === '#facc15' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#facc15">金黄</view>
-          <view class="wm-chip {{captionColor === '#ef4444' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#ef4444">酷红</view>
-          <view class="wm-chip {{captionColor === '#0f172a' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#0f172a">深黑</view>
-        </view>
-      </view>
+      <text class="form-label-remix">底部字幕 <text class="optional-label">选填</text></text>
+      <input class="form-input-remix" placeholder="例如：听懂掌声、收到、冲鸭" value="{{captionText}}" bindinput="onInputCaption" maxlength="80" />
     </view>
 
     <button class="btn-primary btn-convert" bindtap="convertVideoToGif" loading="{{isConverting}}" disabled="{{isConverting}}">
@@ -163,94 +113,7 @@
     </button>
   </view>
 
-  <!-- ================= 模式 2: 动图/图片加字水印 (原表情加字全面升级) ================= -->
-  <view wx:if="{{tab === 'caption'}}" class="card action-box">
-    <view class="section-title">动图 / 图片加水印</view>
-    <text class="section-kicker">自由设置字幕与水印位置、字号、透明度与颜色，画面内高保真合成</text>
-
-    <view wx:if="{{!srcGifPath}}" class="upload-zone" bindtap="chooseGifToEdit">
-      <text class="upload-icon">💧</text>
-      <text class="upload-title">选择图片或动图</text>
-      <text class="upload-sub">支持 GIF 动图、PNG、JPG</text>
-    </view>
-    <view wx:else class="selected-wrap">
-      <image class="preview-gif" src="{{srcGifPath}}" mode="aspectFit"></image>
-      <button class="btn-xs remove-btn" bindtap="clearSrcGif">重新选择</button>
-    </view>
-
-    <!-- 水印文本 -->
-    <view class="form-item-remix">
-      <view class="caption-input-header">
-        <text class="form-label-remix">水印 / 台词文案</text>
-        <view class="btn-suggest-caption" bindtap="fetchCaptionSuggestions">💡 推荐文案</view>
-      </view>
-      <input class="form-input-remix" placeholder="输入水印文案，例如：@我的昵称、禁止盗图、太难了" value="{{captionText}}" bindinput="onInputCaption" maxlength="80" />
-    </view>
-
-    <!-- 爆笑文案推荐 Chips -->
-    <view wx:if="{{suggestions.length > 0}}" class="suggestions-list">
-      <view
-        wx:for="{{suggestions}}"
-        wx:key="text"
-        class="suggestion-chip"
-        bindtap="applySuggestion"
-        data-text="{{item.text}}"
-      >
-        <text class="chip-style">[{{item.style}}]</text> {{item.text}}
-      </view>
-    </view>
-
-    <!-- 水印位置、字号、透明度与颜色 -->
-    <view class="watermark-options-box">
-      <view class="wm-option-row">
-        <text class="wm-label">水印位置:</text>
-        <view class="wm-chips">
-          <view class="wm-chip {{captionPos === 'bottom' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="bottom">底部居中</view>
-          <view class="wm-chip {{captionPos === 'top' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="top">顶部居中</view>
-          <view class="wm-chip {{captionPos === 'center' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="center">画面中间</view>
-          <view class="wm-chip {{captionPos === 'top-left' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="top-left">左上角</view>
-          <view class="wm-chip {{captionPos === 'bottom-right' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="bottom-right">右下角</view>
-          <view class="wm-chip {{captionPos === 'banner-bottom' ? 'active' : ''}}" bindtap="setCaptionPos" data-pos="banner-bottom">白底横幅</view>
-        </view>
-      </view>
-
-      <view class="wm-option-row">
-        <text class="wm-label">字号大小:</text>
-        <view class="wm-chips">
-          <view class="wm-chip {{captionFontSize === 18 ? 'active' : ''}}" bindtap="setCaptionFontSize" data-size="18">小 18px</view>
-          <view class="wm-chip {{captionFontSize === 24 ? 'active' : ''}}" bindtap="setCaptionFontSize" data-size="24">中 24px</view>
-          <view class="wm-chip {{captionFontSize === 30 ? 'active' : ''}}" bindtap="setCaptionFontSize" data-size="30">大 30px</view>
-          <view class="wm-chip {{captionFontSize === 38 ? 'active' : ''}}" bindtap="setCaptionFontSize" data-size="38">特大 38px</view>
-        </view>
-      </view>
-
-      <view class="wm-option-row">
-        <text class="wm-label">透明度:</text>
-        <view class="wm-chips">
-          <view class="wm-chip {{captionOpacity === 1.0 ? 'active' : ''}}" bindtap="setCaptionOpacity" data-op="1.0">100%</view>
-          <view class="wm-chip {{captionOpacity === 0.8 ? 'active' : ''}}" bindtap="setCaptionOpacity" data-op="0.8">80%</view>
-          <view class="wm-chip {{captionOpacity === 0.6 ? 'active' : ''}}" bindtap="setCaptionOpacity" data-op="0.6">60%</view>
-          <view class="wm-chip {{captionOpacity === 0.4 ? 'active' : ''}}" bindtap="setCaptionOpacity" data-op="0.4">40%</view>
-        </view>
-      </view>
-
-      <view class="wm-option-row">
-        <text class="wm-label">字体颜色:</text>
-        <view class="wm-chips">
-          <view class="wm-chip {{captionColor === '#ffffff' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#ffffff">纯白</view>
-          <view class="wm-chip {{captionColor === '#facc15' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#facc15">金黄</view>
-          <view class="wm-chip {{captionColor === '#ef4444' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#ef4444">酷红</view>
-          <view class="wm-chip {{captionColor === '#0f172a' ? 'active' : ''}}" bindtap="setCaptionColor" data-color="#0f172a">深黑</view>
-        </view>
-      </view>
-    </view>
-
-    <button class="btn-primary btn-convert" bindtap="editGifCaption" loading="{{isConverting}}" disabled="{{isConverting}}">
-      {{isConverting ? '正在合成水印中...' : '合成加字与水印'}}
-    </button>
-  </view>
-
-  <!-- ================= 模式 3: 图片瘦身压缩 ================= -->
+  <!-- ================= 模式 2: 图片与动图瘦身 ================= -->
   <view wx:if="{{tab === 'compress'}}" class="card action-box">
     <view class="section-title">图片与动图瘦身</view>
     <text class="section-kicker">滑动条自由选择压缩质量，实时对比原图大小，适配微信发送限制</text>
@@ -318,49 +181,7 @@
     </button>
   </view>
 
-  <!-- ================= 模式 4: 智能抠图换背景 ================= -->
-  <view wx:if="{{tab === 'matting'}}" class="card action-box">
-    <view class="section-title">智能抠图换背景</view>
-    <text class="section-kicker">精准分离主体，一键生成透明底或证件照白/红/蓝底</text>
-
-    <view wx:if="{{!mattingSrcPath}}" class="upload-zone" bindtap="chooseMattingImage">
-      <text class="upload-icon">✂️</text>
-      <text class="upload-title">选择人像、物体或表情包图片</text>
-      <text class="upload-sub">支持 PNG、JPG、WEBP</text>
-    </view>
-    <view wx:else class="selected-wrap">
-      <image class="preview-gif {{mattingBgMode === 'transparent' ? 'checkerboard-bg' : ''}}" src="{{mattingResultUrl || mattingSrcPath}}" mode="aspectFit"></image>
-      <button class="btn-xs remove-btn" bindtap="clearMattingImage">重新选择图片</button>
-    </view>
-
-    <!-- 背景颜色选择 -->
-    <view class="form-item-remix">
-      <text class="form-label-remix">换背景底色</text>
-      <view class="bg-mode-chips">
-        <view class="bg-chip {{mattingBgMode === 'transparent' ? 'active' : ''}}" bindtap="setMattingBg" data-bg="transparent">
-          <text class="bg-color-preview checkerboard-preview"></text> 🏁 透明
-        </view>
-        <view class="bg-chip {{mattingBgMode === 'white' ? 'active' : ''}}" bindtap="setMattingBg" data-bg="white">
-          <text class="bg-color-preview" style="background: #ffffff; border: 1rpx solid #cbd5e1;"></text> ⚪ 纯白
-        </view>
-        <view class="bg-chip {{mattingBgMode === 'red' ? 'active' : ''}}" bindtap="setMattingBg" data-bg="red">
-          <text class="bg-color-preview" style="background: #d82821;"></text> 🔴 证件红
-        </view>
-        <view class="bg-chip {{mattingBgMode === 'blue' ? 'active' : ''}}" bindtap="setMattingBg" data-bg="blue">
-          <text class="bg-color-preview" style="background: #208fe5;"></text> 🔵 证件蓝
-        </view>
-        <view class="bg-chip {{mattingBgMode === 'green' ? 'active' : ''}}" bindtap="setMattingBg" data-bg="green">
-          <text class="bg-color-preview" style="background: #00ff00;"></text> 🟢 绿幕
-        </view>
-      </view>
-    </view>
-
-    <button class="btn-primary btn-convert" bindtap="executeMatting" loading="{{isConverting}}" disabled="{{isConverting}}">
-      {{isConverting ? '正在分离主体中...' : '开始智能抠图换底'}}
-    </button>
-  </view>
-
-  <!-- ================= 模式 5: 图片取色器 (RGB & HEX) ================= -->
+  <!-- ================= 模式 3: 图片取色器 (RGB & HEX) ================= -->
   <view wx:if="{{tab === 'picker'}}" class="card action-box">
     <view class="section-title">图片精准取色器</view>
     <text class="section-kicker">轻触图片任意像素，实时吸取色彩并一键复制 RGB 与 HEX 色值</text>
@@ -401,19 +222,33 @@
     </view>
   </view>
 
-  <!-- ================= 模式 6: 多图连续合成动图 ================= -->
+  <!-- ================= 模式 4: 多图连续合成动图 ================= -->
   <view wx:if="{{tab === 'images'}}" class="card action-box">
     <view class="section-title">添加连续照片</view>
     <text class="section-kicker">按选择顺序播放，支持 2–9 张序列逐帧合成动图</text>
-    <view class="image-grid">
-      <view wx:for="{{multiImages}}" wx:key="*this" class="grid-item">
-        <image class="grid-img" src="{{item}}" mode="aspectFill"></image>
-        <text class="grid-index">{{index + 1}}</text>
-        <text class="grid-remove" data-index="{{index}}" catchtap="removeMultiImage">×</text>
+    
+    <!-- 未选择图片时的大按钮引导区域 -->
+    <view wx:if="{{multiImages.length === 0}}" class="upload-zone" bindtap="chooseMultiImages">
+      <text class="upload-icon">▦</text>
+      <text class="upload-title">选择多张照片 (2~9张)</text>
+      <text class="upload-sub">支持连续拍摄或相册批量选取，逐帧合成 GIF</text>
+    </view>
+    <!-- 已选择图片时的网格列表与管理栏 -->
+    <view wx:else class="stitch-selected-box">
+      <view class="stitch-meta-row">
+        <text class="stitch-count-hint">已选 {{multiImages.length}} / 9 张照片 (按序号循环播放)</text>
+        <button class="btn-xs remove-btn" bindtap="clearMultiImages">清空重选</button>
       </view>
-      <view wx:if="{{multiImages.length !== 9}}" class="grid-add" bindtap="chooseMultiImages">
-        <text class="add-plus">+</text>
-        <text class="add-text">添加照片</text>
+      <view class="image-grid">
+        <view wx:for="{{multiImages}}" wx:key="*this" class="grid-item">
+          <image class="grid-img" src="{{item}}" mode="aspectFill"></image>
+          <text class="grid-index">{{index + 1}}</text>
+          <text class="grid-remove" data-index="{{index}}" catchtap="removeMultiImage">×</text>
+        </view>
+        <view wx:if="{{multiImages.length < 9}}" class="grid-add" bindtap="chooseMultiImages">
+          <text class="add-icon">＋</text>
+          <text class="add-text">继续添加</text>
+        </view>
       </view>
     </view>
 
@@ -423,48 +258,82 @@
     </view>
 
     <button class="btn-primary btn-convert" bindtap="convertImagesToGif" loading="{{isConverting}}" disabled="{{isConverting}}">
-      {{isConverting ? '正在合成动图中...' : '合成动图'}}
+      {{isConverting ? '正在合成动图中...' : (multiImages.length === 0 ? '选择照片并合成动图' : '合成 GIF 动图')}}
     </button>
   </view>
 
-  <!-- ================= 模式 7: 长图智能拼接 ================= -->
+  <!-- ================= 模式 5: 长图智能拼接 ================= -->
   <view wx:if="{{tab === 'stitch'}}" class="card action-box">
     <view class="section-title">长图智能拼接</view>
-    <text class="section-kicker">支持竖向长图、横向拼接、电影台词/字幕无缝衔接</text>
+    <text class="section-kicker">支持竖向长图、电影台词截图无缝叠拼、横向拼接</text>
     
+    <!-- 拼接排版模式选择器 -->
     <view class="form-item-remix">
-      <text class="form-label-remix">拼接模式</text>
-      <view class="stitch-mode-group">
-        <view class="mode-chip {{stitchMode === 'vertical' ? 'active' : ''}}" bindtap="setStitchMode" data-mode="vertical">
-          竖向长图
+      <text class="form-label-remix">拼接排版模式</text>
+      <view class="stitch-mode-selector">
+        <view class="stitch-opt {{stitchMode === 'vertical' ? 'active' : ''}}" bindtap="setStitchMode" data-mode="vertical">
+          <text class="opt-emoji">⬇️</text><text>竖向长图</text>
         </view>
-        <view class="mode-chip {{stitchMode === 'subtitle' ? 'active' : ''}}" bindtap="setStitchMode" data-mode="subtitle">
-          电影台词拼图
+        <view class="stitch-opt {{stitchMode === 'subtitle' ? 'active' : ''}}" bindtap="setStitchMode" data-mode="subtitle">
+          <text class="opt-emoji">🎬</text><text>电影台词拼图</text>
         </view>
-        <view class="mode-chip {{stitchMode === 'horizontal' ? 'active' : ''}}" bindtap="setStitchMode" data-mode="horizontal">
-          横向长图
+        <view class="stitch-opt {{stitchMode === 'horizontal' ? 'active' : ''}}" bindtap="setStitchMode" data-mode="horizontal">
+          <text class="opt-emoji">➡️</text><text>横向拼接</text>
         </view>
       </view>
     </view>
 
-    <view class="image-grid">
-      <view wx:for="{{stitchImages}}" wx:key="*this" class="grid-item">
-        <image class="grid-img" src="{{item}}" mode="aspectFill"></image>
-        <text class="grid-index">{{index + 1}}</text>
-        <text class="grid-remove" data-index="{{index}}" catchtap="removeStitchImage">×</text>
+    <!-- 电影台词字幕裁剪比例滑块 (仅在 subtitle 模式下展示) -->
+    <view wx:if="{{stitchMode === 'subtitle'}}" class="form-item-remix subtitle-ratio-box">
+      <view class="slider-label-row">
+        <text class="form-label-remix">字幕截取区域比例</text>
+        <text class="slider-val-tag">底部 {{subtitleRatio * 100}}%</text>
       </view>
-      <view wx:if="{{stitchImages.length !== 9}}" class="grid-add" bindtap="chooseStitchImages">
-        <text class="add-plus">+</text>
-        <text class="add-text">添加图片</text>
+      <slider
+        min="0.1"
+        max="0.5"
+        step="0.05"
+        value="{{subtitleRatio}}"
+        bindchanging="onSubtitleRatioChange"
+        bindchange="onSubtitleRatioChange"
+        block-size="16"
+        activeColor="#4f46e5"
+      />
+      <text class="stitch-tip-sm">首张保留全景画面，后续每张仅保留底部台词字幕条并无缝叠拼</text>
+    </view>
+
+    <!-- 图片选择区域：未选图片时显示大上传引导区 -->
+    <view wx:if="{{stitchImages.length === 0}}" class="upload-zone" bindtap="chooseStitchImages">
+      <text class="upload-icon">🎞️</text>
+      <text class="upload-title">选择要拼接的图片 (2~9张)</text>
+      <text class="upload-sub">点击批量选择聊天截图、电影画面或表情包</text>
+    </view>
+    <!-- 已选图片时显示九宫格预览、序号、删除和继续添加 -->
+    <view wx:else class="stitch-selected-box">
+      <view class="stitch-meta-row">
+        <text class="stitch-count-hint">已选 {{stitchImages.length}} / 9 张图片 (按序号排版拼接)</text>
+        <button class="btn-xs remove-btn" bindtap="clearStitchImages">清空重选</button>
+      </view>
+      <view class="image-grid">
+        <view wx:for="{{stitchImages}}" wx:key="*this" class="grid-item">
+          <image class="grid-img" src="{{item}}" mode="aspectFill"></image>
+          <text class="grid-index">{{index + 1}}</text>
+          <text class="grid-remove" data-index="{{index}}" catchtap="removeStitchImage">×</text>
+        </view>
+        <view wx:if="{{stitchImages.length < 9}}" class="grid-add" bindtap="chooseStitchImages">
+          <text class="add-icon">＋</text>
+          <text class="add-text">继续添加</text>
+        </view>
       </view>
     </view>
 
+    <!-- 底部主操作按钮 -->
     <button class="btn-primary btn-convert" bindtap="executeStitch" loading="{{isConverting}}" disabled="{{isConverting}}">
-      {{isConverting ? '正在拼接长图中...' : '开始拼接长图'}}
+      {{isConverting ? '正在拼接长图中...' : (stitchImages.length === 0 ? '选择图片并拼接长图' : '一键拼接长图')}}
     </button>
   </view>
 
-  <!-- ================= 模式 8: 金句卡片生成器 ================= -->
+  <!-- ================= 模式 6: 金句卡片生成器 ================= -->
   <view wx:if="{{tab === 'card'}}" class="card action-box">
     <view class="section-title">金句梗图卡片</view>
     <text class="section-kicker">一键排版朋友圈金句、打工人语录与斗图金句卡</text>
