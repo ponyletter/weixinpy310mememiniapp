@@ -63,6 +63,8 @@ Page({
     const isCrop = options && options.mode === 'crop';
     this.elements = []; // 画布上的所有图元
     this.brushStrokes = []; // 涂鸦线条
+    this.brushRedoStack = []; // 涂鸦前进/恢复历史
+    this.elementRedoStack = []; // 图元前进/恢复历史
     this.undoStack = []; // 撤销历史
     this.bgImageObj = null;
     this.elementCounter = 1;
@@ -415,6 +417,7 @@ Page({
         points: [{ x, y }]
       };
       this.brushStrokes.push(this.currentStroke);
+      this.brushRedoStack = [];
       this.renderCanvas();
       return;
     }
@@ -529,6 +532,7 @@ Page({
       fontSize: 48
     };
     this.elements.push(newEl);
+    this.elementRedoStack = [];
     this.setData({
       selectedElementId: newEl.id,
       selectedScale: 1.0,
@@ -555,6 +559,7 @@ Page({
       fontSize: 22
     };
     this.elements.push(newEl);
+    this.elementRedoStack = [];
     this.setData({
       selectedElementId: newEl.id,
       selectedScale: 1.0,
@@ -630,6 +635,7 @@ Page({
 
     if (newEl) {
       this.elements.push(newEl);
+      this.elementRedoStack = [];
       this.setData({
         selectedElementId: newEl.id,
         selectedScale: 1.0,
@@ -689,6 +695,7 @@ Page({
       hasOutline: this.data.textHasOutline
     };
     this.elements.push(newEl);
+    this.elementRedoStack = [];
     this.setData({
       showTextModal: false,
       selectedElementId: newEl.id,
@@ -752,6 +759,7 @@ Page({
 
   clearBrush() {
     this.brushStrokes = [];
+    this.brushRedoStack = [];
     this.renderCanvas();
     wx.showToast({ title: '涂鸦已清空', icon: 'none' });
   },
@@ -780,25 +788,64 @@ Page({
     this.setData({ stickerCategory: cat });
   },
 
-  // --- 画布全局操作 ---
+  // --- 画布全局操作 (撤销与前进/恢复) ---
   undo() {
-    if (this.data.isBrushActive && this.brushStrokes.length > 0) {
-      this.brushStrokes.pop();
-      this.renderCanvas();
-      wx.showToast({ title: '已撤销笔画', icon: 'none', duration: 800 });
+    if (this.data.isBrushActive) {
+      if (this.brushStrokes.length > 0) {
+        const stroke = this.brushStrokes.pop();
+        this.brushRedoStack.push(stroke);
+        this.renderCanvas();
+        wx.showToast({ title: '已撤销笔画', icon: 'none', duration: 800 });
+      } else {
+        wx.showToast({ title: '无可撤销笔画', icon: 'none' });
+      }
       return;
     }
     if (this.elements.length > 0) {
-      this.elements.pop();
+      const el = this.elements.pop();
+      this.elementRedoStack.push(el);
       this.setData({ selectedElementId: null });
       this.renderCanvas();
       wx.showToast({ title: '已撤销元素', icon: 'none', duration: 800 });
     } else if (this.brushStrokes.length > 0) {
-      this.brushStrokes.pop();
+      const stroke = this.brushStrokes.pop();
+      this.brushRedoStack.push(stroke);
       this.renderCanvas();
       wx.showToast({ title: '已撤销笔画', icon: 'none', duration: 800 });
     } else {
       wx.showToast({ title: '无可撤销内容', icon: 'none' });
+    }
+  },
+
+  redo() {
+    if (this.data.isBrushActive) {
+      if (this.brushRedoStack && this.brushRedoStack.length > 0) {
+        const stroke = this.brushRedoStack.pop();
+        this.brushStrokes.push(stroke);
+        this.renderCanvas();
+        wx.showToast({ title: '已恢复笔画', icon: 'none', duration: 800 });
+      } else {
+        wx.showToast({ title: '无可前进内容', icon: 'none' });
+      }
+      return;
+    }
+    if (this.elementRedoStack && this.elementRedoStack.length > 0) {
+      const el = this.elementRedoStack.pop();
+      this.elements.push(el);
+      this.setData({
+        selectedElementId: el.id,
+        selectedScale: el.scale || 1.0,
+        selectedRotate: el.rotation || 0
+      });
+      this.renderCanvas();
+      wx.showToast({ title: '已恢复元素', icon: 'none', duration: 800 });
+    } else if (this.brushRedoStack && this.brushRedoStack.length > 0) {
+      const stroke = this.brushRedoStack.pop();
+      this.brushStrokes.push(stroke);
+      this.renderCanvas();
+      wx.showToast({ title: '已恢复笔画', icon: 'none', duration: 800 });
+    } else {
+      wx.showToast({ title: '无可前进内容', icon: 'none' });
     }
   },
 
@@ -979,6 +1026,8 @@ Page({
         if (res.confirm) {
           this.elements = [];
           this.brushStrokes = [];
+          this.brushRedoStack = [];
+          this.elementRedoStack = [];
           this.setData({ selectedElementId: null });
           this.renderCanvas();
         }

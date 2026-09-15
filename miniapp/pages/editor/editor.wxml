@@ -2,7 +2,8 @@
   <!-- 顶部精简操作栏 -->
   <view class="editor-nav-bar">
     <view class="nav-left-actions">
-      <view class="action-btn-sm" bindtap="undo">撤销</view>
+      <view class="action-btn-sm" bindtap="undo">↩ 撤销</view>
+      <view class="action-btn-sm" bindtap="redo">↪ 前进</view>
       <view class="action-btn-sm btn-clear" bindtap="clearAll">清空</view>
     </view>
     <view class="nav-right-actions">
@@ -93,7 +94,7 @@
           ✂️ 构图与裁剪
         </view>
         <view class="sub-tab {{cropSubTab === 'adjust' ? 'active' : ''}}" bindtap="setCropSubTab" data-tab="adjust">
-          🎛️ 苹果调色
+          🎛️ 调色
         </view>
         <view class="sub-tab {{cropSubTab === 'filter' ? 'active' : ''}}" bindtap="setCropSubTab" data-tab="filter">
           🎨 风格滤镜
@@ -324,6 +325,7 @@
           {{isBrushActive ? '🎨 涂鸦中 (点击暂停)' : '✏️ 点击开启涂鸦'}}
         </button>
         <button class="btn-xs" bindtap="undo">↩ 撤销</button>
+        <button class="btn-xs" bindtap="redo">↪ 前进</button>
         <button class="btn-xs" bindtap="clearBrush">清空涂鸦</button>
       </view>
       <view class="brush-settings">

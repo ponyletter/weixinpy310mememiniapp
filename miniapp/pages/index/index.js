@@ -238,24 +238,7 @@ Page({
 
   cropCurrentImage() {
     if (!this.data.refImagePath) return;
-    if (wx.cropImage) {
-      wx.cropImage({
-        current: this.data.refImagePath,
-        cropScale: '1:1',
-        success: (cRes) => {
-          if (cRes.tempFilePath) {
-            this.setData({ refImagePath: cRes.tempFilePath });
-            wx.showToast({ title: '裁剪已应用', icon: 'success' });
-          }
-        },
-        fail: (err) => {
-          console.log('裁剪取消或不支持，转用内置裁剪画板:', err);
-          this.openImageEditor(true);
-        }
-      });
-    } else {
-      this.openImageEditor(true);
-    }
+    this.openImageEditor(true);
   },
 
   openImageEditor(isCropMode = false) {
@@ -359,6 +342,7 @@ Page({
       .exec((res) => {
         if (!res[0] || !res[0].node) return;
         const canvas = res[0].node;
+        const ctx = canvas.getContext('2d');
         const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
         const dpr = windowInfo.pixelRatio || 2;
         canvas.width = res[0].width * dpr;
@@ -423,6 +407,7 @@ Page({
       .exec((res) => {
         if (!res[0] || !res[0].node) return;
         const canvas = res[0].node;
+        const ctx = canvas.getContext('2d');
         const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
         const dpr = windowInfo.pixelRatio || 2;
         canvas.width = res[0].width * dpr;
