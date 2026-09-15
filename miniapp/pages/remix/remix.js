@@ -618,7 +618,7 @@ Page({
       .exec((res) => {
         if (!res[0] || !res[0].node) return;
         const canvas = res[0].node;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
         const dpr = windowInfo.pixelRatio || 2;
         const w = res[0].width;

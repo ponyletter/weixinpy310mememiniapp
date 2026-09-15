@@ -70,6 +70,7 @@ Page({
   onLoad(options) {
     const src = options.src ? decodeURIComponent(options.src) : '';
     const isCrop = options && options.mode === 'crop';
+    this.isCropMode = isCrop;
     this.elements = []; // 画布上的所有图元
     this.brushStrokes = []; // 涂鸦线条
     this.brushRedoStack = []; // 涂鸦前进/恢复历史
@@ -85,6 +86,9 @@ Page({
     const winWidth = windowInfo.windowWidth || 375;
     const cWidth = Math.min(winWidth - 32, 380);
     const cHeight = cWidth; // 1:1 正方形画布，最适合表情包
+    this.maxCanvasWidth = cWidth;
+    this.maxCanvasHeight = cWidth;
+    this._canvasFitApplied = false;
     const pad = 12;
     this.setData({
       bgImageSrc: src,
@@ -102,6 +106,69 @@ Page({
     }, 200);
   },
 
+  // 普通图片编辑按原图比例收紧画布，避免横图在 1:1 白色画布中出现大块上下留白。
+  // 裁剪模式保留正方形初始画布，用户可通过比例工具主动决定输出构图。
+  fitCanvasToImage(img) {
+    if (this._canvasFitApplied || !img || !img.width || !img.height) return false;
+
+    this._canvasFitApplied = true;
+    if (this.isCropMode) return false;
+
+    const maxWidth = this.maxCanvasWidth || this.data.canvasWidth;
+    const maxHeight = this.maxCanvasHeight || this.data.canvasHeight;
+    const imageRatio = img.width / img.height;
+    let width = maxWidth;
+    let height = Math.round(width / imageRatio);
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = Math.round(height * imageRatio);
+    }
+
+    if (
+      Math.abs(width - this.data.canvasWidth) < 2
+      && Math.abs(height - this.data.canvasHeight) < 2
+    ) {
+      return false;
+    }
+
+    const pad = Math.min(12, Math.floor(Math.min(width, height) / 8));
+    this.setData({
+      canvasWidth: width,
+      canvasHeight: height,
+      cropBox: {
+        x: pad,
+        y: pad,
+        w: Math.max(20, width - pad * 2),
+        h: Math.max(20, height - pad * 2)
+      }
+    }, () => {
+      // 等待 WXML 画布尺寸更新后重新绑定节点，避免使用旧的物理像素尺寸。
+      setTimeout(() => this.refreshCanvasNode(img), 0);
+    });
+    return true;
+  },
+
+  refreshCanvasNode(image) {
+    const query = wx.createSelectorQuery();
+    query.select('#editorCanvas')
+      .fields({ node: true, size: true })
+      .exec((res) => {
+        if (!res[0] || !res[0].node) return;
+        const canvas = res[0].node;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
+        const dpr = windowInfo.pixelRatio || 2;
+        canvas.width = res[0].width * dpr;
+        canvas.height = res[0].height * dpr;
+        ctx.scale(dpr, dpr);
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.dpr = dpr;
+        this.bgImageObj = image;
+        this.renderCanvas();
+      });
+  },
+
   initCanvas(bgSrc) {
     const query = wx.createSelectorQuery();
     query.select('#editorCanvas')
@@ -109,7 +176,7 @@ Page({
       .exec((res) => {
         if (!res[0] || !res[0].node) return;
         const canvas = res[0].node;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const windowInfo = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync ? wx.getSystemInfoSync() : {});
         const dpr = windowInfo.pixelRatio || 2;
 
@@ -128,6 +195,7 @@ Page({
             img.onload = () => {
               wx.hideLoading();
               this.bgImageObj = img;
+              if (this.fitCanvasToImage(img)) return;
               this.renderCanvas();
             };
             img.onerror = () => {
@@ -1047,11 +1115,13 @@ Page({
             bgRotation: 0,
             bgFlipH: false
           });
+          this._canvasFitApplied = false;
           wx.showLoading({ title: '载入新图片...' });
           const img = this.canvas.createImage();
           img.onload = () => {
             wx.hideLoading();
             this.bgImageObj = img;
+            if (this.fitCanvasToImage(img)) return;
             this.renderCanvas();
           };
           img.onerror = () => {
@@ -1380,6 +1450,7 @@ Page({
             bgRotation: 0,
             bgFlipH: false
           });
+          this._canvasFitApplied = false;
           this.initCanvas(croppedSrc);
           this.resetCropBox();
           wx.showToast({ title: '裁剪已应用！', icon: 'success' });

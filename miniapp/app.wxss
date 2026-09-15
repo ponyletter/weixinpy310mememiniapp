@@ -13,7 +13,8 @@ view, text, image, input, button, scroll-view {
 
 /* 常用主容器 (间距开阔，不拥挤) */
 .container {
-  padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom));
+  /* 为原生底部 TabBar 预留空间，避免最后一张卡片被遮住。 */
+  padding: 24rpx 28rpx calc(120rpx + env(safe-area-inset-bottom));
   min-height: 100vh;
 }
 

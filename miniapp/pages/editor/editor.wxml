@@ -116,7 +116,7 @@
     <!-- 功能分类 Tab 栏 -->
     <view class="feature-tabs">
       <view class="f-tab {{activeTab === 'crop' ? 'active' : ''}}" bindtap="switchTab" data-tab="crop">
-        <text>✂️</text><text>裁剪调色</text>
+        <text>✂️</text><text>裁剪</text>
       </view>
       <view class="f-tab {{activeTab === 'sticker' ? 'active' : ''}}" bindtap="switchTab" data-tab="sticker">
         <text>😀</text><text>贴纸</text>

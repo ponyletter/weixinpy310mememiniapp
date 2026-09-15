@@ -795,7 +795,7 @@ Page({
     const code = this.data.user.invite_code || '';
     return {
       title: '送你10次免费动图制作额度，一键生成微信专属表情包！',
-      path: `/pages/index/index?inviter=${code}`,
+      path: `/pages/index/index?inviter=${encodeURIComponent(code)}`,
       imageUrl: ''
     };
   }
