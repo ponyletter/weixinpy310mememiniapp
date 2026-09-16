@@ -1,6 +1,12 @@
 <view class="container {{showFullScreenSketch ? 'page-locked' : ''}}">
   <view class="page-heading home-heading">
-    <text class="page-eyebrow">AI 动态表情工坊</text>
+    <view class="heading-row-top">
+      <text class="page-eyebrow">AI 动态表情工坊</text>
+      <view class="guide-trigger-pill" bindtap="openNewbieGuide">
+        <text class="guide-trigger-icon">📖</text>
+        <text>新手教程</text>
+      </view>
+    </view>
     <text class="page-title">让你的角色动起来</text>
     <text class="page-subtitle">上传照片或随手画一个角色，添加动作和台词即可生成专属动图。</text>
     <view class="step-strip">
@@ -30,6 +36,42 @@
       <text class="action-divider">|</text>
       <text class="action-link action-recharge" bindtap="goToRecharge">补充额度</text>
     </view>
+  </view>
+
+  <!-- 🔥 精选成品效果展示 / 热门推荐 (真实动图预览 & 一键做同款) -->
+  <view class="showcase-section">
+    <view class="showcase-header">
+      <view class="showcase-header-left">
+        <text class="showcase-fire-icon">🔥</text>
+        <text class="showcase-title">精选成品效果</text>
+        <text class="showcase-sub">真实动图预览</text>
+      </view>
+      <view class="showcase-header-right">
+        <text class="showcase-hint">左右滑动查看 ›</text>
+      </view>
+    </view>
+    <scroll-view class="showcase-scroll-list" scroll-x="true" enable-flex="true" show-scrollbar="false">
+      <view
+        wx:for="{{featuredShowcases}}"
+        wx:key="id"
+        class="showcase-item-card"
+      >
+        <view class="showcase-gif-box" bindtap="previewShowcaseGif" data-url="{{item.url}}">
+          <image class="showcase-gif-img" src="{{item.url}}" mode="aspectFit" lazy-load="true"></image>
+          <text class="showcase-tag-badge">{{item.tag}}</text>
+          <view class="showcase-preview-pill">🔍 点击放大</view>
+        </view>
+        <view class="showcase-info">
+          <view class="showcase-name-row">
+            <text class="showcase-item-title">{{item.title}}</text>
+          </view>
+          <text class="showcase-caption-quote">“{{item.caption}}”</text>
+          <button class="btn-xs btn-showcase-apply" catchtap="applyShowcaseItem" data-item="{{item}}">
+            ⚡ 做同款
+          </button>
+        </view>
+      </view>
+    </scroll-view>
   </view>
 
   <!-- 动作模版选择器：紧凑内联胶囊 -->
@@ -161,6 +203,10 @@
   <button class="btn-primary btn-generate" bindtap="startGenerate" loading="{{isGenerating}}" disabled="{{isGenerating}}">
     {{isGenerating ? '正在制作 · ' + progress + '%' : '生成动态表情 · 消耗 1 次'}}
   </button>
+  <view class="generate-time-hint">
+    <text class="time-hint-icon">⏱️</text>
+    <text>16 帧丝滑渲染约需 2~4 分钟 · 提交后离开不影响后台生成</text>
+  </view>
 
   <!-- 动图预览与导出区 -->
   <view wx:if="{{isGenerating || gifResultUrl}}" class="section-title-sm" style="margin-top: 24rpx;">
@@ -178,6 +224,18 @@
       <view class="time-elapsed-tag">已耗时 {{elapsedSeconds}} 秒 · 预计共 {{estimatedSeconds}} 秒</view>
       <view class="stage-tip">
         <text>根据近期生成平均速度智能预估，请耐心等待或稍后回来查看</text>
+      </view>
+
+      <!-- 离开小程序不影响后台生成温馨提醒 -->
+      <view class="bg-running-notice-card">
+        <view class="bg-notice-head">
+          <text class="bg-notice-badge">⚡ 云端渲染中</text>
+          <text class="bg-notice-title">离开小程序不影响生成</text>
+        </view>
+        <text class="bg-notice-desc">
+          AI 正在进行 16 帧高清逐帧生成与透明去背处理（耗时约 2~4 分钟）。
+          您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算。渲染完成后，重新进入小程序即可直接查看并保存！
+        </text>
       </view>
     </view>
 
@@ -374,6 +432,56 @@
             <view class="specs-pill specs-pill-large {{currentResolution === '720x720' ? 'active' : ''}}" bindtap="selectResolution" data-res="720x720">超大 720×720 (可能超过1MB)</view>
           </view>
         </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 新手制作教程与引导弹窗 (首次进入自动触发，可直接跳过，也可从头部重新打开) -->
+  <view wx:if="{{showNewbieGuide}}" class="guide-modal-mask" bindtap="closeNewbieGuide">
+    <view class="guide-modal-card" catchtap="stopBubble">
+      <view class="guide-modal-header">
+        <view class="guide-header-title-box">
+          <text class="guide-badge-newbie">新手指南</text>
+          <text class="guide-modal-title">3步搞定专属动图</text>
+        </view>
+        <view class="guide-skip-btn" bindtap="closeNewbieGuide">跳过教程 ✕</view>
+      </view>
+
+      <view class="guide-steps-list">
+        <view class="guide-step-card">
+          <view class="guide-step-index">1</view>
+          <view class="guide-step-info">
+            <text class="guide-step-tit">选动作模版或看精选成品</text>
+            <text class="guide-step-sub">涵盖飞吻、打工摸鱼、魔性比心、战斗等热门动作，点击即可一键做同款！</text>
+          </view>
+        </view>
+        <view class="guide-step-card">
+          <view class="guide-step-index">2</view>
+          <view class="guide-step-info">
+            <text class="guide-step-tit">上传照片或在线涂鸦随手画</text>
+            <text class="guide-step-sub">支持真人、萌宠、动漫头像或手绘涂鸦，AI 自动定位并扣出角色主体。</text>
+          </view>
+        </view>
+        <view class="guide-step-card">
+          <view class="guide-step-index">3</view>
+          <view class="guide-step-info">
+            <text class="guide-step-tit">一键生成，离开不影响后台</text>
+            <text class="guide-step-sub">点击生成即可！AI 在后台逐帧渲染，可随意离开，生成完毕随时回来保存。</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 耗时较长与后台渲染重点提醒 -->
+      <view class="guide-time-notice">
+        <view class="guide-notice-title">
+          <text class="notice-icon">⏱️</text>
+          <text class="notice-tit-text">AI 逐帧渲染与耗时提示</text>
+        </view>
+        <text class="notice-desc">为保证 16 帧丝滑动作与透明背景免抠图画质，单张动图生成约需 2~4 分钟。提交后无需在页面死等，退出小程序或锁屏后台依然持续运行，完成后随时在首页或个人中心查看保存！</text>
+      </view>
+
+      <view class="guide-footer-actions">
+        <button class="btn-primary guide-confirm-btn" bindtap="closeNewbieGuide">我知道了，立即制作</button>
       </view>
     </view>
   </view>
