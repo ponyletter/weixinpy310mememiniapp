@@ -535,6 +535,15 @@ async def run_generate_pipeline(
         task_dir = settings.OUTPUT_DIR / task_id
         task_dir.mkdir(parents=True, exist_ok=True)
 
+        # 保存用户原始参考图/手绘图到任务产物目录，确保存入 Cloudflare R2 与国内节点
+        if has_image and ref_image_bytes:
+            orig_path = task_dir / "original_image.png"
+            try:
+                orig_path.write_bytes(ref_image_bytes)
+                logger.info("[%s] 用户原始上传图像已保存至 %s (%d 字节)", task_id, orig_path.name, len(ref_image_bytes))
+            except Exception as e:
+                logger.warning("[%s] 保存用户原始上传图像失败: %s", task_id, e)
+
         input_path = task_dir / "input_sprite.png"
         source_image.save(input_path, format="PNG")
 
@@ -608,6 +617,7 @@ async def run_generate_pipeline(
         stats["resolution"] = f"{target_size_px}x{target_size_px}"
 
         # 只有本地成品、国内节点和 R2 都准备好后，才向小程序报告完成。
+        has_orig = has_image and (task_dir / "original_image.png").exists()
         result_data = {
             "task_id": task_id,
             "gif_url": f"/outputs/{task_id}/meme_result.gif",
@@ -615,6 +625,7 @@ async def run_generate_pipeline(
             "thumb_url": f"/outputs/{task_id}/meme_result.gif",
             "zip_url": f"/outputs/{task_id}/frames_pack.zip",
             "input_url": f"/outputs/{task_id}/input_sprite.png",
+            "original_image_url": f"/outputs/{task_id}/original_image.png" if has_orig else "",
             "caption": custom_caption,
             "frames": frame_preview_urls,
             "stats": stats,

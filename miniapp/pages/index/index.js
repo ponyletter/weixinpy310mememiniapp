@@ -60,65 +60,7 @@ Page({
     sharedGifTitle: '',
 
     // 新人引导教程弹窗控制
-    showNewbieGuide: false,
-
-    // 精选成品动图效果推荐
-    featuredShowcases: [
-      {
-        id: 'showcase_kiss',
-        tplId: 'kiss',
-        title: '飞吻示爱',
-        tag: '🔥 爆款推荐',
-        caption: '么么哒',
-        desc: '发送爱心，萌力爆表',
-        url: 'https://meme.tg-cc755.cn/outputs/showcase_kiss_1/meme_result.gif'
-      },
-      {
-        id: 'showcase_battle',
-        tplId: 'battle_chibi',
-        title: '战斗暴击',
-        tag: '⚡ 高能连招',
-        caption: '吃我一拳',
-        desc: '蓄力重拳，热血打击',
-        url: 'https://meme.tg-cc755.cn/outputs/showcase_battle_1/meme_result.gif'
-      },
-      {
-        id: 'showcase_worker',
-        tplId: 'slack_worker',
-        title: '打工摸鱼',
-        tag: '💼 职场必备',
-        caption: '疯狂摸鱼中',
-        desc: '电脑前敲键盘，偷偷喝水',
-        url: 'https://meme.tg-cc755.cn/outputs/showcase_worker_1/meme_result.gif'
-      },
-      {
-        id: 'showcase_dance',
-        tplId: 'heart_dance',
-        title: '魔性比心',
-        tag: '✨ 魔性可爱',
-        caption: '比心心',
-        desc: '左右扭动魔性比心',
-        url: 'https://meme.tg-cc755.cn/outputs/showcase_dance_1/meme_result.gif'
-      },
-      {
-        id: 'showcase_pet',
-        tplId: 'pet_idle',
-        title: '萌宠待机',
-        tag: '🐾 治愈呆萌',
-        caption: '乖巧等待',
-        desc: '晃脑袋眨眼睛，摇尾巴',
-        url: 'https://meme.tg-cc755.cn/outputs/showcase_pet_1/meme_result.gif'
-      },
-      {
-        id: 'showcase_custom',
-        tplId: 'custom',
-        title: '心如止水',
-        tag: '🎨 自由定制',
-        caption: '看我的',
-        desc: '自定义描述动作',
-        url: 'https://meme.tg-cc755.cn/outputs/showcase_custom_1/meme_result.gif'
-      }
-    ]
+    showNewbieGuide: false
   },
 
   onLoad(options) {
@@ -164,6 +106,9 @@ Page({
       this.setData({ showNewbieGuide: true });
     }
 
+    // 微信聊天素材快捷制作通道 (场景值 1173: 聊天素材用小程序打开)
+    this.checkForwardMaterials(options);
+
     this.fetchTemplates();
     this.updateQuotaInfo();
     this.initSketchCanvas();
@@ -173,6 +118,7 @@ Page({
   onShow() {
     this.updateQuotaInfo();
     this.checkResumeActiveTask();
+    this.checkForwardMaterials();
     const cfg = app.getGifConfig();
     this.setData({
       currentFrameCount: cfg.frameCount || 16,
@@ -1399,37 +1345,22 @@ Page({
     wx.setStorageSync('has_seen_guide_v1', true);
   },
 
-  // --- 精选成品动图交互：一键套用做同款 ---
-  applyShowcaseItem(e) {
-    const item = e.currentTarget.dataset.item;
-    if (!item) return;
-    const found = (this.data.templates || []).find(t => t.id === item.tplId);
-    this.setData({
-      selectedTemplate: item.tplId,
-      selectedTemplateTitle: found ? found.title : item.title,
-      selectedTemplateDesc: found ? found.action : item.desc,
-      caption: item.caption || this.data.caption
-    });
-    wx.showToast({
-      title: `已套用「${item.title}」同款`,
-      icon: 'none'
-    });
-    // 平滑滚动定位至核心形象编辑卡片
-    wx.pageScrollTo({
-      selector: '.hero-card',
-      duration: 350
-    });
-  },
-
-  // 预览精选推荐动图大图
-  previewShowcaseGif(e) {
-    const url = e.currentTarget.dataset.url;
-    if (!url) return;
-    const urls = (this.data.featuredShowcases || []).map(s => s.url);
-    wx.previewImage({
-      current: url,
-      urls: urls.length > 0 ? urls : [url]
-    });
+  // --- 微信聊天素材快捷制作通道接入 ---
+  checkForwardMaterials(opts) {
+    const options = opts || (wx.getEnterOptionsSync ? wx.getEnterOptionsSync() : null);
+    if (!options) return;
+    const isMaterialScene = options.scene === 1173 || Boolean(options.forwardMaterials);
+    if (isMaterialScene && Array.isArray(options.forwardMaterials) && options.forwardMaterials.length > 0) {
+      const material = options.forwardMaterials[0];
+      const filePath = material.path || material.tempFilePath || '';
+      if (filePath && filePath !== this.data.refImagePath) {
+        this.setData({
+          mode: 'upload',
+          refImagePath: filePath
+        });
+        wx.showToast({ title: '已载入聊天图片', icon: 'success' });
+      }
+    }
   },
 
   onUnload() {

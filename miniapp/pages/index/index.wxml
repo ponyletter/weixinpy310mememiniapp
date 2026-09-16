@@ -38,42 +38,6 @@
     </view>
   </view>
 
-  <!-- 🔥 精选成品效果展示 / 热门推荐 (真实动图预览 & 一键做同款) -->
-  <view class="showcase-section">
-    <view class="showcase-header">
-      <view class="showcase-header-left">
-        <text class="showcase-fire-icon">🔥</text>
-        <text class="showcase-title">精选成品效果</text>
-        <text class="showcase-sub">真实动图预览</text>
-      </view>
-      <view class="showcase-header-right">
-        <text class="showcase-hint">左右滑动查看 ›</text>
-      </view>
-    </view>
-    <scroll-view class="showcase-scroll-list" scroll-x="true" enable-flex="true" show-scrollbar="false">
-      <view
-        wx:for="{{featuredShowcases}}"
-        wx:key="id"
-        class="showcase-item-card"
-      >
-        <view class="showcase-gif-box" bindtap="previewShowcaseGif" data-url="{{item.url}}">
-          <image class="showcase-gif-img" src="{{item.url}}" mode="aspectFit" lazy-load="true"></image>
-          <text class="showcase-tag-badge">{{item.tag}}</text>
-          <view class="showcase-preview-pill">🔍 点击放大</view>
-        </view>
-        <view class="showcase-info">
-          <view class="showcase-name-row">
-            <text class="showcase-item-title">{{item.title}}</text>
-          </view>
-          <text class="showcase-caption-quote">“{{item.caption}}”</text>
-          <button class="btn-xs btn-showcase-apply" catchtap="applyShowcaseItem" data-item="{{item}}">
-            ⚡ 做同款
-          </button>
-        </view>
-      </view>
-    </scroll-view>
-  </view>
-
   <!-- 动作模版选择器：紧凑内联胶囊 -->
   <view class="template-selector-bar" bindtap="openTemplateDrawer">
     <view class="tpl-current">
@@ -205,7 +169,7 @@
   </button>
   <view class="generate-time-hint">
     <text class="time-hint-icon">⏱️</text>
-    <text>16 帧丝滑渲染约需 2~4 分钟 · 提交后离开不影响后台生成</text>
+    <text>16 帧丝滑渲染约需 1~4 分钟 · 提交后离开不影响后台生成</text>
   </view>
 
   <!-- 动图预览与导出区 -->
@@ -233,7 +197,7 @@
           <text class="bg-notice-title">离开小程序不影响生成</text>
         </view>
         <text class="bg-notice-desc">
-          AI 正在进行 16 帧高清逐帧生成与透明去背处理（耗时约 2~4 分钟）。
+          AI 正在进行 16 帧高清逐帧生成与透明去背处理（耗时约 1~4 分钟）。
           您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算。渲染完成后，重新进入小程序即可直接查看并保存！
         </text>
       </view>
@@ -436,7 +400,7 @@
     </view>
   </view>
 
-  <!-- 新手制作教程与引导弹窗 (首次进入自动触发，可直接跳过，也可从头部重新打开) -->
+  <!-- 新手制作教程与引导弹窗 (首次进入自动触发，也可从头部随时重新打开) -->
   <view wx:if="{{showNewbieGuide}}" class="guide-modal-mask" bindtap="closeNewbieGuide">
     <view class="guide-modal-card" catchtap="stopBubble">
       <view class="guide-modal-header">
@@ -444,15 +408,14 @@
           <text class="guide-badge-newbie">新手指南</text>
           <text class="guide-modal-title">3步搞定专属动图</text>
         </view>
-        <view class="guide-skip-btn" bindtap="closeNewbieGuide">跳过教程 ✕</view>
       </view>
 
       <view class="guide-steps-list">
         <view class="guide-step-card">
           <view class="guide-step-index">1</view>
           <view class="guide-step-info">
-            <text class="guide-step-tit">选动作模版或看精选成品</text>
-            <text class="guide-step-sub">涵盖飞吻、打工摸鱼、魔性比心、战斗等热门动作，点击即可一键做同款！</text>
+            <text class="guide-step-tit">选动作模版或写自定义动作</text>
+            <text class="guide-step-sub">涵盖飞吻、打工摸鱼、魔性比心、战斗等热门动作模版，随心挑选！</text>
           </view>
         </view>
         <view class="guide-step-card">
@@ -477,7 +440,7 @@
           <text class="notice-icon">⏱️</text>
           <text class="notice-tit-text">AI 逐帧渲染与耗时提示</text>
         </view>
-        <text class="notice-desc">为保证 16 帧丝滑动作与透明背景免抠图画质，单张动图生成约需 2~4 分钟。提交后无需在页面死等，退出小程序或锁屏后台依然持续运行，完成后随时在首页或个人中心查看保存！</text>
+        <text class="notice-desc">为保证 16 帧丝滑动作与透明背景免抠图画质，单张动图生成约需 1~4 分钟。提交后无需在页面死等，退出小程序或锁屏后台依然持续运行，完成后随时在首页或个人中心查看保存！</text>
       </view>
 
       <view class="guide-footer-actions">

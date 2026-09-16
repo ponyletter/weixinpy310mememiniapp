@@ -31,7 +31,11 @@ R2_FINAL_ARTIFACT_NAMES = frozenset({
     "matting_result.png",
     "stitched.jpg",
 })
-R2_SOURCE_ARTIFACT_NAMES = frozenset({"input_sprite.png"})
+R2_SOURCE_ARTIFACT_NAMES = frozenset({
+    "input_sprite.png",
+    "original_image.png",
+    "original_image.jpg",
+})
 
 
 def is_r2_enabled() -> bool:
@@ -175,7 +179,7 @@ def attach_r2_urls(value: Any, task_id: str, published: dict[str, str]) -> Any:
         result = {}
         for k, v in value.items():
             result[k] = attach_r2_urls(v, task_id, published)
-        for key in ("gif_url", "output_url", "image_url", "thumb_url", "zip_url", "input_url"):
+        for key in ("gif_url", "output_url", "image_url", "thumb_url", "zip_url", "input_url", "original_image_url"):
             val = result.get(key)
             if isinstance(val, str) and val:
                 filename = Path(val).name
