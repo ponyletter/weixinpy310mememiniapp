@@ -4,19 +4,15 @@
     <view class="hero-top-row">
       <view class="hero-title">{{collection.title}}</view>
       <button wx:if="{{isOwner}}" class="btn-xs btn-del-col-top" bindtap="deleteCurrentCollection">删除合集</button>
-      <view wx:elif="{{collection.is_public}}" class="badge badge-featured">官方精选</view>
-      <view wx:else class="badge badge-shared">好友分享</view>
+      <view wx:elif="{{collection.is_public}}" class="badge badge-featured">精选合集</view>
+      <view wx:else class="badge badge-shared">我的合集</view>
     </view>
     <view class="hero-desc">{{collection.description || '把喜欢的表情收在一起'}}</view>
     <view class="hero-stats">
       <text class="badge badge-gold">{{collection.item_count || 0}} 个表情</text>
-      <text class="stat-text">{{collection.view_count || 1}} 次浏览</text>
     </view>
     <view class="hero-btns">
-      <button class="btn-primary btn-hero-action" style="flex: 1;" open-type="share">
-        分享合集
-      </button>
-      <button class="btn-secondary btn-hero-action" style="flex: 1;" bindtap="goToMake">
+      <button class="btn-primary btn-hero-action" style="flex: 1;" bindtap="goToMake">
         制作新表情
       </button>
     </view>

@@ -27,16 +27,14 @@ function getShareableOutput(url) {
 
 const TOOL_META = {
   video: { id: 'video', name: '视频转GIF', icon: '📹' },
-  compress: { id: 'compress', name: '图片瘦身', icon: '⚡' },
   picker: { id: 'picker', name: '图片取色', icon: '🔍' },
   images: { id: 'images', name: '多图合成', icon: '▦' },
-  stitch: { id: 'stitch', name: '长图拼接', icon: '🎞️' },
-  card: { id: 'card', name: '金句卡片', icon: '📜' }
+  stitch: { id: 'stitch', name: '长图拼接', icon: '🎞️' }
 };
 
 Page({
   data: {
-    tab: 'video', // 'video' | 'compress' | 'picker' | 'images' | 'stitch' | 'card'
+    tab: 'video', // 'video' | 'picker' | 'images' | 'stitch'
     recentTools: [],
 
     // 1. 视频转动图

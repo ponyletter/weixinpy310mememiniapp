@@ -2,7 +2,7 @@
   <view class="page-heading">
     <text class="page-eyebrow">图片百宝箱</text>
     <text class="page-title">全能表情与图片处理</text>
-    <text class="page-subtitle">视频截取动图、深度瘦身压缩、精准图片取色、多图合成、长图拼接与金句排版卡片。</text>
+    <text class="page-subtitle">视频截取动图、精准图片取色、多图合成与长图拼接。</text>
   </view>
 
   <!-- 顶部：最近使用快捷入口 -->
@@ -27,13 +27,10 @@
     </scroll-view>
   </view>
 
-  <!-- 7大工具导航网格，最后一项居中显示 -->
+  <!-- 实用图片处理工具导航网格 -->
   <view class="remix-tabs card">
     <view class="remix-tab {{tab === 'video' ? 'active' : ''}}" bindtap="switchTab" data-tab="video">
       <text class="remix-tab-icon">📹</text><text>视频转GIF</text>
-    </view>
-    <view class="remix-tab {{tab === 'compress' ? 'active' : ''}}" bindtap="switchTab" data-tab="compress">
-      <text class="remix-tab-icon">⚡</text><text>图片瘦身</text>
     </view>
     <view class="remix-tab {{tab === 'picker' ? 'active' : ''}}" bindtap="switchTab" data-tab="picker">
       <text class="remix-tab-icon">🔍</text><text>图片取色</text>
@@ -43,9 +40,6 @@
     </view>
     <view class="remix-tab {{tab === 'stitch' ? 'active' : ''}}" bindtap="switchTab" data-tab="stitch">
       <text class="remix-tab-icon">🎞️</text><text>长图拼接</text>
-    </view>
-    <view class="remix-tab {{tab === 'card' ? 'active' : ''}}" bindtap="switchTab" data-tab="card">
-      <text class="remix-tab-icon">📜</text><text>金句卡片</text>
     </view>
     <view class="remix-tab remix-tab-action" bindtap="openStickerEditor">
       <text class="remix-tab-icon">🖍️</text><text>贴纸修图</text>
@@ -145,74 +139,7 @@
     </button>
   </view>
 
-  <!-- ================= 模式 2: 图片与动图瘦身 ================= -->
-  <view wx:if="{{tab === 'compress'}}" class="card action-box">
-    <view class="section-title">图片与动图瘦身</view>
-    <text class="section-kicker">滑动条自由选择压缩质量，实时对比原图大小，适配微信发送限制</text>
-
-    <view wx:if="{{!compressSrcPath}}" class="upload-zone" bindtap="chooseCompressImage">
-      <text class="upload-icon">⚡</text>
-      <text class="upload-title">选择需要瘦身的图片或动图</text>
-      <text class="upload-sub">支持 GIF、PNG、JPG、WEBP</text>
-    </view>
-    <view wx:else class="selected-wrap">
-      <image class="preview-gif" src="{{compressSrcPath}}" mode="aspectFit"></image>
-      <view wx:if="{{compressFileSizeStr}}" class="file-size-info-tag">
-        <text class="tag-icon">📊</text> 原文件大小：<text class="tag-bold">{{compressFileSizeStr}}</text>
-      </view>
-      <button class="btn-xs remove-btn" bindtap="clearCompressImage">重新选择文件</button>
-    </view>
-
-    <!-- 压缩质量滑动条 -->
-    <view class="form-item-remix">
-      <view class="slider-label-row">
-        <text class="form-label-remix">压缩质量级别</text>
-        <text class="slider-val-tag">{{compressQuality}}% 质量</text>
-      </view>
-      <slider
-        min="15"
-        max="95"
-        step="5"
-        value="{{compressQuality}}"
-        bindchanging="onCompressQualityChange"
-        bindchange="onCompressQualityChange"
-        block-size="16"
-        activeColor="#4f46e5"
-      />
-    </view>
-
-    <!-- 目标体积限制预设 -->
-    <view class="form-item-remix">
-      <text class="form-label-remix">目标体积限制</text>
-      <view class="compress-kb-group">
-        <view class="kb-chip {{compressTargetKb === 300 ? 'active' : ''}}" bindtap="setCompressTargetKb" data-kb="300">极速 300KB</view>
-        <view class="kb-chip {{compressTargetKb === 500 ? 'active' : ''}}" bindtap="setCompressTargetKb" data-kb="500">稳妥兼容 500KB</view>
-        <view class="kb-chip {{compressTargetKb === 1000 ? 'active' : ''}}" bindtap="setCompressTargetKb" data-kb="1000">高清 1MB</view>
-      </view>
-    </view>
-
-    <!-- 压缩前后对比卡片 -->
-    <view wx:if="{{compressNewSizeKb > 0}}" class="compress-compare-card">
-      <view class="compare-item">
-        <text class="c-title">原文件</text>
-        <text class="c-val">{{compressOrigSizeKb}} KB</text>
-      </view>
-      <text class="compare-arrow">→</text>
-      <view class="compare-item">
-        <text class="c-title">压缩后</text>
-        <text class="c-val-highlight">{{compressNewSizeKb}} KB</text>
-      </view>
-      <view wx:if="{{compressRatioStr}}" class="compare-badge">
-        <text>{{compressRatioStr}}</text>
-      </view>
-    </view>
-
-    <button class="btn-primary btn-convert" bindtap="executeCompress" loading="{{isConverting}}" disabled="{{isConverting}}">
-      {{isConverting ? '正在智能瘦身中...' : '开始智能压缩瘦身'}}
-    </button>
-  </view>
-
-  <!-- ================= 模式 3: 图片取色器 (RGB & HEX) ================= -->
+  <!-- ================= 模式 2: 图片取色器 (RGB & HEX) ================= -->
   <view wx:if="{{tab === 'picker'}}" class="card action-box">
     <view class="section-title">图片精准取色器</view>
     <text class="section-kicker">轻触图片任意像素，实时吸取色彩并一键复制 RGB 与 HEX 色值</text>
@@ -365,87 +292,6 @@
   </view>
 
   <!-- ================= 模式 6: 金句卡片生成器 ================= -->
-  <view wx:if="{{tab === 'card'}}" class="card action-box">
-    <view class="section-title">金句梗图卡片</view>
-    <text class="section-kicker">一键排版朋友圈金句、打工人语录与斗图金句卡</text>
-
-    <!-- 主题风格选择 -->
-    <view class="form-item-remix">
-      <text class="form-label-remix">主题风格</text>
-      <view class="card-theme-group">
-        <view class="theme-chip theme-classic {{cardTheme === 'classic' ? 'active' : ''}}" bindtap="selectCardTheme" data-theme="classic">经典雅白</view>
-        <view class="theme-chip theme-dark {{cardTheme === 'dark' ? 'active' : ''}}" bindtap="selectCardTheme" data-theme="dark">高级深黑</view>
-        <view class="theme-chip theme-gold {{cardTheme === 'gold' ? 'active' : ''}}" bindtap="selectCardTheme" data-theme="gold">轻奢香槟</view>
-        <view class="theme-chip theme-cute {{cardTheme === 'cute' ? 'active' : ''}}" bindtap="selectCardTheme" data-theme="cute">蜜桃甜心</view>
-      </view>
-    </view>
-
-    <!-- 卡片正文输入 -->
-    <view class="form-item-remix">
-      <text class="form-label-remix">金句内容</text>
-      <textarea
-        class="form-textarea-card"
-        placeholder="输入名言、金句或打工人语录，例如：今天的不开心就到此为止吧，明天依然光芒万丈。"
-        value="{{cardText}}"
-        bindinput="onInputCardText"
-        maxlength="200"
-      />
-    </view>
-
-    <!-- 标题与署名 (选填) -->
-    <view class="card-extra-row">
-      <view class="extra-item">
-        <text class="form-label-remix">标题 <text class="optional-label">选填</text></text>
-        <input class="form-input-remix" placeholder="例如：今日灵感" value="{{cardTitle}}" bindinput="onInputCardTitle" maxlength="20" />
-      </view>
-      <view class="extra-item">
-        <text class="form-label-remix">作者/落款 <text class="optional-label">选填</text></text>
-        <input class="form-input-remix" placeholder="例如：鲁迅、打工人" value="{{cardAuthor}}" bindinput="onInputCardAuthor" maxlength="20" />
-      </view>
-    </view>
-
-    <view class="card-layout-options">
-      <view class="slider-label-row">
-        <text class="form-label-remix">字号 {{cardFontSize}}</text>
-        <slider min="20" max="56" step="2" value="{{cardFontSize}}" bindchanging="onCardFontSizeChange" bindchange="onCardFontSizeChange" block-size="14" activeColor="#4f46e5" />
-      </view>
-      <view class="slider-label-row">
-        <text class="form-label-remix">左右边距 {{cardPaddingX}}</text>
-        <slider min="16" max="160" step="4" value="{{cardPaddingX}}" bindchanging="onCardPaddingXChange" bindchange="onCardPaddingXChange" block-size="14" activeColor="#4f46e5" />
-      </view>
-      <view class="slider-label-row">
-        <text class="form-label-remix">上下边距 {{cardPaddingY}}</text>
-        <slider min="16" max="160" step="4" value="{{cardPaddingY}}" bindchanging="onCardPaddingYChange" bindchange="onCardPaddingYChange" block-size="14" activeColor="#4f46e5" />
-      </view>
-      <view class="card-align-row">
-        <text class="form-label-remix">对齐</text>
-        <view class="caption-option-chips">
-          <view class="caption-chip {{cardAlign === 'left' ? 'active' : ''}}" bindtap="setCardAlign" data-align="left">左对齐</view>
-          <view class="caption-chip {{cardAlign === 'center' ? 'active' : ''}}" bindtap="setCardAlign" data-align="center">居中</view>
-          <view class="caption-chip {{cardAlign === 'right' ? 'active' : ''}}" bindtap="setCardAlign" data-align="right">右对齐</view>
-        </view>
-      </view>
-      <view class="card-align-row">
-        <text class="form-label-remix">文字色</text>
-        <view class="caption-color-chips">
-          <view class="caption-color-chip dark {{cardTextColor === '#0f172a' ? 'active' : ''}}" bindtap="setCardColor" data-type="text" data-color="#0f172a"></view>
-          <view class="caption-color-chip red {{cardTextColor === '#dc2626' ? 'active' : ''}}" bindtap="setCardColor" data-type="text" data-color="#dc2626"></view>
-          <view class="caption-color-chip blue {{cardTextColor === '#2563eb' ? 'active' : ''}}" bindtap="setCardColor" data-type="text" data-color="#2563eb"></view>
-        </view>
-        <text class="form-label-remix">背景色</text>
-        <view class="caption-color-chips">
-          <view class="caption-color-chip light {{cardBgColor === '#ffffff' ? 'active' : ''}}" bindtap="setCardColor" data-type="bg" data-color="#ffffff"></view>
-          <view class="caption-color-chip dark {{cardBgColor === '#18181b' ? 'active' : ''}}" bindtap="setCardColor" data-type="bg" data-color="#18181b"></view>
-          <view class="caption-color-chip red {{cardBgColor === '#fff1f2' ? 'active' : ''}}" bindtap="setCardColor" data-type="bg" data-color="#fff1f2"></view>
-        </view>
-      </view>
-    </view>
-
-    <button class="btn-primary btn-convert" bindtap="executeGenerateCard" loading="{{isConverting}}" disabled="{{isConverting}}">
-      {{isConverting ? '正在排版卡片中...' : '生成排版卡片'}}
-    </button>
-  </view>
-
   <!-- ================= 转换成功结果卡片 ================= -->
   <view wx:if="{{remixResultUrl}}" class="card result-card checkerboard-bg">
     <view class="result-header">
@@ -453,14 +299,13 @@
       <text class="badge badge-green">已就绪</text>
     </view>
     <image class="remix-result-img" src="{{remixResultUrl}}" mode="aspectFit" bindtap="previewRemixResult" data-url="{{remixResultUrl}}"></image>
-    <text class="result-preview-hint">点击预览，长按可直接转发或保存</text>
+    <text class="result-preview-hint">点击预览，长按可直接保存至相册</text>
     <view class="remix-actions">
-      <button class="btn-primary btn-remix-share" open-type="share">
-        分享给好友
+      <button class="btn-primary btn-remix-save-main" bindtap="saveRemixGif">
+        💾 保存至手机相册
       </button>
-      <view class="remix-sub-btns">
-        <button class="btn-secondary btn-remix-sub" bindtap="saveRemixGif">保存至相册</button>
-        <button class="btn-secondary btn-remix-sub" bindtap="addToCollection">加入合集</button>
+      <view class="remix-sub-btns" style="margin-top: 16rpx;">
+        <button class="btn-secondary btn-remix-sub" style="width: 100%;" bindtap="addToCollection">存入表情合集</button>
       </view>
     </view>
   </view>

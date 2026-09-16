@@ -18,17 +18,6 @@
     <text class="fav-close" bindtap="dismissFavoriteTip">✕</text>
   </view>
 
-  <!-- 微信好友分享专属动图顶部横幅 -->
-  <view wx:if="{{sharedFromFriend}}" class="shared-friend-banner">
-    <view class="shared-banner-left">
-      <text class="shared-banner-icon">🎁</text>
-      <view class="shared-banner-info">
-        <text class="shared-banner-title">好友为你定制的专属动图</text>
-        <text class="shared-banner-sub">【{{sharedGifTitle || caption}}】已就绪，可直接保存相册或制作同款</text>
-      </view>
-    </view>
-    <text class="shared-banner-close" bindtap="dismissSharedBanner">✕</text>
-  </view>
 
   <!-- 顶部状态栏：紧凑单行 -->
   <view class="top-bar-compact">
@@ -217,15 +206,14 @@
         <text class="gif-size-warning-text">{{gifWarning}}</text>
       </view>
       <view class="result-actions">
-        <!-- 核心裂变入口：一键分享给好友/微信群，携带动态卡片封面与同款制作链接 -->
-        <button class="btn-primary action-btn-share" open-type="share">
-          <text class="btn-share-icon">🚀</text>
-          <text class="btn-share-text">分享给好友</text>
+        <!-- 核心操作：保存到手机相册 -->
+        <button class="btn-primary action-btn-save-main" bindtap="saveGifToAlbum">
+          <text class="btn-save-icon">💾</text>
+          <text class="btn-save-text">保存到手机相册</text>
         </button>
-        <!-- 辅助操作：保存到手机相册 + 存入表情合集 -->
-        <view class="result-actions-sub grid-2">
-          <button class="btn-secondary action-btn" bindtap="saveGifToAlbum">保存到相册</button>
-          <button class="btn-secondary action-btn" bindtap="openAddToCollection">加入合集</button>
+        <!-- 辅助操作：存入表情合集 -->
+        <view class="result-actions-sub" style="margin-top: 16rpx;">
+          <button class="btn-secondary action-btn" style="width: 100%;" bindtap="openAddToCollection">存入表情合集</button>
         </view>
         <!-- 微信原生表情添加秘籍提示 -->
         <view class="emoticon-guide-card">

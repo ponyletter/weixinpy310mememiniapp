@@ -14,6 +14,7 @@ from app.database import (
     update_collection_item_title,
     reorder_collection_items
 )
+from app.core.wechat_service import WeChatService
 from app.security import CurrentOpenid, OptionalOpenid, require_same_user
 
 router = APIRouter(prefix="/api/collection", tags=["collections"])
@@ -59,11 +60,16 @@ class ReorderItemsRequest(BaseModel):
     openid: Optional[str] = ""
 
 @router.post("/create")
-def create_new_collection(req: CreateCollectionRequest, current_openid: CurrentOpenid):
+async def create_new_collection(req: CreateCollectionRequest, current_openid: CurrentOpenid):
     """创建新的表情包合集/小抽屉"""
     if not req.title.strip():
         raise HTTPException(status_code=400, detail="合集标题不能为空")
     openid = require_same_user(req.openid, current_openid)
+    for txt in (req.title, req.description or ""):
+        if txt and txt.strip():
+            is_safe, tip = await WeChatService.check_text_security(txt, openid)
+            if not is_safe:
+                raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
     res = create_collection(openid, req.title.strip(), req.description, req.cover_url)
     return {"success": True, "data": res}
 
@@ -91,9 +97,14 @@ def move_item(req: MoveItemRequest, current_openid: CurrentOpenid):
     return {"success": True, "message": "表情已成功移动至新合集"}
 
 @router.post("/item/rename")
-def rename_item(req: RenameItemRequest, current_openid: CurrentOpenid):
+async def rename_item(req: RenameItemRequest, current_openid: CurrentOpenid):
     """修改合集中单张表情的备注/名称"""
+    if not req.title.strip():
+        raise HTTPException(status_code=400, detail="新名称不能为空")
     openid = require_same_user(req.openid, current_openid)
+    is_safe, tip = await WeChatService.check_text_security(req.title, openid)
+    if not is_safe:
+        raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
     update_collection_item_title(req.item_id, req.title.strip(), openid)
     return {"success": True, "message": "表情备注已更新", "new_title": req.title.strip()}
 

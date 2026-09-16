@@ -724,6 +724,18 @@ async def generate_async(
         ref_image_bytes = await read_limited_upload(ref_image, settings.MAX_IMAGE_UPLOAD_MB)
         open_validated_image(ref_image_bytes, allow_animation=False)
 
+    # 微信内容安全审查 (检测用户自定义台词、角色描述与上传参考图)
+    for txt in (custom_caption, character_desc, custom_action or ""):
+        if txt and txt.strip():
+            is_safe, tip = await WeChatService.check_text_security(txt, authenticated_openid)
+            if not is_safe:
+                raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
+
+    if ref_image_bytes:
+        is_safe, tip = await WeChatService.check_image_security(ref_image_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=tip or "上传图片包含违规信息，请更换后重试")
+
     quota_res = check_and_deduct_quota(authenticated_openid)
     if not quota_res.get("allowed"):
         raise HTTPException(status_code=403, detail=quota_res.get("error", "制作次数已耗尽，请签到或开通尝鲜包！"))

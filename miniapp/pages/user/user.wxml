@@ -90,8 +90,8 @@
       </view>
       <button class="btn-xs btn-copy" bindtap="copyInviteCode">复制邀请码</button>
     </view>
-    <button class="btn-secondary btn-invite-full" open-type="share">
-      分享给微信好友
+    <button class="btn-secondary btn-invite-full" bindtap="copyInviteCode">
+      复制我的邀请码
     </button>
   </view>
 

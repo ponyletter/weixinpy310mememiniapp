@@ -1,8 +1,10 @@
+import io
 import time
 import httpx
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
+from PIL import Image
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -123,3 +125,95 @@ class WeChatService:
         except Exception as e:
             logger.error(f"发送订阅消息异常: {e}")
             return {"success": False, "errcode": -3, "errmsg": str(e)}
+
+    @classmethod
+    async def check_text_security(cls, text: str, openid: Optional[str] = None) -> Tuple[bool, str]:
+        """
+        调用微信小程序内容安全接口 security.msgSecCheck 检测文本是否合规
+        返回: (is_safe: bool, tip_message: str)
+        """
+        if not text or not text.strip():
+            return True, ""
+
+        token = await cls.get_access_token()
+        if not token:
+            return True, ""
+
+        url = f"https://api.weixin.qq.com/wxa/msg_sec_check?access_token={token}"
+        clean_text = text.strip()
+
+        payload: Dict[str, Any] = {"content": clean_text}
+        if openid and not openid.startswith("mock_") and not openid.startswith("user_mock_"):
+            payload = {
+                "openid": openid,
+                "scene": 1,
+                "version": 2,
+                "content": clean_text
+            }
+
+        try:
+            async with httpx.AsyncClient(timeout=6.0) as client:
+                resp = await client.post(url, json=payload)
+                data = resp.json()
+                logger.info(f"微信文本安全检测结果: text='{clean_text[:20]}' res={data}")
+
+                errcode = data.get("errcode", 0)
+                if errcode == 87014:
+                    return False, "所发布内容包含违规信息，请修改后重试"
+
+                result = data.get("result", {})
+                if result.get("suggest") in ("risky", "review"):
+                    return False, "所发布内容包含违规信息，请修改后重试"
+                if result.get("label") not in (None, 100):
+                    return False, "所发布内容包含违规信息，请修改后重试"
+
+                # 若报 openid 不匹配等错误，降级回退 v1 简单接口再次校验
+                if errcode == 40003:
+                    fb_resp = await client.post(url, json={"content": clean_text})
+                    fb_data = fb_resp.json()
+                    if fb_data.get("errcode") == 87014:
+                        return False, "所发布内容包含违规信息，请修改后重试"
+
+                return True, ""
+        except Exception as e:
+            logger.error(f"微信文本安全检测异常: {e}")
+            return True, ""
+
+    @classmethod
+    async def check_image_security(cls, image_bytes: bytes) -> Tuple[bool, str]:
+        """
+        调用微信官方接口 security.imgSecCheck 同步校验图片安全
+        若图片过大或分辨率过高，先在内存中压缩至 600x600 JPEG 再送检
+        返回: (is_safe: bool, tip_message: str)
+        """
+        if not image_bytes:
+            return True, ""
+
+        token = await cls.get_access_token()
+        if not token:
+            return True, ""
+
+        try:
+            im = Image.open(io.BytesIO(image_bytes))
+            if im.mode not in ("RGB", "L"):
+                im = im.convert("RGB")
+            im.thumbnail((600, 600))
+            buf = io.BytesIO()
+            im.save(buf, format="JPEG", quality=85)
+            check_bytes = buf.getvalue()
+
+            url = f"https://api.weixin.qq.com/wxa/img_sec_check?access_token={token}"
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                files = {"media": ("check.jpg", check_bytes, "image/jpeg")}
+                resp = await client.post(url, files=files)
+                data = resp.json()
+                logger.info(f"微信图片安全检测结果: res={data}")
+
+                errcode = data.get("errcode", 0)
+                if errcode == 87014:
+                    return False, "上传图片包含违规信息，请更换后重试"
+
+                return True, ""
+        except Exception as e:
+            logger.error(f"微信图片安全检测异常: {e}")
+            return True, ""

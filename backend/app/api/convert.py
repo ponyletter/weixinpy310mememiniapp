@@ -20,6 +20,7 @@ import numpy as np
 
 from app.config import settings
 from app.core.sprite_processor import SpriteProcessor
+from app.core.wechat_service import WeChatService
 from app.security import CurrentOpenid
 from app.storage_cleanup import mark_failed_task_dir
 from app.upload_utils import ensure_within, open_validated_image, read_limited_upload
@@ -256,7 +257,13 @@ async def images_to_gif(
 async def stage_image_frame(current_openid: CurrentOpenid, file: UploadFile = File(...)):
     """Stage one validated image; wx.uploadFile only supports one local file per call."""
     image_bytes = await read_limited_upload(file, settings.MAX_IMAGE_UPLOAD_MB)
-    image = open_validated_image(image_bytes, allow_animation=False).convert("RGBA")
+    open_validated_image(image_bytes, allow_animation=False)
+
+    is_safe, tip = await WeChatService.check_image_security(image_bytes)
+    if not is_safe:
+        raise HTTPException(status_code=400, detail=tip or "上传图片包含违规信息，请更换后重试")
+
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
     upload_id = uuid.uuid4().hex
     image.save(_user_stage_dir(current_openid) / f"{upload_id}.png", format="PNG")
     return {"success": True, "upload_id": upload_id}
@@ -269,23 +276,28 @@ async def compose_staged_images(req: ComposeImagesRequest, current_openid: Curre
     if not 1 <= req.fps <= 20 or len(req.caption) > 80:
         raise HTTPException(status_code=400, detail="fps 或字幕长度超出允许范围")
 
+    if req.caption and req.caption.strip():
+        is_safe, tip = await WeChatService.check_text_security(req.caption, current_openid)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
+
     stage_dir = _user_stage_dir(current_openid)
     source_paths: list[Path] = []
     frames: list[Image.Image] = []
-    try:
-        for upload_id in req.upload_ids:
-            if len(upload_id) != 32 or any(ch not in "0123456789abcdef" for ch in upload_id):
-                raise HTTPException(status_code=400, detail="上传 ID 不合法")
-            source = ensure_within(stage_dir / f"{upload_id}.png", stage_dir)
-            if not source.is_file():
-                raise HTTPException(status_code=404, detail="暂存图片不存在或已经过期")
-            source_paths.append(source)
-            frames.append(open_validated_image(source.read_bytes(), allow_animation=False).convert("RGBA").resize((300, 300), Image.Resampling.LANCZOS))
-        result = _save_frames_as_gif(frames, req.fps, req.caption)
-        return await publish_and_rewrite(result["task_id"], settings.OUTPUT_DIR / result["task_id"], result)
-    finally:
-        for source in source_paths:
-            source.unlink(missing_ok=True)
+    for upload_id in req.upload_ids:
+        staged_file = ensure_within(stage_dir / f"{upload_id}.png", stage_dir)
+        if not staged_file.exists():
+            raise HTTPException(status_code=404, detail=f"帧缓存不存在或已过期: {upload_id}")
+        source_paths.append(staged_file)
+        frames.append(Image.open(staged_file).convert("RGBA"))
+
+    result = _save_frames_as_gif(frames, req.fps, req.caption)
+    for path in source_paths:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
+    return await publish_and_rewrite(result["task_id"], settings.OUTPUT_DIR / result["task_id"], result)
 
 @router.post("/edit-caption")
 async def edit_caption(
@@ -303,6 +315,10 @@ async def edit_caption(
         raise HTTPException(status_code=400, detail="新文字不能为空")
     if len(caption) > 80:
         raise HTTPException(status_code=400, detail="字幕不能超过 80 个字符")
+
+    is_safe, tip = await WeChatService.check_text_security(caption, current_openid)
+    if not is_safe:
+        raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
 
     task_id = uuid.uuid4().hex
     task_dir = settings.OUTPUT_DIR / task_id
