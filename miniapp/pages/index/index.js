@@ -54,6 +54,7 @@ Page({
     // 动态拟合耗时进度条
     elapsedSeconds: 0,
     estimatedSeconds: 32,
+    completedSeconds: 0,
 
     // 好友分享成品直出
     sharedFromFriend: false,
@@ -743,7 +744,7 @@ Page({
       elapsedSeconds: 0,
       estimatedSeconds: targetSeconds,
       progress: 6,
-      stageText: 'AI 极速渲染引擎启动中...'
+      stageText: '极速渲染引擎启动中...'
     });
 
     this.smoothTimer = setInterval(() => {
@@ -966,6 +967,7 @@ Page({
               const gifPath = tInfo.data.gif_url;
               const stats = tInfo.data.stats || {};
               const fullGifUrl = app.toAbsoluteUrl(gifPath);
+              const durationSec = Math.round((tInfo.data && tInfo.data.duration_seconds) || (stats && stats.duration_seconds) || this.data.elapsedSeconds || 0);
 
               // 一次性渲染完成状态，进入图片加载阶段，待正常展示后再发提示通知
               this.setData({
@@ -974,6 +976,7 @@ Page({
                 gifLoaded: false,
                 gifWarning: stats.warning || '',
                 progress: 100,
+                completedSeconds: durationSec,
                 stageText: '动图渲染就绪，正在呈现...'
               });
               return;
@@ -1050,8 +1053,10 @@ Page({
   onGifLoaded() {
     this.setData({ gifLoaded: true });
     // 动图已在前端界面正常显示，且随时可点击保存相册，此时发出完成提示
+    const sec = this.data.completedSeconds || this.data.elapsedSeconds || 0;
+    const msg = sec > 0 ? `制作完成，共耗时 ${sec} 秒！` : '制作完成，可保存相册！';
     wx.showToast({ 
-      title: '制作完成，可保存相册！', 
+      title: msg, 
       icon: 'success', 
       duration: 2500 
     });
@@ -1393,7 +1398,7 @@ Page({
       // /outputs 路径后看不到成品。share_task 仍由 onLoad 保留，用于兼容旧分享卡片。
       const taskQuery = `&share_gif=${encodeURIComponent(this.data.gifResultUrl)}`;
       return {
-        title: `🔥 快接招！我刚用 AI 做了【${titleTag}】表情包，快来看看！`,
+        title: `🔥 快接招！我刚定制了【${titleTag}】动态表情包，快来看看！`,
         path: `/pages/index/index?inviter=${encodeURIComponent(inviteCode)}${taskQuery}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`,
         imageUrl: this.data.gifResultUrl
       };
@@ -1407,9 +1412,9 @@ Page({
   },
 
   onShareTimeline() {
-    const titleTag = this.data.caption || this.data.selectedTemplateTitle || 'AI专属表情包';
+    const titleTag = this.data.caption || this.data.selectedTemplateTitle || '专属表情包';
     return {
-      title: `我用 AI 做了【${titleTag}】动态表情包，一键定制超好玩！`,
+      title: `我定制了【${titleTag}】动态表情包，一键制作超好玩！`,
       query: this.data.gifResultUrl
         ? `share_gif=${encodeURIComponent(this.data.gifResultUrl)}&share_title=${encodeURIComponent(titleTag)}&ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`
         : `ref_tpl=${encodeURIComponent(this.data.selectedTemplate)}`,

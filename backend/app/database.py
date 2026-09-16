@@ -786,7 +786,7 @@ def rename_meme_task(task_id: str, title: str, openid: str = "") -> bool:
     return True
 
 def get_estimated_generation_duration() -> float:
-    """根据近期已完成任务的实际耗时，计算动态加权平均预估秒数（平滑估计）"""
+    """根据近期已完成任务的实际耗时，从数据库取最近 10 次的真实平均值（平滑估计）"""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -799,8 +799,9 @@ def get_estimated_generation_duration() -> float:
         row = cursor.fetchone()
         if row and row[0] is not None and float(row[0]) > 0:
             avg_sec = float(row[0])
-            return max(15.0, min(90.0, round(avg_sec, 1)))
-    return 32.0
+            # 真实反映近期平均耗时，合理范围设为 15s ~ 360s，不再人为卡死在 90s
+            return max(15.0, min(360.0, round(avg_sec, 1)))
+    return 120.0
 
 def move_collection_item(item_id: int, target_collection_id: str, openid: str = "") -> bool:
     """将指定表情从原合集移动至新的合集"""

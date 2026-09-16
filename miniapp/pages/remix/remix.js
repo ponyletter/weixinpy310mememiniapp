@@ -553,7 +553,7 @@ Page({
     }
 
     this.setData({ isConverting: true });
-    wx.showLoading({ title: 'AI 智能分离主体中...' });
+    wx.showLoading({ title: '智能分离主体中...' });
 
     app.uploadFile({
       url: `${app.globalData.baseURL}/api/convert/matting`,

@@ -1,7 +1,7 @@
 <view class="container {{showFullScreenSketch ? 'page-locked' : ''}}">
   <view class="page-heading home-heading">
     <view class="heading-row-top">
-      <text class="page-eyebrow">AI 动态表情工坊</text>
+      <text class="page-eyebrow">动态表情工坊</text>
       <view class="guide-trigger-pill" bindtap="openNewbieGuide">
         <text class="guide-trigger-icon">📖</text>
         <text>新手教程</text>
@@ -171,7 +171,7 @@
   <!-- 动图预览与导出区 -->
   <view wx:if="{{isGenerating || gifResultUrl}}" class="section-title-sm" style="margin-top: 24rpx;">
     <text>制作结果</text>
-    <text class="section-sub">{{isGenerating ? '正在逐帧渲染中' : '制作成功已交付'}}</text>
+    <text class="section-sub">{{isGenerating ? '正在逐帧渲染中' : ('制作成功 · 共耗时 ' + (completedSeconds || elapsedSeconds) + ' 秒')}}</text>
   </view>
   <view wx:if="{{isGenerating || gifResultUrl}}" class="preview-card card checkerboard-bg">
     <!-- 状态 1: 正在逐帧渲染中 -->
@@ -193,7 +193,7 @@
           <text class="bg-notice-title">离开小程序不影响生成</text>
         </view>
         <text class="bg-notice-desc">
-          AI 正在云端进行 16 帧画面渲染与透明去背。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，渲染完成后重新进入即可查看与保存！
+          云端正在进行 16 帧画面渲染与透明去背。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，渲染完成后重新进入即可查看与保存！
         </text>
       </view>
     </view>
@@ -417,14 +417,14 @@
           <view class="guide-step-index">2</view>
           <view class="guide-step-info">
             <text class="guide-step-tit">上传照片或在线涂鸦随手画</text>
-            <text class="guide-step-sub">支持真人、萌宠、动漫头像或手绘涂鸦，AI 自动定位并扣出角色主体。</text>
+            <text class="guide-step-sub">支持真人、萌宠、动漫头像或手绘涂鸦，系统自动定位并扣出角色主体。</text>
           </view>
         </view>
         <view class="guide-step-card">
           <view class="guide-step-index">3</view>
           <view class="guide-step-info">
             <text class="guide-step-tit">一键生成，离开不影响后台</text>
-            <text class="guide-step-sub">点击生成即可！AI 在后台逐帧渲染，可随意离开，生成完毕随时回来保存。</text>
+            <text class="guide-step-sub">点击生成即可！后台正在逐帧渲染，可随意离开，生成完毕随时回来保存。</text>
           </view>
         </view>
       </view>
@@ -433,9 +433,9 @@
       <view class="guide-time-notice">
         <view class="guide-notice-title">
           <text class="notice-icon">💡</text>
-          <text class="notice-tit-text">AI 逐帧渲染与后台保障</text>
+          <text class="notice-tit-text">逐帧渲染与后台保障</text>
         </view>
-        <text class="notice-desc">为保证动作丝滑与透明背景免抠图画质，AI 正在云端进行深度逐帧计算。提交后无需在页面等待，退出小程序或锁屏后台依然持续运行，完成后随时在首页或个人中心查看保存！</text>
+        <text class="notice-desc">为保证动作丝滑与透明背景免抠图画质，系统正在云端进行深度逐帧计算。提交后无需在页面等待，退出小程序或锁屏后台依然持续运行，完成后随时在首页或个人中心查看保存！</text>
       </view>
 
       <view class="guide-footer-actions">
