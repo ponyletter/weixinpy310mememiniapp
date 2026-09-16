@@ -47,13 +47,5 @@
     "downloadFile": 120000,
     "connectSocket": 60000
   },
-  "supportedMaterials": [
-    {
-      "materialType": "image/*",
-      "name": "用${nickname}做表情",
-      "desc": "将聊天图片一键制作专属动态表情包",
-      "path": "pages/index/index"
-    }
-  ],
   "sitemapLocation": "sitemap.json"
 }

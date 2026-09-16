@@ -167,10 +167,6 @@
   <button class="btn-primary btn-generate" bindtap="startGenerate" loading="{{isGenerating}}" disabled="{{isGenerating}}">
     {{isGenerating ? '正在制作 · ' + progress + '%' : '生成动态表情 · 消耗 1 次'}}
   </button>
-  <view class="generate-time-hint">
-    <text class="time-hint-icon">⏱️</text>
-    <text>16 帧丝滑渲染约需 1~4 分钟 · 提交后离开不影响后台生成</text>
-  </view>
 
   <!-- 动图预览与导出区 -->
   <view wx:if="{{isGenerating || gifResultUrl}}" class="section-title-sm" style="margin-top: 24rpx;">
@@ -197,8 +193,7 @@
           <text class="bg-notice-title">离开小程序不影响生成</text>
         </view>
         <text class="bg-notice-desc">
-          AI 正在进行 16 帧高清逐帧生成与透明去背处理（耗时约 1~4 分钟）。
-          您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算。渲染完成后，重新进入小程序即可直接查看并保存！
+          AI 正在云端进行 16 帧画面渲染与透明去背。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，渲染完成后重新进入即可查看与保存！
         </text>
       </view>
     </view>
@@ -434,13 +429,13 @@
         </view>
       </view>
 
-      <!-- 耗时较长与后台渲染重点提醒 -->
+      <!-- 离开不影响后台生成重点说明 -->
       <view class="guide-time-notice">
         <view class="guide-notice-title">
-          <text class="notice-icon">⏱️</text>
-          <text class="notice-tit-text">AI 逐帧渲染与耗时提示</text>
+          <text class="notice-icon">💡</text>
+          <text class="notice-tit-text">AI 逐帧渲染与后台保障</text>
         </view>
-        <text class="notice-desc">为保证 16 帧丝滑动作与透明背景免抠图画质，单张动图生成约需 1~4 分钟。提交后无需在页面死等，退出小程序或锁屏后台依然持续运行，完成后随时在首页或个人中心查看保存！</text>
+        <text class="notice-desc">为保证动作丝滑与透明背景免抠图画质，AI 正在云端进行深度逐帧计算。提交后无需在页面等待，退出小程序或锁屏后台依然持续运行，完成后随时在首页或个人中心查看保存！</text>
       </view>
 
       <view class="guide-footer-actions">

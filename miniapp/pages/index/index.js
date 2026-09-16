@@ -182,10 +182,12 @@ Page({
 
   updateQuotaInfo(cb) {
     app.fetchUserProfile(null, (user) => {
-      this.setData({
-        quota: user.total_quota || 0,
-        isVip: user.is_vip === 1
-      });
+      if (user) {
+        this.setData({
+          quota: user.total_quota || 0,
+          isVip: user.is_vip === 1
+        });
+      }
       if (cb) cb();
     });
   },
