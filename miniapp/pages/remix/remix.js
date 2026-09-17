@@ -229,9 +229,17 @@ Page({
       mediaType: ['video'],
       sourceType: ['album', 'camera'],
       maxDuration: 60,
-      success: (res) => {
+      success: async (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
           const file = res.tempFiles[0];
+          // 选视频即检：若微信客户端生成了视频封面缩略图，立即对其进行内容安全预检
+          if (file.thumbTempFilePath) {
+            const isSafe = await app.checkImageSecurity(file.thumbTempFilePath);
+            if (!isSafe) {
+              this.setData({ videoPath: '', remixResultUrl: '' });
+              return;
+            }
+          }
           const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
           const sourceDuration = Math.max(0.5, Number(file.duration) || 3.0);
           const maxDuration = Math.min(10.0, sourceDuration);
@@ -277,20 +285,23 @@ Page({
   },
 
   onVideoDurationChange(e) {
-    const maxDuration = this.data.videoMaxDuration || 10.0;
     this.setData({
-      videoDuration: Math.min(maxDuration, Math.max(0.5, Number(e.detail.value) || 0.5))
+      videoDuration: Number(e.detail.value) || 3.0
     });
   },
 
-  convertVideoToGif() {
+  async convertVideoToGif() {
     if (!this.data.videoPath) {
-      wx.showToast({ title: '请先选择视频', icon: 'none' });
+      wx.showToast({ title: '请先选取视频', icon: 'none' });
       return;
+    }
+    if (this.data.captionText && this.data.captionText.trim()) {
+      const isSafe = await app.checkTextSecurity(this.data.captionText.trim());
+      if (!isSafe) return;
     }
 
     this.setData({ isConverting: true, uploadPercent: 0 });
-    wx.showLoading({ title: '上传视频 0%...' });
+    wx.showLoading({ title: '正在提取精彩动图...' });
 
     const uploadTask = app.uploadFile({
       url: `${app.globalData.baseURL}/api/convert/video-to-gif`,
@@ -314,11 +325,17 @@ Page({
         if (typeof data === 'string') {
           try { data = JSON.parse(data); } catch(e) {}
         }
-        if (data && data.success) {
+        if (res.statusCode === 200 && data && data.success) {
           this.setData({ remixResultUrl: app.toAbsoluteUrl(data.gif_url) });
           wx.showToast({ title: '转动图成功！', icon: 'success' });
         } else {
-          wx.showToast({ title: (data && data.detail) || '转换失败', icon: 'none' });
+          const tip = (data && data.detail) || '所发布内容包含违规信息，请修改后重试';
+          wx.showModal({
+            title: '内容合规提示',
+            content: tip,
+            showCancel: false,
+            confirmText: '我知道了'
+          });
         }
       },
       fail: (err) => {

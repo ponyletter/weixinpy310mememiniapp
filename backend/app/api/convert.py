@@ -11,8 +11,11 @@ from textwrap import wrap
 from typing import Optional, List
 from urllib.parse import urlsplit
 import httpx
+import logging
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 from PIL import Image, ImageDraw, ImageFont
 import imageio
 import cv2
@@ -126,6 +129,45 @@ def _save_frames_as_gif(frames: list[Image.Image], fps: int, caption: str) -> di
     }
     return result
 
+def _extract_video_sample_frames(video_path: Path, start_time: float, duration: float, sample_count: int = 3) -> list[bytes]:
+    """
+    从视频指定时间段中均匀提取 sample_count 张关键帧，并编码为 JPEG 字节流供微信内容安全检测
+    """
+    frames: list[bytes] = []
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        return frames
+
+    try:
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+
+        start_frame = int(start_time * fps)
+        end_frame = min(total_frames, int((start_time + duration) * fps))
+        if end_frame <= start_frame:
+            end_frame = max(start_frame + 1, total_frames)
+
+        if sample_count <= 1 or end_frame <= start_frame + 1:
+            frame_indices = [start_frame]
+        else:
+            step = max(1, (end_frame - start_frame) // (sample_count - 1))
+            frame_indices = [min(end_frame - 1, start_frame + i * step) for i in range(sample_count)]
+
+        for idx in frame_indices:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, idx))
+            ret, frame = cap.read()
+            if ret and frame is not None:
+                success, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+                if success:
+                    frames.append(buf.tobytes())
+    except Exception as e:
+        logger.warning(f"视频抽帧检测异常: {e}")
+    finally:
+        cap.release()
+
+    return frames
+
+
 @router.post("/video-to-gif")
 async def video_to_gif(
     current_openid: CurrentOpenid,
@@ -147,6 +189,13 @@ async def video_to_gif(
         raise HTTPException(status_code=400, detail="视频起始时间或截取时长超出允许范围")
     if len(caption) > 80:
         raise HTTPException(status_code=400, detail="字幕不能超过 80 个字符")
+
+    # 1. 检查字幕文案合规性
+    if caption.strip():
+        is_safe, tip = await WeChatService.check_text_security(caption.strip(), current_openid)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
+
     ffmpeg_bin = _resolve_ffmpeg()
     type_suffixes = {"video/mp4": ".mp4", "video/quicktime": ".mov", "video/webm": ".webm", "video/x-m4v": ".m4v"}
     filename_suffix = Path(video.filename or "").suffix.lower()
@@ -165,6 +214,14 @@ async def video_to_gif(
     output_gif_path = task_dir / "meme_result.gif"
 
     input_path.write_bytes(video_bytes)
+
+    # 2. 视频抽帧多重安全检测 (均匀提取关键帧送微信检测)
+    sample_frames = _extract_video_sample_frames(input_path, start_time, duration, sample_count=3)
+    for frame_bytes in sample_frames:
+        is_safe, tip = await WeChatService.check_image_security(frame_bytes)
+        if not is_safe:
+            shutil.rmtree(task_dir, ignore_errors=True)
+            raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
 
     # 构造 ffmpeg 高品质 palettegen / paletteuse 转换滤镜
     vf_filter = f"fps={fps},scale={width}:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer"
@@ -209,6 +266,12 @@ async def video_to_gif(
                 color=color,
             )
         size_stats = _ensure_gif_file_size(output_gif_path)
+        # 3. 最终产出动图强校验兜底
+        if output_gif_path.exists():
+            is_safe, tip = await WeChatService.check_image_security(output_gif_path.read_bytes())
+            if not is_safe:
+                shutil.rmtree(task_dir, ignore_errors=True)
+                raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
     except Exception as exc:
         mark_failed_task_dir(task_dir, str(exc))
         raise
