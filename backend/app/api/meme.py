@@ -10,8 +10,9 @@ from PIL import Image
 
 from app.config import settings
 from app.core.sprite_processor import SpriteProcessor
-from app.core.prompt_templates import PROMPT_TEMPLATES
+from app.core.prompt_templates import PROMPT_TEMPLATES, get_active_templates
 from app.core.wechat_service import WeChatService
+from app.services.audit_meme_generator import create_audit_meme_gif
 from app.database import (
     check_and_deduct_quota,
     refund_quota,
@@ -21,6 +22,8 @@ from app.database import (
     rename_meme_task,
     get_estimated_generation_duration,
     format_datetime_china,
+    is_audit_mode_active,
+    set_app_setting,
 )
 from app.security import CurrentOpenid, require_same_user
 from app.storage_cleanup import mark_failed_task_dir
@@ -40,9 +43,9 @@ logger = logging.getLogger(__name__)
 
 @router.get("/templates")
 def get_templates():
-    """获取预设动作模版列表与提示词"""
+    """获取预设动作模版列表与提示词（审核模式下自动展示去敏合规动作列表）"""
     data = []
-    for t in PROMPT_TEMPLATES:
+    for t in get_active_templates():
         data.append({
             "id": t["id"],
             "title": t["title"],
@@ -67,7 +70,8 @@ def build_prompt(
     custom_action: str = Form(""),
 ):
     """根据动作与角色描述，动态生成让 ChatGPT 原生绘制动态跳跃汉字的专用 Prompt"""
-    template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
+    templates = get_active_templates()
+    template = next((t for t in templates if t["id"] == action_type), templates[0])
     final_prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch, custom_action.strip())
 
     return {
@@ -453,12 +457,89 @@ async def run_generate_pipeline(
         target_size_px = 256
 
     try:
+        # === 审核模式动态分支 (策略 A: 降级为本地纯 PIL 图像微动效处理，秒级出图，0% 深度合成) ===
+        if is_audit_mode_active():
+            task_dir = settings.OUTPUT_DIR / task_id
+            task_dir.mkdir(parents=True, exist_ok=True)
+
+            _set_task_progress(task_id, openid, 25, "processing", "阶段 1/3: 正在读取图片并优化图层...")
+            await asyncio.sleep(0.6)
+
+            _set_task_progress(task_id, openid, 70, "rendering", "阶段 2/3: 正在渲染动效画幅与趣味字幕...")
+
+            result_data = await asyncio.to_thread(
+                create_audit_meme_gif,
+                task_id=task_id,
+                task_dir=task_dir,
+                ref_image_bytes=ref_image_bytes,
+                action_type=action_type,
+                custom_caption=custom_caption,
+                target_size_px=target_size_px
+            )
+
+            _set_task_progress(task_id, openid, 92, "syncing", "阶段 3/3: 正在导出高清动图与同步存储...")
+            await sync_task_outputs_with_retry(task_id, task_dir)
+
+            duration_seconds = round(time.time() - start_time, 1)
+            result_data["duration_seconds"] = duration_seconds
+            result_data["stats"]["duration_seconds"] = duration_seconds
+
+            result_data = await publish_and_rewrite(task_id, task_dir, result_data)
+
+            TASK_STORE[task_id] = {
+                "openid": openid,
+                "status": "completed",
+                "progress": 100,
+                "stage": "done",
+                "stage_text": "🎉 制作全部完成！正在导出动图预览...",
+                "data": result_data
+            }
+
+            if openid:
+                try:
+                    with get_db() as conn:
+                        conn.execute('''
+                            UPDATE meme_tasks
+                            SET prompt = ?, preset_key = ?, text_bottom = ?, fps = ?, status = 'completed',
+                                progress = 100, gif_url = ?, sprite_url = ?, error_message = '',
+                                duration_seconds = ?, frame_count = ?, resolution = ?
+                            WHERE task_id = ? AND openid = ?
+                        ''', (
+                            f"audit_mode:{action_type}", action_type, custom_caption, fps,
+                            result_data["gif_url"], result_data["input_url"],
+                            duration_seconds, result_data["stats"]["frame_count"],
+                            result_data["stats"]["resolution"], task_id, openid
+                        ))
+                        conn.commit()
+                except Exception:
+                    pass
+
+                try:
+                    caption_text = (custom_caption or "").strip() or "动效表情包"
+                    async def _delayed_send_sub_msg():
+                        await asyncio.sleep(1)
+                        try:
+                            await WeChatService.send_subscribe_message(
+                                openid=openid,
+                                order_no=task_id,
+                                service_type="动效表情包制作",
+                                service_item=caption_text[:18],
+                                page="pages/index/index"
+                            )
+                        except Exception:
+                            pass
+                    asyncio.create_task(_delayed_send_sub_msg())
+                except Exception:
+                    pass
+            return
+
         # 阶段 1：组装提示词
         stage_desc = f"阶段 1/4: 结合手绘草图造型与动作语义对齐 ({frame_count}帧)..." if is_sketch else f"阶段 1/4: 组装角色提示词与人设语义对齐 ({frame_count}帧)..."
         _set_task_progress(task_id, openid, 10, "prompt", stage_desc)
 
         has_image = ref_image_bytes is not None and len(ref_image_bytes) > 0
-        template = next((t for t in PROMPT_TEMPLATES if t["id"] == action_type), PROMPT_TEMPLATES[0])
+        templates = get_active_templates()
+        template = next((t for t in templates if t["id"] == action_type), templates[0])
         prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch, custom_action.strip(), frame_count=frame_count)
 
         # 阶段 2：请求画质渲染引擎出图
@@ -1028,3 +1109,37 @@ def delete_meme(req: DeleteMemeRequest, current_openid: CurrentOpenid):
         if task_dir.is_dir():
             shutil.rmtree(task_dir, ignore_errors=True)
     return {"success": True, "message": "作品已从历史记录中删除"}
+
+
+class AuditModeToggleRequest(BaseModel):
+    audit_mode: Optional[bool] = None
+
+
+@router.get("/admin/audit-mode")
+def get_audit_mode():
+    """获取当前审核模式状态"""
+    active = is_audit_mode_active()
+    return {
+        "code": 0,
+        "audit_mode": active,
+        "message": "当前处于审核模式 (纯动效合规模式)" if active else "当前处于全量 AI 动图生成模式"
+    }
+
+
+@router.post("/admin/audit-mode")
+def set_audit_mode(req: Optional[AuditModeToggleRequest] = None, mode: Optional[str] = None):
+    """动态切换审核模式（无需重启服务，即时生效）"""
+    target = True
+    if req and req.audit_mode is not None:
+        target = req.audit_mode
+    elif mode is not None:
+        target = mode.lower() in ("true", "1", "on", "yes")
+
+    set_app_setting("audit_mode", "true" if target else "false")
+    active = is_audit_mode_active()
+    return {
+        "code": 0,
+        "audit_mode": active,
+        "message": f"审核模式已{'开启 (纯动效合规模式)' if active else '关闭 (全量 AI 动图模式)'}"
+    }
+

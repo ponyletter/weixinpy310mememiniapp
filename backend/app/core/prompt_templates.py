@@ -151,3 +151,72 @@ PROMPT_TEMPLATES = [
     }
 ]
 
+# 微信审核期间专用的合规动作模板（去敏，符合“工具-图片处理”品类，绝无“16帧深度拆解”暗示）
+AUDIT_TEMPLATES = [
+    {
+        "id": "kiss",
+        "title": "趣味爱心 (动效表情)",
+        "desc": "爱心与弹跳微动效，适合情侣与日常问候",
+        "action": "趣味爱心",
+        "default_caption": "爱你哦",
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="", frame_count=16: build_meme_prompt("kiss", char, text, has_image, is_sketch, custom_action, frame_count)
+    },
+    {
+        "id": "battle_chibi",
+        "title": "动感活力 (热血表情)",
+        "desc": "动感冲击与震颤微动效，生动活泼",
+        "action": "动感活力",
+        "default_caption": "吃我一拳",
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="", frame_count=16: build_meme_prompt("battle_chibi", char, text, has_image, is_sketch, custom_action, frame_count)
+    },
+    {
+        "id": "slack_worker",
+        "title": "打工摸鱼 (趣味日常)",
+        "desc": "轻微晃动趣味字幕，职场打工人必备日常",
+        "action": "趣味摸鱼",
+        "default_caption": "疯狂摸鱼中",
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="", frame_count=16: build_meme_prompt("slack_worker", char, text, has_image, is_sketch, custom_action, frame_count)
+    },
+    {
+        "id": "pet_idle",
+        "title": "萌宠微动 (可爱节奏)",
+        "desc": "轻柔待机律动，温和自然萌动",
+        "action": "萌宠微动",
+        "default_caption": "乖巧等待",
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="", frame_count=16: build_meme_prompt("pet_idle", char, text, has_image, is_sketch, custom_action, frame_count)
+    },
+    {
+        "id": "heart_dance",
+        "title": "比心互动 (欢快动效)",
+        "desc": "欢快左右律动与变色边框，轻快动感",
+        "action": "比心动效",
+        "default_caption": "比心心",
+        "is_custom": False,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="", frame_count=16: build_meme_prompt("heart_dance", char, text, has_image, is_sketch, custom_action, frame_count)
+    },
+    {
+        "id": "custom",
+        "title": "✨ 自由定制 (个性台词)",
+        "desc": "支持自由输入专属台词字幕与动态排版",
+        "action": "个性定制",
+        "default_caption": "看我的",
+        "is_custom": True,
+        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="", frame_count=16: build_meme_prompt("custom", char, text, has_image, is_sketch, custom_action, frame_count)
+    }
+]
+
+def get_active_templates():
+    """根据当前是否为审核模式，动态返回模板列表"""
+    try:
+        from app.database import is_audit_mode_active
+        if is_audit_mode_active():
+            return AUDIT_TEMPLATES
+    except Exception:
+        pass
+    return PROMPT_TEMPLATES
+
+

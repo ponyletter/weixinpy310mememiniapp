@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8290
     DEBUG: bool = False
+    AUDIT_MODE: bool = True  # 审核模式开关：True 为审核期降级纯图像处理，False 为全量 AI 动图生成模式
 
     STORAGE_DIR: Path = BASE_DIR / "storage"
     UPLOAD_DIR: Path = BASE_DIR / "storage" / "uploads"

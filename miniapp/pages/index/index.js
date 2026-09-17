@@ -738,7 +738,7 @@ Page({
       clearInterval(this.smoothTimer);
       this.smoothTimer = null;
     }
-    const targetSeconds = Math.max(15, estDuration || 32);
+    const targetSeconds = Math.max(2, estDuration || 32);
     const startTime = Date.now();
     this.setData({
       elapsedSeconds: 0,

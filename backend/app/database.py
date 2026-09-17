@@ -150,6 +150,15 @@ def init_db():
             )
         ''')
 
+        # 5.1 全局运行时配置表 (用于审核模式等动态开关热切换)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
         # 6. 表情包生成任务记录表
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS meme_tasks (
@@ -785,8 +794,57 @@ def rename_meme_task(task_id: str, title: str, openid: str = "") -> bool:
         conn.commit()
     return True
 
+def get_app_setting(key: str, default: str = "") -> str:
+    """获取系统运行时动态配置"""
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS app_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            row = cursor.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
+            if row:
+                return str(row["value"])
+    except Exception:
+        pass
+    return default
+
+def set_app_setting(key: str, value: str) -> None:
+    """设置系统运行时动态配置 (立即全局生效)"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute("INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)", (key, str(value)))
+        conn.commit()
+
+def is_audit_mode_active() -> bool:
+    """判断当前是否处于审核模式（优先查数据库动态配置，次选 settings.AUDIT_MODE）"""
+    try:
+        val = get_app_setting("audit_mode", "")
+        if val.lower() in ("true", "1", "yes"):
+            return True
+        if val.lower() in ("false", "0", "no"):
+            return False
+    except Exception:
+        pass
+    return bool(getattr(settings, "AUDIT_MODE", True))
+
 def get_estimated_generation_duration() -> float:
     """根据近期已完成任务的实际耗时，从数据库取最近 10 次的真实平均值（平滑估计）"""
+    # 审核模式下固定返回 2.5 秒预估，秒级出图过审
+    if is_audit_mode_active():
+        return 2.5
+
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
