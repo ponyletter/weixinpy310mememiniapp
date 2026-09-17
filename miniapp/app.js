@@ -55,6 +55,72 @@ App({
     return wx.uploadFile(Object.assign({}, options, { header: this.authHeader(options.header) }));
   },
 
+  checkImageSecurity(filePath) {
+    const that = this;
+    return new Promise((resolve) => {
+      wx.showLoading({ title: '安全校验中...', mask: true });
+      that.uploadFile({
+        url: `${that.globalData.baseURL}/api/check/image`,
+        filePath: filePath,
+        name: 'file',
+        success: (res) => {
+          wx.hideLoading();
+          if (res.statusCode === 200) {
+            resolve(true);
+          } else {
+            let msg = '所发布内容包含违规信息，请修改后重试';
+            try {
+              const data = JSON.parse(res.data);
+              if (data && data.detail) msg = data.detail;
+            } catch (e) {}
+            wx.showModal({
+              title: '内容合规提示',
+              content: msg,
+              showCancel: false,
+              confirmText: '我知道了'
+            });
+            resolve(false);
+          }
+        },
+        fail: (err) => {
+          wx.hideLoading();
+          console.warn('图片安全预检网络异常:', err);
+          resolve(true);
+        }
+      });
+    });
+  },
+
+  checkTextSecurity(text) {
+    const that = this;
+    if (!text || !text.trim()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      that.request({
+        url: `${that.globalData.baseURL}/api/check/text`,
+        method: 'POST',
+        data: { text: text.trim() },
+        success: (res) => {
+          if (res.statusCode === 200) {
+            resolve(true);
+          } else {
+            const msg = (res.data && res.data.detail) || '所发布内容包含违规信息，请修改后重试';
+            wx.showModal({
+              title: '内容合规提示',
+              content: msg,
+              showCancel: false,
+              confirmText: '我知道了'
+            });
+            resolve(false);
+          }
+        },
+        fail: (err) => {
+          console.warn('文本安全预检网络异常:', err);
+          resolve(true);
+        }
+      });
+    });
+  },
+
   onLaunch(options) {
     console.log("🚀 小程序启动 options:", options);
     

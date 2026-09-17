@@ -827,10 +827,15 @@ Page({
     this.setData({ textSize: size });
   },
 
-  confirmAddText() {
+  async confirmAddText() {
     const text = (this.data.textInputVal || '').trim();
     if (!text) {
       wx.showToast({ title: '请输入文字内容', icon: 'none' });
+      return;
+    }
+    const isSafe = await app.checkTextSecurity(text);
+    if (!isSafe) {
+      this.setData({ textInputVal: '' });
       return;
     }
     const center = this.getCanvasCenter();
@@ -1104,9 +1109,11 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
-      success: (res) => {
+      success: async (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
           const path = res.tempFiles[0].tempFilePath;
+          const isSafe = await app.checkImageSecurity(path);
+          if (!isSafe) return;
           this.setData({
             bgImageSrc: path,
             bgOffsetX: 0,
@@ -1552,9 +1559,13 @@ Page({
         canvas: this.canvas,
         fileType: 'png',
         quality: 1,
-        success: (res) => {
+        success: async (res) => {
           wx.hideLoading();
           const savedPath = res.tempFilePath;
+          const isSafe = await app.checkImageSecurity(savedPath);
+          if (!isSafe) {
+            return;
+          }
           // 保存至全局供 index.js 自动取用
           app.globalData.tempEditedImage = savedPath;
           wx.showToast({ title: '修图完成已应用！', icon: 'success' });

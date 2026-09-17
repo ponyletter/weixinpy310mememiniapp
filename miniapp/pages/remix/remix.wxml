@@ -102,7 +102,7 @@
     <!-- 底部字幕输入 (简洁经典样式) -->
     <view class="form-item-remix">
       <text class="form-label-remix">画面内字幕 <text class="optional-label">默认黑色</text></text>
-      <input class="form-input-remix" placeholder="例如：听懂掌声、收到、冲鸭" value="{{captionText}}" bindinput="onInputCaption" maxlength="80" />
+      <input class="form-input-remix" placeholder="例如：听懂掌声、收到、冲鸭" value="{{captionText}}" bindinput="onInputCaption" bindblur="onBlurCaption" maxlength="80" />
     </view>
     <view class="caption-options-remix">
       <view class="caption-option-row">
@@ -212,7 +212,7 @@
 
     <view class="form-item-remix">
       <text class="form-label-remix">底部字幕 <text class="optional-label">选填</text></text>
-      <input class="form-input-remix" placeholder="例如：连续动作、逐帧大作" value="{{captionText}}" bindinput="onInputCaption" maxlength="80" />
+      <input class="form-input-remix" placeholder="例如：连续动作、逐帧大作" value="{{captionText}}" bindinput="onInputCaption" bindblur="onBlurCaption" maxlength="80" />
     </view>
 
     <button class="btn-primary btn-convert" bindtap="convertImagesToGif" loading="{{isConverting}}" disabled="{{isConverting}}">

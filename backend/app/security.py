@@ -59,11 +59,12 @@ def get_optional_openid(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> str | None:
     """允许公开资源匿名访问，同时让私有资源识别已登录的所有者。"""
-    if credentials is None:
+    if credentials is None or credentials.scheme.lower() != "bearer":
         return None
-    if credentials.scheme.lower() != "bearer":
-        raise HTTPException(status_code=401, detail="登录状态无效或已过期，请重新登录")
-    return verify_access_token(credentials.credentials)
+    try:
+        return verify_access_token(credentials.credentials)
+    except Exception:
+        return None
 
 
 OptionalOpenid = Annotated[str | None, Depends(get_optional_openid)]

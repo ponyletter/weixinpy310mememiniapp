@@ -170,15 +170,28 @@ Page({
       count: 1,
       mediaType: ['image'],
       sourceType: ['album', 'camera'],
-      success: (res) => {
+      success: async (res) => {
         const file = res.tempFiles && res.tempFiles[0];
-        if (file && file.tempFilePath) openEditor(file.tempFilePath);
+        if (file && file.tempFilePath) {
+          const isSafe = await app.checkImageSecurity(file.tempFilePath);
+          if (!isSafe) return;
+          openEditor(file.tempFilePath);
+        }
       }
     });
   },
 
   onInputCaption(e) {
     this.setData({ captionText: e.detail.value });
+  },
+
+  async onBlurCaption(e) {
+    const text = (e.detail.value || this.data.captionText || '').trim();
+    if (!text) return;
+    const isSafe = await app.checkTextSecurity(text);
+    if (!isSafe) {
+      this.setData({ captionText: '' });
+    }
   },
 
   setCaptionPos(e) {
@@ -333,9 +346,15 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
-      success: (res) => {
+      success: async (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
-          this.setData({ srcGifPath: res.tempFiles[0].tempFilePath, remixResultUrl: '' });
+          const filePath = res.tempFiles[0].tempFilePath;
+          const isSafe = await app.checkImageSecurity(filePath);
+          if (!isSafe) {
+            this.setData({ srcGifPath: '', remixResultUrl: '' });
+            return;
+          }
+          this.setData({ srcGifPath: filePath, remixResultUrl: '' });
         }
       }
     });
@@ -345,7 +364,7 @@ Page({
     this.setData({ srcGifPath: '' });
   },
 
-  editGifCaption() {
+  async editGifCaption() {
     if (!this.data.srcGifPath) {
       wx.showToast({ title: '请上传图片或动图', icon: 'none' });
       return;
@@ -354,6 +373,8 @@ Page({
       wx.showToast({ title: '请输入水印文字', icon: 'none' });
       return;
     }
+    const isSafe = await app.checkTextSecurity(this.data.captionText.trim());
+    if (!isSafe) return;
 
     this.setData({ isConverting: true });
     wx.showLoading({ title: '正在合成水印/字幕...' });
@@ -422,9 +443,14 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
-      success: (res) => {
+      success: async (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
           const file = res.tempFiles[0];
+          const isSafe = await app.checkImageSecurity(file.tempFilePath);
+          if (!isSafe) {
+            this.setData({ compressSrcPath: '', remixResultUrl: '' });
+            return;
+          }
           const bytes = file.size || 0;
           let sizeStr = '';
           if (bytes > 1024 * 1024) {
@@ -520,10 +546,20 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
-      success: (res) => {
+      success: async (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
+          const filePath = res.tempFiles[0].tempFilePath;
+          const isSafe = await app.checkImageSecurity(filePath);
+          if (!isSafe) {
+            this.setData({
+              mattingSrcPath: '',
+              mattingResultUrl: '',
+              remixResultUrl: ''
+            });
+            return;
+          }
           this.setData({
-            mattingSrcPath: res.tempFiles[0].tempFilePath,
+            mattingSrcPath: filePath,
             mattingResultUrl: '',
             remixResultUrl: ''
           });
@@ -593,9 +629,14 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
-      success: (res) => {
+      success: async (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
           const src = res.tempFiles[0].tempFilePath;
+          const isSafe = await app.checkImageSecurity(src);
+          if (!isSafe) {
+            this.setData({ pickerSrcPath: '', showPickerLens: false });
+            return;
+          }
           this.setData({ pickerSrcPath: src, showPickerLens: false });
           setTimeout(() => {
             this.initPickerCanvas(src);
@@ -705,11 +746,16 @@ Page({
     wx.chooseMedia({
       count: 9 - this.data.multiImages.length,
       mediaType: ['image'],
-      success: (res) => {
+      success: async (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
-          const newPaths = res.tempFiles.map(f => f.tempFilePath);
+          const safePaths = [];
+          for (const f of res.tempFiles) {
+            const isSafe = await app.checkImageSecurity(f.tempFilePath);
+            if (!isSafe) return;
+            safePaths.push(f.tempFilePath);
+          }
           this.setData({
-            multiImages: [...this.data.multiImages, ...newPaths]
+            multiImages: [...this.data.multiImages, ...safePaths]
           });
         }
       }
@@ -790,11 +836,16 @@ Page({
     wx.chooseMedia({
       count: 9 - this.data.stitchImages.length,
       mediaType: ['image'],
-      success: (res) => {
+      success: async (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
-          const newPaths = res.tempFiles.map(f => f.tempFilePath);
+          const safePaths = [];
+          for (const f of res.tempFiles) {
+            const isSafe = await app.checkImageSecurity(f.tempFilePath);
+            if (!isSafe) return;
+            safePaths.push(f.tempFilePath);
+          }
           this.setData({
-            stitchImages: [...this.data.stitchImages, ...newPaths]
+            stitchImages: [...this.data.stitchImages, ...safePaths]
           });
         }
       }

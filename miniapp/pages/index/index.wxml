@@ -116,6 +116,7 @@
         placeholder="例如: 双手叉腰大笑 / 委屈抹眼泪 / 疯狂比大拇指..."
         value="{{customActionText}}"
         bindinput="onInputCustomAction"
+        bindblur="onBlurCustomAction"
       />
     </view>
 
@@ -133,6 +134,7 @@
         placeholder="写一句想让角色说的话"
         value="{{caption}}"
         bindinput="onInputCaption"
+        bindblur="onBlurCaption"
         auto-height="true"
         maxlength="60"
       />
@@ -158,6 +160,7 @@
           placeholder="例如：Q版动漫风、二次元萌宠、卡通粘土、红色卫衣、圆框眼镜"
           value="{{characterDesc}}"
           bindinput="onInputDesc"
+          bindblur="onBlurDesc"
         />
       </view>
     </view>

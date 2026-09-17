@@ -239,6 +239,15 @@ Page({
     this.setData({ customActionText: e.detail.value });
   },
 
+  async onBlurCustomAction(e) {
+    const text = (e.detail.value || this.data.customActionText || '').trim();
+    if (!text) return;
+    const isSafe = await app.checkTextSecurity(text);
+    if (!isSafe) {
+      this.setData({ customActionText: '' });
+    }
+  },
+
   pickCustomActionIdea() {
     const ideas = [
       '双手叉腰仰天长笑，眼角笑出泪花',
@@ -270,10 +279,17 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
-      success: (res) => {
+      success: async (res) => {
         if (res.tempFiles && res.tempFiles.length > 0) {
+          const filePath = res.tempFiles[0].tempFilePath;
+          // 选图后即刻进行安全预检，违规即刻拦截弹窗并不予展示
+          const isSafe = await app.checkImageSecurity(filePath);
+          if (!isSafe) {
+            this.setData({ refImagePath: '' });
+            return;
+          }
           this.setData({
-            refImagePath: res.tempFiles[0].tempFilePath
+            refImagePath: filePath
           });
         }
       }
@@ -327,8 +343,26 @@ Page({
     this.setData({ characterDesc: e.detail.value });
   },
 
+  async onBlurDesc(e) {
+    const text = (e.detail.value || this.data.characterDesc || '').trim();
+    if (!text) return;
+    const isSafe = await app.checkTextSecurity(text);
+    if (!isSafe) {
+      this.setData({ characterDesc: '' });
+    }
+  },
+
   onInputCaption(e) {
     this.setData({ caption: e.detail.value });
+  },
+
+  async onBlurCaption(e) {
+    const text = (e.detail.value || this.data.caption || '').trim();
+    if (!text) return;
+    const isSafe = await app.checkTextSecurity(text);
+    if (!isSafe) {
+      this.setData({ caption: '' });
+    }
   },
 
   quickPickCaption(e) {
@@ -672,7 +706,12 @@ Page({
     }
     wx.canvasToTempFilePath({
       canvas: this.fsCanvas,
-      success: (res) => {
+      success: async (res) => {
+        const isSafe = await app.checkImageSecurity(res.tempFilePath);
+        if (!isSafe) {
+          this.clearFullScreenSketch();
+          return;
+        }
         this.setData({
           sketchTempPath: res.tempFilePath,
           showFullScreenSketch: false
@@ -685,7 +724,7 @@ Page({
           };
           img.src = res.tempFilePath;
         }
-        wx.showToast({ title: '全屏手绘已保存', icon: 'success' });
+        wx.showToast({ title: '手绘已就绪', icon: 'success' });
       },
       fail: () => {
         this.closeFullScreenSketch();
@@ -694,12 +733,24 @@ Page({
   },
 
   // --- 提交生成 ---
-  startGenerate() {
+  async startGenerate() {
     if (this.data.isGenerating) return;
 
     if (this.data.selectedTemplate === 'custom' && !this.data.customActionText.trim()) {
       wx.showToast({ title: '请填写自定义动作描述', icon: 'none' });
       return;
+    }
+
+    // 提审与全场景安全防御：提交前先对用户输入文案进行安全检测
+    const textsToCheck = [
+      this.data.selectedTemplate === 'custom' ? this.data.customActionText : '',
+      this.data.caption,
+      this.data.characterDesc
+    ].filter(Boolean);
+
+    for (const t of textsToCheck) {
+      const isSafe = await app.checkTextSecurity(t);
+      if (!isSafe) return;
     }
 
     if (this.data.quota <= 0 && !this.data.isVip) {

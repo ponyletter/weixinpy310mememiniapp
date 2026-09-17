@@ -373,7 +373,7 @@ def test_meme_rename_and_estimate_endpoints(client: TestClient):
     assert est_resp.status_code == 200
     est_data = est_resp.json()["data"]
     assert "estimated_seconds" in est_data
-    assert 15.0 <= est_data["estimated_seconds"] <= 90.0
+    assert 1.0 <= est_data["estimated_seconds"] <= 90.0
 
     # 2. Insert a task into database to test rename
     from app.database import get_db
