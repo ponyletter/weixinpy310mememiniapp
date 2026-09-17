@@ -826,7 +826,7 @@ async def generate_async(
     if ref_image_bytes:
         is_safe, tip = await WeChatService.check_image_security(ref_image_bytes)
         if not is_safe:
-            raise HTTPException(status_code=400, detail=tip or "上传图片包含违规信息，请更换后重试")
+            raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
 
     quota_res = check_and_deduct_quota(authenticated_openid)
     if not quota_res.get("allowed"):

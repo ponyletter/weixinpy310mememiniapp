@@ -243,9 +243,18 @@ async def images_to_gif(
     frames = []
     target_size = (300, 300)
 
+    if caption and caption.strip():
+        is_safe, tip = await WeChatService.check_text_security(caption.strip(), current_openid)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
+
     for f in files:
         image_bytes = await read_limited_upload(f, settings.MAX_IMAGE_UPLOAD_MB)
-        img_raw = open_validated_image(image_bytes, allow_animation=False).convert("RGBA")
+        open_validated_image(image_bytes, allow_animation=False)
+        is_safe, tip = await WeChatService.check_image_security(image_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
+        img_raw = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
         img_resized = img_raw.resize(target_size, Image.Resampling.LANCZOS)
         frames.append(img_resized)
 
@@ -261,12 +270,13 @@ async def stage_image_frame(current_openid: CurrentOpenid, file: UploadFile = Fi
 
     is_safe, tip = await WeChatService.check_image_security(image_bytes)
     if not is_safe:
-        raise HTTPException(status_code=400, detail=tip or "上传图片包含违规信息，请更换后重试")
+        raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
 
     image = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
     upload_id = uuid.uuid4().hex
     image.save(_user_stage_dir(current_openid) / f"{upload_id}.png", format="PNG")
     return {"success": True, "upload_id": upload_id}
+
 
 
 @router.post("/images-to-gif/compose")
@@ -328,6 +338,9 @@ async def edit_caption(
     if gif_file and gif_file.filename:
         gif_bytes = await read_limited_upload(gif_file, settings.MAX_IMAGE_UPLOAD_MB)
         open_validated_image(gif_bytes, allow_animation=True)
+        is_safe, tip = await WeChatService.check_image_security(gif_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
         target_gif.write_bytes(gif_bytes)
     elif gif_url:
         clean_path = urlsplit(gif_url).path
@@ -585,7 +598,11 @@ async def stitch_images(
         elif files:
             for f in files:
                 b = await read_limited_upload(f, settings.MAX_IMAGE_UPLOAD_MB)
-                im = open_validated_image(b, allow_animation=False).convert("RGB")
+                open_validated_image(b, allow_animation=False)
+                is_safe, tip = await WeChatService.check_image_security(b)
+                if not is_safe:
+                    raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
+                im = Image.open(io.BytesIO(b)).convert("RGB")
                 loaded_images.append(im)
 
         if len(loaded_images) < 2:
@@ -678,6 +695,9 @@ async def compress_image(
     if not 10 <= quality <= 100:
         raise HTTPException(status_code=400, detail="压缩质量需在 10 到 100 之间")
     file_bytes = await read_limited_upload(file, settings.MAX_IMAGE_UPLOAD_MB)
+    is_safe, tip = await WeChatService.check_image_security(file_bytes)
+    if not is_safe:
+        raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
     orig_size_kb = round(len(file_bytes) / 1024, 1)
 
     task_id = uuid.uuid4().hex
@@ -938,6 +958,9 @@ async def image_matting(
     """【智能抠图与背景替换】智能分离主体前景，支持透明底、纯白、证件红/蓝底或自定义背景色"""
     image_bytes = await read_limited_upload(file, settings.MAX_IMAGE_UPLOAD_MB)
     open_validated_image(image_bytes, allow_animation=False)
+    is_safe, tip = await WeChatService.check_image_security(image_bytes)
+    if not is_safe:
+        raise HTTPException(status_code=400, detail=tip or "所发布内容包含违规信息，请修改后重试")
 
     task_id = uuid.uuid4().hex
     task_dir = settings.OUTPUT_DIR / task_id
