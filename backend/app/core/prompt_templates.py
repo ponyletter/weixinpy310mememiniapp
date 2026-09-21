@@ -286,6 +286,20 @@ def build_sticker16_prompt(
     char_desc = (character_desc or "").strip()
     custom_action = (custom_action or "").strip()
 
+    # 预设风格 Prompt 词库
+    style_prompts = {
+        "wechat_sticker": "cute WeChat / Line sticker art style, 2D vector flat avatar illustration, bold smooth sticker outlines, vibrant clean colors, expressive cartoon aesthetic",
+        "cute_chibi": "chibi kawaii anime sticker style, super cute rounded facial features, big expressive eyes, bold sticker cut outline, soft pastel lighting",
+        "3d_toy": "3D vinyl collectible toy figure style, PopMart blind box aesthetic, smooth claymation shading, soft ambient occlusion lighting, premium cute",
+        "funny_line": "hilarious funny comic sticker style, simplified expressive doodle lineart, exaggerated comical meme reactions, clean white paper background",
+        "real_person": (
+            "100% AUTHENTIC REAL HUMAN PHOTOGRAPHY, photorealistic portrait photos, candid studio camera shots of a real living person. "
+            "ABSOLUTELY NOT A DRAWING, NOT CARTOON, NOT 2D, NOT ANIME, NOT CHIBI, NOT ILLUSTRATION, NOT CEL-SHADING. "
+            "True photographic skin pores and natural texture, real human eyes, natural hair strands, realistic studio portrait lighting, "
+            "sharp photography cutout silhouette on solid pure white background"
+        ),
+    }
+
     # 别名规范化
     style_map = {
         "wechat_sticker": "wechat_sticker",
@@ -320,8 +334,10 @@ def build_sticker16_prompt(
         style_key = style_map[style]
     elif style in style_prompts:
         style_key = style
-    else:
+    elif style and style.strip() and style != "custom":
         style_key = "custom"
+    else:
+        style_key = "wechat_sticker"
 
     # 1. 人设与身份来源
     if is_real_person:
