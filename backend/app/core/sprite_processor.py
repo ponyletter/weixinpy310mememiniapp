@@ -59,64 +59,115 @@ class SpriteProcessor:
         cuts.append(length)
         return cuts
 
+    @staticmethod
+    def remove_dark_bg(frame: Image.Image, tolerance: int = 25) -> Image.Image:
+        """
+        超高速 OpenCV 洪水填充去除深色/黑色背景算法 (FLOODFILL_FIXED_RANGE)。
+        若贴纸背景为黑色或深色，将边缘底色清除为纯透明，保留贴纸本体与白色外描边。
+        """
+        rgba = np.array(frame.convert("RGBA"))
+        h, w = rgba.shape[:2]
+
+        corners = [rgba[0, 0, :3], rgba[0, w - 1, :3], rgba[h - 1, 0, :3], rgba[h - 1, w - 1, :3]]
+        if not any(np.all(c < 55) for c in corners):
+            return frame
+
+        bgr = cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGR)
+        mask = np.zeros((h + 2, w + 2), np.uint8)
+        tol = int(tolerance)
+        flags = 4 | (255 << 8) | cv2.FLOODFILL_MASK_ONLY | cv2.FLOODFILL_FIXED_RANGE
+
+        for seed in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]:
+            if mask[seed[1] + 1, seed[0] + 1] == 0:
+                cv2.floodFill(bgr, mask, seed, 0, loDiff=(tol, tol, tol), upDiff=(tol, tol, tol), flags=flags)
+
+        bg_mask = mask[1:h + 1, 1:w + 1] == 255
+        rgba[bg_mask, 3] = 0
+        return Image.fromarray(rgba)
+
     @classmethod
     def slice_grid(cls, image: Image.Image, rows: int = 4, cols: int = 4, padding_percent: float = 0.03, target_size_px: int = 256) -> List[Image.Image]:
         """
-        多尺度自适应网格分割算法 (Robust Multi-scale Grid Slicing):
-        1. 自动识别整图外边距与行间真实主隔离带，100% 保证人物与专属字幕被完整保留在同一帧内；
-        2. 计算统一最大包络，剔除无效大白边，内容饱满紧凑；
-        3. 支持自定义输出分辨率 (标准 240/256、高清 320、超大 480 等)，零残影、零抖动。
+        多尺度鲁棒自适应网格分割算法 (Robust Multi-scale Grid Slicing):
+        1. 自动识别底色明暗（黑底/白底/透明底），彻底杜绝黑底反相导致的切割错位；
+        2. 采用网格理论基线紧凑收敛搜索（严格限制在单元格边界 +/- 6% 范围内），保证各格绝对规整，决不切断人物肢体与头部；
+        3. 自适应提取前景边缘，并在目标分辨率下居中完美排版。
         """
         img_rgb = image.convert("RGB")
         img_np = np.array(img_rgb)
         h, w = img_np.shape[:2]
 
+        # 1. 自动检测背景明暗属性
+        corners = [img_np[0, 0], img_np[0, w - 1], img_np[h - 1, 0], img_np[h - 1, w - 1]]
+        avg_corner_lum = np.mean([0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] for c in corners])
+        bg_is_dark = avg_corner_lum < 60
+
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-        inv = 255 - gray
-        # 使用更灵敏的前景阈值 (12)，防止文字浅色渐变或边缘发丝细节被误判为背景
-        _, binary = cv2.threshold(inv, 12, 255, cv2.THRESH_BINARY)
+        if bg_is_dark:
+            inv = gray
+        else:
+            inv = 255 - gray
+        _, binary = cv2.threshold(inv, 15, 255, cv2.THRESH_BINARY)
 
         proj_y = np.sum(binary > 0, axis=1)
         proj_x = np.sum(binary > 0, axis=0)
 
-        # 1. 精准寻找行与列的真实分界线
-        y_cuts = cls._find_optimal_dividers(proj_y, h, rows)
-        x_cuts = cls._find_optimal_dividers(proj_x, w, cols)
-
-        # 2. 裁剪出每个完整单元格 (角色+自身字幕一体化提取)
-        raw_crops = []
-        for r in range(rows):
-            for c in range(cols):
-                cell = image.crop((x_cuts[c], y_cuts[r], x_cuts[c + 1], y_cuts[r + 1]))
-                arr = np.array(cell.convert("RGB"))
-                _, c_bin = cv2.threshold(255 - cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY), 12, 255, cv2.THRESH_BINARY)
-                ys, xs = np.where(c_bin > 0)
-                if len(ys) > 0:
-                    crop = cell.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+        # 2. 严格受限的紧凑分割线搜索算法，杜绝跨行跨列漂移
+        def get_tight_cuts(proj, length, num_divs):
+            cell_len = length / float(num_divs)
+            cuts = [0]
+            for k in range(1, num_divs):
+                expected = int(round(k * cell_len))
+                win = max(2, int(cell_len * 0.06))
+                search_start = max(0, expected - win)
+                search_end = min(length, expected + win)
+                if search_end > search_start:
+                    best_cut = search_start + int(np.argmin(proj[search_start:search_end]))
                 else:
-                    crop = cell
-                raw_crops.append(crop)
+                    best_cut = expected
+                cuts.append(best_cut)
+            cuts.append(length)
+            return cuts
 
-        # 3. 计算全局最大包络，保持动画尺寸稳定
-        max_w = max(c.width for c in raw_crops)
-        max_h = max(c.height for c in raw_crops)
-
-        # 最小安全边距 (智能自适应：支持 2.5(%) 或 0.025 等输入，杜绝把角色缩小为小不点的 Bug)
-        pad_ratio = padding_percent / 100.0 if padding_percent > 1.0 else padding_percent
-        pad = max(4, int(max(max_w, max_h) * pad_ratio))
-        target_size = max(max_w, max_h) + pad * 2
+        x_cuts = get_tight_cuts(proj_x, w, cols)
+        y_cuts = get_tight_cuts(proj_y, h, rows)
 
         out_size = max(64, min(1024, int(target_size_px or 256)))
         uniform_frames = []
-        for c in raw_crops:
-            canvas = Image.new("RGBA", (target_size, target_size), (255, 255, 255, 255))
-            ox = (target_size - c.width) // 2
-            oy = (target_size - c.height) // 2
-            canvas.paste(c.convert("RGBA"), (ox, oy))
 
-            # 缩放至目标分辨率
-            canvas = canvas.resize((out_size, out_size), Image.Resampling.LANCZOS)
-            uniform_frames.append(canvas)
+        for r in range(rows):
+            for c in range(cols):
+                cell = image.crop((x_cuts[c], y_cuts[r], x_cuts[c + 1], y_cuts[r + 1]))
+                if bg_is_dark:
+                    cell = cls.remove_dark_bg(cell)
+
+                cell_rgba = cell.convert("RGBA")
+                cell_np = np.array(cell_rgba)
+
+                if bg_is_dark:
+                    ys, xs = np.where(cell_np[:, :, 3] > 10)
+                else:
+                    inv_c = 255 - cv2.cvtColor(cell_np[:, :, :3], cv2.COLOR_RGB2GRAY)
+                    ys, xs = np.where(inv_c > 15)
+
+                if len(ys) > 0 and len(xs) > 0:
+                    cropped_content = cell_rgba.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+                else:
+                    cropped_content = cell_rgba
+
+                # 缩放至目标分辨率并保持居中与呼吸安全边距
+                pad = max(4, int(out_size * 0.04))
+                avail = out_size - pad * 2
+                scale = min(avail / float(max(1, cropped_content.width)), avail / float(max(1, cropped_content.height)))
+                new_w = max(1, int(cropped_content.width * scale))
+                new_h = max(1, int(cropped_content.height * scale))
+                resized = cropped_content.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+                canvas = Image.new("RGBA", (out_size, out_size), (255, 255, 255, 255))
+                ox = (out_size - new_w) // 2
+                oy = (out_size - new_h) // 2
+                canvas.paste(resized, (ox, oy), resized if resized.mode == "RGBA" else None)
+                uniform_frames.append(canvas)
 
         return uniform_frames
 

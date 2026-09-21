@@ -340,13 +340,13 @@ def build_sticker16_prompt(
 
     # 4. 背景定义
     bg_prompts = {
-        "white": "solid clean pure white background (#FFFFFF) with ample uniform empty margins between cells",
-        "transparent": "isolated white background cutout, crisp clean borders around character silhouette"
+        "white": "solid clean pure white background (#FFFFFF, rgb(255,255,255)) across the entire canvas with clear uniform white margins between cells, solid white backdrop, absolutely NO dark or black background",
+        "transparent": "isolated pure white background cutout, crisp clean borders around character silhouette"
     }
 
     # 5. 16 格固定动作与情绪指令（严禁绘制任何文字）
     grid_actions = (
-        "4x4 uniform sprite sheet grid layout consisting of exactly 16 distinct square panels. "
+        "strictly uniform 4x4 sprite sheet grid layout consisting of exactly 16 equally-sized square panels on a pure white background. "
         "Each cell MUST show a UNIQUE, HIGHLY EXPRESSIVE mood or gesture in exact order: "
         "1. laughing warmly with double thumbs-up; "
         "2. winking playfully with a peace V-sign gesture; "

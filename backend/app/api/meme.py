@@ -680,19 +680,24 @@ async def run_generate_pipeline(
 
             stickers_dir = task_dir / "stickers"
             stickers_dir.mkdir(exist_ok=True)
+            raw_stickers_dir = task_dir / "raw_stickers"
+            raw_stickers_dir.mkdir(exist_ok=True)
             frames_dir = task_dir / "frames"
             frames_dir.mkdir(exist_ok=True)
 
             sticker_items = []
-            for idx, (af, txt) in enumerate(zip(annotated_frames, texts), 1):
+            for idx, (rf, af, txt) in enumerate(zip(frames, annotated_frames, texts), 1):
                 s_path = stickers_dir / f"sticker_{idx:02d}.png"
+                raw_s_path = raw_stickers_dir / f"sticker_{idx:02d}.png"
                 f_path = frames_dir / f"frame_{idx:02d}.png"
+                rf.save(raw_s_path, format="PNG")
                 af.save(s_path, format="PNG")
                 af.save(f_path, format="PNG")
                 emotion = EMOTION_TAGS_16[idx - 1] if idx - 1 < len(EMOTION_TAGS_16) else ""
                 sticker_items.append({
                     "index": idx,
                     "url": f"/outputs/{task_id}/stickers/sticker_{idx:02d}.png",
+                    "raw_url": f"/outputs/{task_id}/raw_stickers/sticker_{idx:02d}.png",
                     "frame_url": f"/outputs/{task_id}/frames/frame_{idx:02d}.png",
                     "text": txt,
                     "caption": txt,
