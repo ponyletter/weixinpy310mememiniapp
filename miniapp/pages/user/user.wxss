@@ -1180,3 +1180,194 @@
   border-radius: 12rpx;
   border: 1rpx solid #e2e8f0;
 }
+
+/* ========== 文字样式配置 ========== */
+.config-sub-row {
+  margin-top: 12rpx;
+}
+
+.config-sub-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.color-picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 10rpx;
+}
+
+.color-dot {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  border: 3rpx solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.color-dot.active {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 4rpx rgba(79, 70, 229, 0.25);
+  transform: scale(1.1);
+}
+
+.color-dot-check {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.text-style-preview {
+  background: #f8fafc;
+  border: 2rpx dashed #cbd5e1;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  text-align: center;
+  min-height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-style-preview-label.font-style-bold {
+  font-family: sans-serif;
+  font-weight: 700;
+}
+
+.text-style-preview-label.font-style-regular {
+  font-family: sans-serif;
+  font-weight: 400;
+}
+
+.text-style-preview-label.font-style-serif {
+  font-family: serif;
+  font-weight: 600;
+}
+
+/* ========== 总览视图切换按钮 ========== */
+.history-view-toggle {
+  font-size: 22rpx;
+  color: #7c3aed;
+  padding: 4rpx 14rpx;
+  border: 1.5rpx solid #ddd6fe;
+  border-radius: 16rpx;
+  background: #f5f3ff;
+  margin-left: 12rpx;
+}
+
+/* ========== 总览模式：紧凑小格子 ========== */
+.history-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8rpx;
+  padding: 8rpx 0;
+}
+
+.history-overview-grid .history-card {
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: #f8fafc;
+  padding: 0;
+}
+
+.history-overview-grid .history-thumb-wrap {
+  width: 100%;
+  height: 150rpx;
+}
+
+.history-overview-grid .history-thumb {
+  width: 100%;
+  height: 150rpx;
+}
+
+.history-overview-grid .history-meta,
+.history-overview-grid .history-btns {
+  display: none;
+}
+
+.history-overview-grid .history-play-tag {
+  font-size: 16rpx;
+  padding: 2rpx 6rpx;
+  top: 6rpx;
+  left: 6rpx;
+}
+
+.history-overview-grid .history-del-tag {
+  font-size: 16rpx;
+  width: 28rpx;
+  height: 28rpx;
+  line-height: 28rpx;
+  top: 2rpx;
+  right: 2rpx;
+}
+
+/* ========== 单个 16 图作品的 4×4 总览 ========== */
+.sticker-overview-mask {
+  z-index: 1100;
+}
+
+.sticker-overview-card {
+  width: 92%;
+  max-height: 84vh;
+  padding: 28rpx;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.sticker-overview-scroll {
+  max-height: 66vh;
+}
+
+.sticker-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10rpx;
+  padding: 4rpx 0 16rpx;
+}
+
+.sticker-overview-item {
+  position: relative;
+  height: 145rpx;
+  overflow: hidden;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 12rpx;
+  background: #f8fafc;
+}
+
+.sticker-overview-image {
+  width: 100%;
+  height: 100%;
+}
+
+.sticker-overview-index {
+  position: absolute;
+  right: 5rpx;
+  bottom: 5rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  line-height: 28rpx;
+  padding: 0 4rpx;
+  box-sizing: border-box;
+  text-align: center;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.62);
+  border-radius: 14rpx;
+  font-size: 16rpx;
+}
+
+.sticker-overview-tip {
+  margin-top: 14rpx;
+  text-align: center;
+  color: #64748b;
+  font-size: 22rpx;
+}

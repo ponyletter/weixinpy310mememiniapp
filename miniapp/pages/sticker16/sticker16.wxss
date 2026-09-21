@@ -1637,3 +1637,18 @@ button.btn-make[disabled] {
   padding: 4rpx 24rpx !important;
   line-height: 1.8 !important;
 }
+
+/* 预览大图按钮 */
+.btn-large-preview {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #7c3aed;
+  background: #f5f3ff;
+  border: 2rpx solid #ddd6fe;
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+}

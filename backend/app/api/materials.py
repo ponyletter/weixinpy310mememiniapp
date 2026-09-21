@@ -1,10 +1,9 @@
 import json
 import uuid
 import re
-from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, Query, Response, Form, HTTPException, Request
-from PIL import Image, ImageDraw, ImageFont
+from fastapi import APIRouter, Query, Response, Form, HTTPException
+from PIL import Image, ImageDraw
 
 from app.config import settings
 from app.services.chinesebqb_service import ChineseBQBService
@@ -79,6 +78,8 @@ async def render_custom_meme(
     font_size: int = Form(28),
     color: str = Form("#1e293b"),
     pos: str = Form("bottom"),
+    font_style: str = Form("bold"),
+    text_stroke: bool = Form(True),
     openid: Optional[str] = Form(None),
     collection_id: Optional[str] = Form(None)
 ):
@@ -116,7 +117,12 @@ async def render_custom_meme(
     # 字体加载
     f_size = max(18, min(48, font_size))
     from app.api.convert import _get_cjk_font
-    font = _get_cjk_font(f_size, bold=True)
+    safe_font_style = font_style if font_style in {"regular", "bold", "serif"} else "bold"
+    font = _get_cjk_font(
+        f_size,
+        bold=safe_font_style == "bold",
+        serif=safe_font_style == "serif",
+    )
 
     # 解析文字颜色
     hex_color = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -150,8 +156,14 @@ async def render_custom_meme(
         bbox = draw.textbbox((0, 0), line, font=font)
         tw = bbox[2] - bbox[0]
         tx = (w - tw) // 2
-        # 绘制描边
-        draw.text((tx, curr_y), line, font=font, fill=text_color, stroke_width=2, stroke_fill=stroke_color)
+        draw.text(
+            (tx, curr_y),
+            line,
+            font=font,
+            fill=text_color,
+            stroke_width=2 if text_stroke else 0,
+            stroke_fill=stroke_color,
+        )
         curr_y += line_h
 
     # 保存合成结果

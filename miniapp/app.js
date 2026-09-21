@@ -29,7 +29,12 @@ App({
       frameCount: 16,
       fps: 8,
       smartCompress: true,
-      loopCount: 0
+      loopCount: 0,
+      textFontSize: 28,
+      textColor: '#1e293b',
+      textFontStyle: 'bold',
+      textPosition: 'bottom',
+      textStroke: true
     };
     // 配置项分步修改时必须合并，避免只保存帧数或尺寸导致其他设置丢失。
     return Object.assign({}, defaults, cfg && typeof cfg === 'object' ? cfg : {});

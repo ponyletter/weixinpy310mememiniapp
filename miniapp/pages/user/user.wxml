@@ -250,11 +250,11 @@
     </view>
   </view>
 
-  <!-- 动图专属参数配置弹窗 (个人中心右上角进入) -->
+  <!-- 制作与文字样式配置弹窗 (个人中心右上角进入) -->
   <view wx:if="{{showConfigModal}}" class="modal-mask">
     <view class="modal-card card config-modal-card">
       <view class="modal-header">
-        <text class="modal-title">⚙️ 动图生成与画质配置</text>
+        <text class="modal-title">⚙️ 制作与画质配置</text>
         <text class="btn-reset-text" bindtap="resetConfig">恢复默认</text>
       </view>
 
@@ -376,6 +376,77 @@
         </view>
       </view>
 
+      <view class="config-divider"></view>
+
+      <!-- 文字样式配置 -->
+      <view class="config-row-vertical">
+        <view class="config-label-row">
+          <text class="config-name">🖋️ 模版配字默认样式</text>
+          <text class="config-badge-desc">进入配字页时自动应用</text>
+        </view>
+
+        <!-- 字体风格 -->
+        <view class="config-sub-row">
+          <text class="config-sub-label">字体风格</text>
+          <view class="seg-grid grid-3">
+            <view class="seg-item {{(!config.textFontStyle || config.textFontStyle === 'bold') ? 'active' : ''}}" bindtap="setTextFontStyle" data-val="bold">黑体粗体</view>
+            <view class="seg-item {{config.textFontStyle === 'regular' ? 'active' : ''}}" bindtap="setTextFontStyle" data-val="regular">黑体常规</view>
+            <view class="seg-item {{config.textFontStyle === 'serif' ? 'active' : ''}}" bindtap="setTextFontStyle" data-val="serif">宋体</view>
+          </view>
+        </view>
+
+        <!-- 字号大小 -->
+        <view class="config-sub-row" style="margin-top: 16rpx;">
+          <text class="config-sub-label">字号大小</text>
+          <view class="seg-grid grid-4">
+            <view class="seg-item {{config.textFontSize === 22 ? 'active' : ''}}" bindtap="setTextFontSize" data-val="{{22}}">小号</view>
+            <view class="seg-item {{(!config.textFontSize || config.textFontSize === 28) ? 'active' : ''}}" bindtap="setTextFontSize" data-val="{{28}}">标准</view>
+            <view class="seg-item {{config.textFontSize === 34 ? 'active' : ''}}" bindtap="setTextFontSize" data-val="{{34}}">大号</view>
+            <view class="seg-item {{config.textFontSize === 42 ? 'active' : ''}}" bindtap="setTextFontSize" data-val="{{42}}">特大</view>
+          </view>
+        </view>
+
+        <!-- 文字颜色 -->
+        <view class="config-sub-row" style="margin-top: 16rpx;">
+          <text class="config-sub-label">文字颜色</text>
+          <view class="color-picker-row">
+            <view
+              wx:for="{{textColorOptions}}"
+              wx:key="value"
+              class="color-dot {{config.textColor === item.value ? 'active' : ''}}"
+              style="background: {{item.value}};"
+              bindtap="setTextColor"
+              data-val="{{item.value}}"
+            >
+              <text class="color-dot-check" wx:if="{{config.textColor === item.value}}">✓</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 文字位置 -->
+        <view class="config-sub-row" style="margin-top: 16rpx;">
+          <text class="config-sub-label">文字位置</text>
+          <view class="seg-grid grid-3">
+            <view class="seg-item {{config.textPosition === 'top' ? 'active' : ''}}" bindtap="setTextPosition" data-val="top">顶部</view>
+            <view class="seg-item {{(!config.textPosition || config.textPosition === 'bottom') ? 'active' : ''}}" bindtap="setTextPosition" data-val="bottom">底部</view>
+            <view class="seg-item {{config.textPosition === 'center' ? 'active' : ''}}" bindtap="setTextPosition" data-val="center">居中</view>
+          </view>
+        </view>
+
+        <!-- 文字描边 -->
+        <view class="config-sub-row" style="margin-top: 16rpx;">
+          <view style="display: flex; justify-content: space-between; align-items: center;">
+            <text class="config-sub-label">添加文字描边</text>
+            <switch checked="{{config.textStroke !== false}}" bindchange="onToggleTextStroke" color="#4f46e5" style="transform: scale(0.8);" />
+          </view>
+        </view>
+
+        <!-- 预览示例 -->
+        <view class="text-style-preview" style="margin-top: 16rpx;">
+          <text class="text-style-preview-label font-style-{{config.textFontStyle || 'bold'}}" style="font-size: {{(config.textFontSize || 28) * 2 - 20}}rpx; color: {{config.textColor || '#1e293b'}}; {{config.textStroke !== false ? 'text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;' : ''}}">预览效果文字</text>
+        </view>
+      </view>
+
       <view class="modal-actions" style="margin-top: 28rpx;">
         <button class="btn-secondary" style="flex: 1;" bindtap="closeConfigModal">取消</button>
         <button class="btn-primary" style="flex: 1;" bindtap="saveAndCloseConfig">保存配置</button>
@@ -461,6 +532,9 @@
         <view class="history-title-box">
           <text class="modal-title">🎨 我的作品相册</text>
           <text class="history-count-badge" wx:if="{{historyList.length > 0}}">{{historyList.length}} 个作品</text>
+          <view class="history-view-toggle" bindtap="toggleHistoryView">
+            <text>{{historyViewMode === 'grid' ? '📊 总览' : '📋 列表'}}</text>
+          </view>
         </view>
         <text class="btn-close-icon" bindtap="closeHistoryModal">✕</text>
       </view>
@@ -486,7 +560,7 @@
           <view class="empty-text">{{historySearchQuery ? '未找到匹配作品' : '暂无历史创作动图'}}</view>
           <view class="empty-sub">{{historySearchQuery ? '换个关键词试试看吧' : '在首页输入灵感台词，即可秒级生成独家动图！'}}</view>
         </view>
-        <view wx:else class="history-grid">
+        <view wx:else class="{{historyViewMode === 'overview' ? 'history-overview-grid' : 'history-grid'}}">
           <view 
             wx:for="{{historyList}}" 
             wx:key="task_id" 
@@ -495,11 +569,11 @@
             <view class="history-thumb-wrap" bindtap="previewHistoryGif" data-item="{{item}}" data-url="{{item.full_gif_url}}">
               <image 
                 class="history-thumb" 
-                src="{{item.thumb_url || item.full_gif_url}}" 
+                src="{{item.preview_url}}"
                 mode="aspectFit" 
                 lazy-load="true"
               ></image>
-              <view class="history-play-tag">{{item.is_sticker16 ? '16张静态' : (item.frame_count || 16) + '帧'}}</view>
+              <view class="history-play-tag">{{item.is_sticker16 ? '16张贴纸' : '动图'}}</view>
               <view class="history-del-tag" catchtap="deleteHistoryItem" data-id="{{item.task_id}}">✕</view>
             </view>
             <view class="history-meta">
@@ -515,6 +589,34 @@
       </scroll-view>
 
       <button class="btn-primary" style="margin-top: 20rpx; width: 100%;" bindtap="closeHistoryModal">完成浏览</button>
+    </view>
+  </view>
+
+  <!-- 16 张静态贴纸总览：先总览，再按需进入原生大图预览 -->
+  <view wx:if="{{showStickerOverview}}" class="modal-mask sticker-overview-mask" bindtap="closeStickerOverview">
+    <view class="modal-card card sticker-overview-card" catchtap="stopBubble">
+      <view class="modal-header">
+        <view class="history-title-box">
+          <text class="modal-title">🖼️ {{overviewTitle}}</text>
+          <text class="history-count-badge">{{overviewStickers.length}} 张</text>
+        </view>
+        <text class="btn-close-icon" bindtap="closeStickerOverview">✕</text>
+      </view>
+      <scroll-view scroll-y class="sticker-overview-scroll">
+        <view class="sticker-overview-grid">
+          <view
+            wx:for="{{overviewStickers}}"
+            wx:key="url"
+            class="sticker-overview-item"
+            bindtap="previewOverviewSticker"
+            data-index="{{index}}"
+          >
+            <image class="sticker-overview-image" src="{{item.url}}" mode="aspectFit" lazy-load="true"></image>
+            <text class="sticker-overview-index">{{index + 1}}</text>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="sticker-overview-tip">点击任意图片可进入大图预览</view>
     </view>
   </view>
 

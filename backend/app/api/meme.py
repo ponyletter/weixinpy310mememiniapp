@@ -1,4 +1,5 @@
 import logging
+import json
 import re
 import asyncio
 import uuid
@@ -819,6 +820,7 @@ async def run_generate_pipeline(
             await sync_task_outputs_with_retry(task_id, task_dir)
 
             duration_seconds = round(time.time() - start_time, 1)
+            result_data["output_mode"] = "gif"
             result_data["duration_seconds"] = duration_seconds
             result_data["stats"]["duration_seconds"] = duration_seconds
 
@@ -1042,6 +1044,7 @@ async def run_generate_pipeline(
         has_orig = has_image and (task_dir / "original_image.png").exists()
         result_data = {
             "task_id": task_id,
+            "output_mode": "gif",
             "gif_url": f"/outputs/{task_id}/meme_result.gif",
             # R2 仅保存源图和最终成品 GIF，不再发布缩略图；相册缩略图直接使用 GIF。
             "thumb_url": f"/outputs/{task_id}/meme_result.gif",
@@ -1477,7 +1480,12 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
     # 再查磁盘是否已有历史成果 (如 df4492bd 等)
     with get_db() as conn:
         owner = conn.execute(
-            "SELECT openid, status, progress, duration_seconds, gif_url, sprite_url FROM meme_tasks WHERE task_id = ?", (task_id,)
+            """
+            SELECT openid, status, progress, duration_seconds, gif_url, sprite_url,
+                   output_mode, preset_key
+            FROM meme_tasks WHERE task_id = ?
+            """,
+            (task_id,),
         ).fetchone()
     if not owner or owner["openid"] != current_openid:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -1503,7 +1511,25 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
         gif_file = task_dir / "meme_result.gif"
         file_size_kb = round(gif_file.stat().st_size / 1024, 1) if gif_file.exists() else 0.0
         is_compliant = (gif_file.stat().st_size <= settings.WECHAT_GIF_MAX_BYTES) if gif_file.exists() else True
-        is_sticker16 = bool(sticker_items) or (task_dir / "stickers_pack.zip").exists()
+        is_sticker16 = (
+            owner["output_mode"] == "sticker16"
+            or (owner["preset_key"] or "").startswith("sticker16")
+            or bool(sticker_items)
+            or (task_dir / "stickers_pack.zip").exists()
+        )
+
+        # R2 模式会清理逐张本地切片；服务重启后仍需从持久化的
+        # output_mode 和公开成品目录恢复 16 张静态贴纸地址。
+        if is_sticker16 and not sticker_items and is_public_r2_url(raw_gif_url):
+            remote_base = raw_gif_url.rsplit("/", 1)[0]
+            sticker_items = [
+                {
+                    "url": f"{remote_base}/stickers/sticker_{index:02d}.png",
+                    "raw_url": f"{remote_base}/raw_stickers/sticker_{index:02d}.png",
+                    "caption": "",
+                }
+                for index in range(1, 17)
+            ]
 
         result_payload = {
             "task_id": task_id,
@@ -1513,7 +1539,7 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
             "stickers_pack_url": f"/outputs/{task_id}/stickers_pack.zip" if (task_dir / "stickers_pack.zip").exists() else "",
             "input_url": f"/outputs/{task_id}/input_sprite.png",
             "frames": [s["url"] for s in sticker_items] if sticker_items else frame_urls,
-            "stickers": sticker_items if sticker_items else frame_urls,
+            "stickers": sticker_items,
             "stats": {
                 "frame_count": len(sticker_items) if sticker_items else len(frame_urls),
                 "file_size_kb": file_size_kb,
@@ -1593,7 +1619,9 @@ def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
         cursor = conn.cursor()
         # 绝不暴露 prompt 字段给前端，保障系统提示词与私密安全性
         cursor.execute("""
-            SELECT task_id, openid, preset_key, text_bottom, custom_title, fps, status, progress, gif_url, sprite_url, duration_seconds, frame_count, resolution, created_at 
+            SELECT task_id, openid, preset_key, text_bottom, custom_title, fps, status,
+                   progress, gif_url, sprite_url, duration_seconds, frame_count,
+                   resolution, output_mode, created_at
             FROM meme_tasks 
             WHERE openid = ? AND status = 'completed'
             ORDER BY created_at DESC LIMIT 50
@@ -1633,10 +1661,10 @@ def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
 
         preset_key_str = (row.get("preset_key") or "")
         is_sticker16 = (
-            (row.get("frame_count") == 16)
+            row.get("output_mode") == "sticker16"
             or preset_key_str.startswith("sticker16")
             or bool(stickers_dir and stickers_dir.exists())
-            or bool(frames_dir and frames_dir.exists() and len(list(frames_dir.glob("*.png"))) == 16)
+            or bool(task_dir and (task_dir / "stickers_pack.zip").exists())
         )
 
         sticker_items = []
@@ -1648,7 +1676,7 @@ def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
                     "raw_url": f"/outputs/{task_id}/raw_stickers/{raw_f.name}" if (raw_stickers_dir and raw_f.exists()) else f"/outputs/{task_id}/stickers/{f.name}",
                     "caption": ""
                 })
-        elif frames_dir and frames_dir.exists():
+        elif is_sticker16 and frames_dir and frames_dir.exists():
             flist = sorted(frames_dir.glob("*.png"))
             if len(flist) == 16:
                 for f in flist:
@@ -1780,4 +1808,3 @@ def set_audit_mode(req: Optional[AuditModeToggleRequest] = None, mode: Optional[
         "audit_mode": active,
         "message": f"审核模式已{'开启 (纯动效合规模式)' if active else '关闭 (全量 AI 动图模式)'}"
     }
-

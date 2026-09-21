@@ -382,7 +382,31 @@ def test_meme_rename_and_estimate_endpoints(client: TestClient):
             "INSERT INTO meme_tasks (task_id, openid, preset_key, text_bottom, status, progress, duration_seconds) VALUES (?, ?, ?, ?, ?, ?, ?)",
             ("task_rename_123", openid, "kiss", "原标题", "completed", 100, 28.5)
         )
+        conn.execute(
+            """
+            INSERT INTO meme_tasks
+                (task_id, openid, preset_key, text_bottom, status, progress,
+                 duration_seconds, output_mode, gif_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "task_sticker_123",
+                openid,
+                "sticker16:wechat_sticker:worker",
+                "打工人日常",
+                "completed",
+                100,
+                32.0,
+                "sticker16",
+                "/outputs/task_sticker_123/meme_result.gif",
+            ),
+        )
         conn.commit()
+
+    stickers_dir = settings.OUTPUT_DIR / "task_sticker_123" / "stickers"
+    stickers_dir.mkdir(parents=True)
+    for index in range(1, 17):
+        (stickers_dir / f"sticker_{index:02d}.png").write_bytes(png_bytes())
 
     # Rename the task
     ren_resp = client.post(
@@ -401,6 +425,41 @@ def test_meme_rename_and_estimate_endpoints(client: TestClient):
     item = next(it for it in items if it["task_id"] == "task_rename_123")
     assert item["display_title"] == "自定义新备注"
     assert item["created_at"] is not None
+    # 普通 GIF 默认也可能有 16 帧，不能因此被误判为 16 张静态贴纸。
+    assert item["output_mode"] == "gif"
+    assert item["is_sticker16"] is False
+    assert item["stickers"] == []
+
+    sticker_item = next(it for it in items if it["task_id"] == "task_sticker_123")
+    assert sticker_item["output_mode"] == "sticker16"
+    assert sticker_item["is_sticker16"] is True
+    assert len(sticker_item["stickers"]) == 16
+
+
+def test_render_meme_accepts_saved_text_style_options(client: TestClient, monkeypatch):
+    from app.core.wechat_service import WeChatService
+
+    async def allow_text(_cls, _text, _openid=None):
+        return True, ""
+
+    monkeypatch.setattr(WeChatService, "check_text_security", classmethod(allow_text))
+    response = client.post(
+        "/api/materials/render-meme",
+        data={
+            "template_id": "tpl_panda_question",
+            "caption": "字体设置测试",
+            "font_size": "34",
+            "color": "#3b82f6",
+            "pos": "center",
+            "font_style": "serif",
+            "text_stroke": "false",
+        },
+    )
+    assert response.status_code == 200
+    image_url = response.json()["data"]["image_url"]
+    assert image_url.endswith("/meme_result.png")
+    relative_path = image_url.removeprefix("/outputs/")
+    assert (settings.OUTPUT_DIR / relative_path).exists()
 
 
 def test_collection_move_rename_reorder_endpoints(client: TestClient):
@@ -661,4 +720,5 @@ def test_task_status_returns_relative_url_and_attaches_r2(client: TestClient, mo
     assert data["status"] == "completed"
     assert data["data"]["gif_url"] == f"/outputs/{task_id}/meme_result.gif"
     assert data["data"]["r2_url"] == "https://cdn.example.com/tasks/df4492bd/meme_result.gif"
-
+    assert data["data"]["output_mode"] == "gif"
+    assert data["data"]["stickers"] == []

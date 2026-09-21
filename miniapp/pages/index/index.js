@@ -1027,7 +1027,7 @@ Page({
               const durationSec = Math.round((tInfo.data && tInfo.data.duration_seconds) || (stats && stats.duration_seconds) || this.data.elapsedSeconds || 0);
 
               const rawStickers = tInfo.data.stickers || [];
-              const isSticker16 = (tInfo.data.output_mode === 'sticker16') || (rawStickers.length === 16) || (this.data.currentFrameCount === 16 && rawStickers.length > 0);
+              const isSticker16 = tInfo.data.output_mode === 'sticker16';
 
               let formattedStickers = [];
               if (rawStickers && rawStickers.length > 0) {
@@ -1502,15 +1502,6 @@ Page({
     wx.navigateTo({
       url: '/pages/sticker16/sticker16'
     });
-  },
-
-  goToMemeMaker() {
-    let url = '/pages/remix/remix?tab=meme_maker';
-    const text = (this.data.caption || '').trim();
-    if (text) {
-      url += '&caption=' + encodeURIComponent(text);
-    }
-    wx.navigateTo({ url });
   },
 
   dismissFavoriteTip() {

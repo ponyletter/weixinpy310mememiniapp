@@ -47,18 +47,6 @@
     <view class="banner-arrow-btn">立即体验 ›</view>
   </view>
 
-  <!-- 经典梗图模版配字横幅 -->
-  <view class="feature-banner-mememaker" bindtap="goToMemeMaker">
-    <view class="banner-content">
-      <view class="banner-badge-row">
-        <text class="banner-badge-purple">🎭 模版配字</text>
-        <text class="banner-title">经典梗图随心写台词</text>
-      </view>
-      <text class="banner-desc">20+ 经典底图免画工，1秒生成专属表情存合集</text>
-    </view>
-    <view class="banner-arrow-btn-purple">去制作 ›</view>
-  </view>
-
   <!-- 动作模版选择器：紧凑内联胶囊 -->
   <view class="template-selector-bar" bindtap="openTemplateDrawer">
     <view class="tpl-current">

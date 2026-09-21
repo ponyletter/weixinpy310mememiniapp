@@ -299,8 +299,11 @@
         <image class="large-img" src="{{stickersList[largePreviewIndex].displayUrl}}" mode="aspectFit"></image>
       </view>
       <view class="large-footer">
+        <button class="btn-large-preview" bindtap="nativePreviewSticker">
+          🔍 预览大图
+        </button>
         <button class="btn-large-save" bindtap="saveSingleStickerToAlbum">
-          📥 保存此张表情到手机相册
+          📥 保存到手机相册
         </button>
       </view>
     </view>

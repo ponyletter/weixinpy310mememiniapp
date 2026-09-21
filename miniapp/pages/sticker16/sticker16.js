@@ -784,6 +784,17 @@ Page({
     this.setData({ showLargePreview: false });
   },
 
+  // 调用微信原生大图预览。
+  nativePreviewSticker() {
+    const sticker = this.data.stickersList[this.data.largePreviewIndex];
+    if (!sticker || !sticker.displayUrl) return;
+    const allUrls = this.data.stickersList.map(s => s.displayUrl).filter(Boolean);
+    wx.previewImage({
+      urls: allUrls,
+      current: sticker.displayUrl
+    });
+  },
+
   // 保存单张表情到相册
   async saveSingleStickerToAlbum() {
     const sticker = this.data.stickersList[this.data.largePreviewIndex];

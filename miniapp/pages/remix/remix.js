@@ -56,6 +56,8 @@ Page({
     memeCaptionPos: 'bottom', // 'bottom' | 'top' | 'center'
     memeFontSize: 28,
     memeTextColor: '#1e293b',
+    memeFontStyle: 'bold',
+    memeTextStroke: true,
     isRenderingMeme: false,
     memeResultUrl: '',
     memeInspirations: [
@@ -172,6 +174,17 @@ Page({
 
     if (options && options.caption) {
       this.setData({ memeCaption: decodeQueryValue(options.caption) });
+    }
+    // 读取用户保存的文字样式偏好作为梗图默认值
+    const userCfg = app.getGifConfig();
+    if (userCfg) {
+      this.setData({
+        memeFontSize: userCfg.textFontSize || 28,
+        memeTextColor: userCfg.textColor || '#1e293b',
+        memeFontStyle: userCfg.textFontStyle || 'bold',
+        memeTextStroke: userCfg.textStroke !== false,
+        memeCaptionPos: userCfg.textPosition || 'bottom'
+      });
     }
     this.fetchMemeTemplates(options && options.tpl);
   },
@@ -1198,7 +1211,9 @@ Page({
         caption: caption,
         font_size: this.data.memeFontSize || 28,
         pos: this.data.memeCaptionPos || 'bottom',
-        color: this.data.memeTextColor || '#1e293b'
+        color: this.data.memeTextColor || '#1e293b',
+        font_style: this.data.memeFontStyle || 'bold',
+        text_stroke: this.data.memeTextStroke !== false
       },
       success: (res) => {
         if (res.statusCode === 200 && res.data && res.data.data) {

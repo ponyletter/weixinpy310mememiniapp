@@ -48,6 +48,23 @@ Page({
     historyLoading: false,
     historyList: [],
     historySearchQuery: '',
+    historyViewMode: 'grid',
+    showStickerOverview: false,
+    overviewStickers: [],
+    overviewTitle: '',
+
+    // 文字样式颜色选项
+    textColorOptions: [
+      { value: '#1e293b', label: '墨黑' },
+      { value: '#ffffff', label: '纯白' },
+      { value: '#ef4444', label: '红色' },
+      { value: '#f97316', label: '橙色' },
+      { value: '#eab308', label: '黄色' },
+      { value: '#22c55e', label: '绿色' },
+      { value: '#3b82f6', label: '蓝色' },
+      { value: '#a855f7', label: '紫色' },
+      { value: '#ec4899', label: '粉色' }
+    ],
 
     // 作品重命名 / 添加备注
     showRenameModal: false,
@@ -274,13 +291,19 @@ Page({
     this.setData({
       showHistoryModal: true,
       historyLoading: !hasData,
-      historySearchQuery: ''
+      historySearchQuery: '',
+      historyViewMode: 'grid'
     });
     this.fetchHistory();
   },
 
   closeHistoryModal() {
-    this.setData({ showHistoryModal: false });
+    this.setData({
+      showHistoryModal: false,
+      showStickerOverview: false,
+      overviewStickers: [],
+      overviewTitle: ''
+    });
   },
 
   fetchHistorySilently() {
@@ -376,7 +399,7 @@ Page({
         this.setData({ historyLoading: false });
         if (res.data && res.data.data) {
           const list = res.data.data
-            .filter(item => item.gif_url)
+            .filter(item => item.gif_url || (item.stickers && item.stickers.length > 0))
             .map(item => {
               let fullUrl = item.gif_url;
               if (fullUrl && !fullUrl.startsWith('http')) {
@@ -395,12 +418,18 @@ Page({
                 };
               });
 
+              const isSticker16 = item.output_mode === 'sticker16' || !!item.is_sticker16;
+              const previewUrl = isSticker16 && formattedStickers.length > 0
+                ? formattedStickers[0].url
+                : (thumbUrl || fullUrl);
+
               return {
                 ...item,
-                is_sticker16: !!item.is_sticker16,
+                is_sticker16: isSticker16,
                 stickers: formattedStickers,
                 full_gif_url: fullUrl,
                 thumb_url: thumbUrl,
+                preview_url: previewUrl,
                 display_title: item.display_title || item.text_bottom || '精选动图',
                 created_at: item.created_at ? item.created_at.slice(0, 16) : '近期'
               };
@@ -419,10 +448,10 @@ Page({
   previewHistoryGif(e) {
     const item = e.currentTarget.dataset.item;
     if (item && item.is_sticker16 && item.stickers && item.stickers.length > 0) {
-      const urls = item.stickers.map(s => s.url);
-      wx.previewImage({
-        urls: urls,
-        current: urls[0]
+      this.setData({
+        showStickerOverview: true,
+        overviewStickers: item.stickers,
+        overviewTitle: item.display_title || '16 张静态贴纸'
       });
       return;
     }
@@ -433,6 +462,24 @@ Page({
         current: url
       });
     }
+  },
+
+  closeStickerOverview() {
+    this.setData({
+      showStickerOverview: false,
+      overviewStickers: [],
+      overviewTitle: ''
+    });
+  },
+
+  previewOverviewSticker(e) {
+    const index = Number(e.currentTarget.dataset.index) || 0;
+    const urls = (this.data.overviewStickers || []).map(item => item.url).filter(Boolean);
+    if (urls.length === 0) return;
+    wx.previewImage({
+      urls: urls,
+      current: urls[Math.min(index, urls.length - 1)]
+    });
   },
 
   saveHistoryToAlbum(e) {
@@ -804,6 +851,36 @@ Page({
     this.setData({ ['config.loopCount']: val });
   },
 
+  setTextFontSize(e) {
+    const val = Number(e.currentTarget.dataset.val);
+    this.setData({ ['config.textFontSize']: val });
+  },
+
+  setTextColor(e) {
+    const val = e.currentTarget.dataset.val;
+    this.setData({ ['config.textColor']: val });
+  },
+
+  setTextFontStyle(e) {
+    const val = e.currentTarget.dataset.val;
+    this.setData({ ['config.textFontStyle']: val });
+  },
+
+  setTextPosition(e) {
+    const val = e.currentTarget.dataset.val;
+    this.setData({ ['config.textPosition']: val });
+  },
+
+  onToggleTextStroke(e) {
+    this.setData({ ['config.textStroke']: e.detail.value });
+  },
+
+  toggleHistoryView() {
+    this.setData({
+      historyViewMode: this.data.historyViewMode === 'grid' ? 'overview' : 'grid'
+    });
+  },
+
   resetConfig() {
     const defaultCfg = {
       fastMode: true,
@@ -811,7 +888,12 @@ Page({
       frameCount: 16,
       fps: 8,
       smartCompress: true,
-      loopCount: 0
+      loopCount: 0,
+      textFontSize: 28,
+      textColor: '#1e293b',
+      textFontStyle: 'bold',
+      textPosition: 'bottom',
+      textStroke: true
     };
     this.setData({ config: defaultCfg });
     app.setGifConfig(defaultCfg);
