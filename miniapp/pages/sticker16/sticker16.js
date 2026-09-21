@@ -10,6 +10,7 @@ Page({
     selectedStyle: 'wechat_sticker',
     customStyleText: '',
     characterDesc: '',
+    customTextsPlaceholder: '第1句: 收到\n第2句: 好的老板\n第3句: 疯狂搬砖\n第4句: 摸鱼中\n第5句: 头秃了\n第6句: 我太难了\n第7句: 别催了\n第8句: 下班溜了\n第9句: 血压上来了\n第10句: 需求是啥\n第11句: 搞定收工\n第12句: 夸得我脸红\n第13句: 跪求别催\n第14句: 吃瓜看戏\n第15句: 困到变形\n第16句: 告辞溜了',
 
     themePackages: [
       { id: 'worker', name: '💼 打工人日常', desc: '好的收到/改稿中/搬砖/谢老板', icon: '💼' },
@@ -566,12 +567,16 @@ Page({
     }
   },
 
-  // 存入合集
+  // 存入合集 (TabBar 页面需使用 switchTab)
   saveToMyCollection() {
     const firstSticker = this.data.stickersList[0];
     if (!firstSticker) return;
-    wx.navigateTo({
-      url: `/pages/collection/collection?add_gif=${encodeURIComponent(firstSticker.displayUrl)}`
-    });
+    wx.setStorageSync('pending_add_gif', firstSticker.displayUrl);
+    wx.showToast({ title: '正在转入合集...', icon: 'loading', duration: 600 });
+    setTimeout(() => {
+      wx.switchTab({
+        url: '/pages/collection/collection'
+      });
+    }, 300);
   }
 });

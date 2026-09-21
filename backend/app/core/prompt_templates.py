@@ -306,42 +306,63 @@ def build_sticker16_prompt(
         "fullbody": "full_body",
         "full_body": "full_body",
     }
-    style_key = style_map.get(style, "wechat_sticker")
-    comp_key = comp_map.get(composition, "bust")
+    # 判断是否为写实真人风格
+    style_lower = (style or "").lower()
+    is_real_person = (style in ("real_person", "real", "photo")) or any(
+        k in style_lower for k in ["真人", "写实", "现实", "真实", "摄影", "photo", "photoreal", "portrait", "camera"]
+    )
+
+    if is_real_person:
+        style_key = "real_person"
+    elif style in style_map:
+        style_key = style_map[style]
+    elif style in style_prompts:
+        style_key = style
+    else:
+        style_key = "custom"
 
     # 1. 人设与身份来源
-    if is_sketch:
+    if is_real_person:
+        if has_image:
+            char_id = f"the real person in the uploaded reference photo ({char_desc}), 100% faithfully replicating their exact real human facial likeness, authentic eyes, genuine skin texture, hairstyle and photographic appearance" if char_desc else "the real person in the uploaded reference photo, 100% faithfully preserving their authentic photographic facial likeness, genuine skin texture, hairstyle and real human features"
+        else:
+            char_id = f"an authentic real living human person based on '{char_desc}', photorealistic live-action portrait" if char_desc else "an authentic real living human person with natural photographic features and realistic expressions"
+    elif is_sketch:
         if char_desc:
             char_id = f"the character from my uploaded sketch drawing combined with description '{char_desc}'"
         else:
             char_id = "the cute cartoon character from my uploaded sketch drawing"
     elif has_image:
-        if style_key == "real_person":
-            char_id = f"the real person in the reference photo, accurately preserving realistic human facial likeness, real skin texture, hair and photographic appearance ({char_desc})" if char_desc else "the real person in the reference photo, strictly preserving authentic photographic likeness and natural human features"
-        elif char_desc:
-            char_id = f"the person/character in the reference image, preserving facial identity, haircut and core features ({char_desc})"
+        if char_desc:
+            char_id = f"the character in the reference image, preserving facial identity, haircut and core features ({char_desc})"
         else:
-            char_id = "the person/character in the reference image, strictly keeping consistent facial identity and signature look"
+            char_id = "the character in the reference image, strictly keeping consistent facial identity and signature look"
     else:
         if char_desc:
             char_id = f"a cute charismatic original character based on '{char_desc}'"
         else:
             char_id = "an adorable expressive chibi cartoon avatar character"
 
-    # 2. 风格定义 (与原有小程序动图风格保持高度统一：经典微信2D手绘贴纸/Line表情包画风)
-    style_prompts = {
-        "wechat_sticker": "classic WeChat & Line cute emoji sticker style, 2D flat vector cartoon character, bold clean dark sticker contour lines, flat bright cel-shading, Japanese Line sticker aesthetic, white paper cutout sticker border, cute chibi proportions",
-        "real_person": "authentic photorealistic human portrait emoji stickers, authentic photography of real person, realistic human facial likeness, real skin texture and natural lighting, funny expressive live-action meme reactions, clean cutout silhouette on solid pure white background, ultra-realistic photography",
-        "cute_chibi": "ultra-cute kawaii chibi sticker, big expressive sparkling anime eyes, soft rounded face, adorable pastel colors, thick sticker cut outline",
-        "funny_line": "funny hilarious comic meme sticker, doodle cartoon lineart, exaggerated comical meme reactions, clean black and white with minimal color accents",
-        "3d_toy": "3D vinyl collectible toy figure style, PopMart blind box aesthetic, smooth claymation shading, soft ambient occlusion lighting",
-    }
+    # 2. 风格定义
+    if is_real_person:
+        style_prompt_text = (
+            "100% AUTHENTIC REAL HUMAN PHOTOGRAPHY, photorealistic portrait photos, candid studio camera shots of a real living person. "
+            "ABSOLUTELY NOT A DRAWING, NOT CARTOON, NOT 2D, NOT ANIME, NOT CHIBI, NOT ILLUSTRATION, NOT CEL-SHADING. "
+            "True photographic skin pores and natural texture, real human eyes, natural hair strands, realistic studio portrait lighting, "
+            "sharp photography cutout silhouette on solid pure white background"
+        )
+    elif style_key in style_prompts:
+        style_prompt_text = style_prompts[style_key]
+    elif style and style.strip():
+        style_prompt_text = f"custom art style: {style.strip()}, clean sticker aesthetic, high quality visual rendering"
+    else:
+        style_prompt_text = style_prompts["wechat_sticker"]
 
     # 3. 构图定义
     comp_prompts = {
         "closeup": "extreme close-up portraits focusing heavily on vivid facial expressions in each cell",
         "bust": "bust portraits clearly showing head, expressive hands and funny gestures",
-        "full_body": "full body dynamic chibi poses with energetic gestures and action silhouettes"
+        "full_body": "full body dynamic poses with energetic gestures and action silhouettes"
     }
 
     # 4. 背景定义
@@ -350,37 +371,58 @@ def build_sticker16_prompt(
         "transparent": "isolated pure white background cutout, crisp clean borders around character silhouette"
     }
 
-    # 5. 16 格固定动作与情绪指令（严禁绘制任何文字）
-    grid_actions = (
-        "strictly uniform 4x4 sprite sheet grid layout consisting of exactly 16 equally-sized square panels on a pure white background. "
-        "Each cell MUST show a UNIQUE, HIGHLY EXPRESSIVE mood or gesture in exact order: "
-        "1. laughing warmly with double thumbs-up; "
-        "2. winking playfully with a peace V-sign gesture; "
-        "3. sweating furiously typing at a mini laptop; "
-        "4. resting chin on hand sipping a hot coffee cup; "
-        "5. clutching head pulling hair in comical panic/meltdown; "
-        "6. bawling tears streaming down like waterfalls; "
-        "7. angry steam erupting from head with cute red face; "
-        "8. shocked hands on cheeks with jaw dropped wide; "
-        "9. weary sighing with slight humorous eye-roll; "
-        "10. tilted head scratching ear with cartoon question marks; "
-        "11. confident smirk wearing cool black sunglasses; "
-        "12. blushing cute shy smile poking cheek with one finger; "
-        "13. pleading with hands clasped together begging puppy eyes; "
-        "14. eating a big slice of watermelon with spoon enjoying drama; "
-        "15. sleepy yawning with big snot bubble drifting; "
-        "16. dashing away with backpack waving goodbye. "
-    )
-
-    if style in style_map:
-        style_key = style_map[style]
-        style_prompt_text = style_prompts.get(style_key, style_prompts["wechat_sticker"])
-    elif style in style_prompts:
-        style_prompt_text = style_prompts[style]
-    elif style and style.strip():
-        style_prompt_text = f"custom art style: {style.strip()}, clean sticker aesthetic, 2D vector chibi cartoon, high quality lineart"
+    # 5. 16 格动作与表情指令
+    if is_real_person:
+        grid_actions = (
+            "strictly uniform 4x4 grid layout consisting of exactly 16 equally-sized square panels on a pure white background. "
+            "Each cell MUST show the REAL HUMAN PERSON with a UNIQUE, HIGHLY EXPRESSIVE real-life photographic mood or gesture in exact order: "
+            "1. laughing with a genuine wide smile showing teeth and double thumbs-up; "
+            "2. cheerful playful wink with a peace V-sign gesture; "
+            "3. focused sweating face looking at a laptop screen; "
+            "4. taking a thoughtful sip from a warm coffee mug; "
+            "5. holding head in hands with comical stressed panic face; "
+            "6. wiping a tear with exaggerated humorous sad crying face; "
+            "7. cute puffed cheeks angry glare with funny pout; "
+            "8. hands on cheeks with jaw dropped open in comical shock; "
+            "9. funny eye-roll with slight head tilt and humorous smirk; "
+            "10. scratching head looking puzzled with one questioning raised eyebrow; "
+            "11. cool confident smirk wearing dark sunglasses; "
+            "12. shy blushing warm smile touching cheek with one finger; "
+            "13. pleading with hands clasped together begging puppy eyes; "
+            "14. taking a happy bite of a watermelon slice; "
+            "15. sleepy yawning stretching arms; "
+            "16. turning around with friendly wave goodbye smile. "
+        )
+        consistency_rule = (
+            "STRICT REAL HUMAN IDENTITY CONSISTENCY: Every single cell of the 16 panels MUST depict the EXACT SAME REAL PERSON. "
+            "The real face, facial structure, skin tone, hairstyle, and clothing MUST remain completely uniform, realistic, and photographically identical across all 16 cells. "
+            "CRITICAL NEGATIVE CONSTRAINTS: ABSOLUTELY NO anime, NO cartoon, NO chibi drawing, NO 2D vector, NO line art, NO drawing, NO illustration, NO sketch, NO watermarks, NO text."
+        )
     else:
-        style_prompt_text = style_prompts["wechat_sticker"]
+        grid_actions = (
+            "strictly uniform 4x4 sprite sheet grid layout consisting of exactly 16 equally-sized square panels on a pure white background. "
+            "Each cell MUST show a UNIQUE, HIGHLY EXPRESSIVE mood or gesture in exact order: "
+            "1. laughing warmly with double thumbs-up; "
+            "2. winking playfully with a peace V-sign gesture; "
+            "3. sweating furiously typing at a mini laptop; "
+            "4. resting chin on hand sipping a hot coffee cup; "
+            "5. clutching head pulling hair in comical panic/meltdown; "
+            "6. bawling tears streaming down like waterfalls; "
+            "7. angry steam erupting from head with cute red face; "
+            "8. shocked hands on cheeks with jaw dropped wide; "
+            "9. weary sighing with slight humorous eye-roll; "
+            "10. tilted head scratching ear with cartoon question marks; "
+            "11. confident smirk wearing cool black sunglasses; "
+            "12. blushing cute shy smile poking cheek with one finger; "
+            "13. pleading with hands clasped together begging puppy eyes; "
+            "14. eating a big slice of watermelon with spoon enjoying drama; "
+            "15. sleepy yawning with big snot bubble drifting; "
+            "16. dashing away with backpack waving goodbye. "
+        )
+        consistency_rule = (
+            "STRICT CHARACTER IDENTITY CONSISTENCY: Every single cell of the 16 panels MUST depict the EXACT SAME character. "
+            "The face, hairstyle, hair color, skin tone, clothing design, color palette, and line art MUST remain completely uniform and identical across all 16 cells."
+        )
 
     action_extra = f" Additional custom nuance: {custom_action}." if custom_action else ""
 
@@ -389,8 +431,7 @@ def build_sticker16_prompt(
         f"Art style: {style_prompt_text}. "
         f"Framing: {comp_prompts.get(comp_key, comp_prompts['bust'])}. "
         f"Background: {bg_prompts.get(background, bg_prompts['white'])}. "
-        f"STRICT CHARACTER IDENTITY CONSISTENCY: Every single cell of the 16 panels MUST depict the EXACT SAME character. "
-        "The face, hairstyle, hair color, skin tone, clothing design, color palette, and line art MUST remain completely uniform and identical across all 16 cells. "
+        f"{consistency_rule} "
         f"{grid_actions}"
         f"{action_extra} "
         "CRITICAL RULES: NO text, NO typography, NO watermark, NO Chinese characters, NO English letters, "

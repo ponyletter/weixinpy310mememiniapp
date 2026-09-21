@@ -26,10 +26,12 @@ function getShareableOutput(url) {
 }
 
 const TOOL_META = {
+  sticker16: { id: 'sticker16', name: '1图变16款', icon: '🤹' },
   video: { id: 'video', name: '视频转GIF', icon: '📹' },
   picker: { id: 'picker', name: '图片取色', icon: '🔍' },
   images: { id: 'images', name: '多图合成', icon: '▦' },
-  stitch: { id: 'stitch', name: '长图拼接', icon: '🎞️' }
+  stitch: { id: 'stitch', name: '长图拼接', icon: '🎞️' },
+  editor: { id: 'editor', name: '贴纸修图', icon: '🖍️' }
 };
 
 Page({
@@ -148,6 +150,14 @@ Page({
   switchTab(e) {
     const tab = e.currentTarget.dataset.tab;
     if (!tab) return;
+    if (tab === 'sticker16') {
+      this.goToSticker16();
+      return;
+    }
+    if (tab === 'editor') {
+      this.openStickerEditor();
+      return;
+    }
     this.setData({
       tab,
       remixResultUrl: '',
@@ -157,6 +167,7 @@ Page({
   },
 
   goToSticker16() {
+    this.recordRecentTool('sticker16');
     wx.navigateTo({
       url: '/pages/sticker16/sticker16'
     });
@@ -164,6 +175,7 @@ Page({
 
   // 百宝箱独立修图入口：复用制作页的贴纸、文字、气泡、涂鸦和裁剪能力，并支持直接保存。
   openStickerEditor() {
+    this.recordRecentTool('editor');
     const openEditor = (path) => {
       const src = path ? '?src=' + encodeURIComponent(path) : '';
       wx.navigateTo({ url: '/pages/editor/editor' + src });

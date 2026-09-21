@@ -1,7 +1,6 @@
 <view class="container">
   <!-- 顶部标题引导区 -->
   <view class="page-heading">
-    <view class="heading-badge">🔥 热门表情贴纸工坊</view>
     <text class="page-title">一张照片变出 16 张表情包</text>
     <text class="page-subtitle">上传一张自拍、萌宠或从素材库保存的表情，一键生成 16 款生动实用的聊天表情贴纸。</text>
   </view>
@@ -33,8 +32,8 @@
       <view wx:else class="upload-preview" catchtap="preventBubble">
         <image class="preview-img" src="{{refImagePath}}" mode="aspectFit" bindtap="previewRefImage"></image>
         <view class="preview-actions">
-          <button class="btn-action-sm btn-change" bindtap="chooseImage">更换图片</button>
-          <button class="btn-action-sm btn-remove" bindtap="clearImage">✕ 清除</button>
+          <view class="btn-action-sm btn-change" catchtap="chooseImage">更换图片</view>
+          <view class="btn-action-sm btn-remove" catchtap="clearImage">✕ 清除</view>
         </view>
       </view>
     </view>
@@ -98,10 +97,10 @@
       <text class="sub-panel-label">输入16格台词 (每行一句，自动对齐16款表情)：</text>
       <textarea 
         class="custom-texts-textarea" 
-        placeholder="收到&#10;好的老板&#10;疯狂搬砖&#10;摸鱼中&#10;头秃了&#10;我太难了&#10;别催了&#10;下班溜了..."
+        placeholder="{{customTextsPlaceholder}}"
         value="{{customTexts}}"
         bindinput="onInputCustomTexts"
-        maxlength="300"
+        maxlength="400"
       ></textarea>
     </view>
 
@@ -160,6 +159,7 @@
       <input 
         class="desc-input" 
         placeholder="例如：复古美式插画、赛博朋克像素风、蜡笔手绘..." 
+        placeholder-style="color: #94a3b8; font-size: 13px;"
         value="{{customStyleText}}"
         bindinput="onInputCustomStyle"
       />
@@ -174,6 +174,7 @@
     <input 
       class="desc-input" 
       placeholder="例如：戴圆框眼镜的青年、白色带橘斑小猫、穿黄色卫衣..." 
+      placeholder-style="color: #94a3b8; font-size: 13px;"
       value="{{characterDesc}}"
       bindinput="onInputDesc"
     />

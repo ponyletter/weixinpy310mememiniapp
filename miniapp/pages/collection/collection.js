@@ -34,6 +34,15 @@ Page({
   },
 
   onShow() {
+    const pendingGif = wx.getStorageSync('pending_add_gif');
+    if (pendingGif) {
+      wx.removeStorageSync('pending_add_gif');
+      this.setData({
+        pendingGifUrl: pendingGif,
+        activeTab: 'my'
+      });
+      wx.showToast({ title: '请点击合集卡片存入表情', icon: 'none', duration: 2500 });
+    }
     this.fetchData();
   },
 
