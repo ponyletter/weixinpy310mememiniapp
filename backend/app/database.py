@@ -1037,6 +1037,44 @@ def add_item_to_collection(collection_id: str, gif_url: str, title: str = "", op
         conn.commit()
     return {"id": item_id, "collection_id": collection_id, "gif_url": gif_url, "title": title}
 
+def add_items_batch_to_collection_db(collection_id: str, items: List[Dict[str, str]], openid: str = "") -> Dict[str, Any]:
+    """批量向合集中添加多个表情条目（支持 16 张表情贴纸批量入库）"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT openid, is_public, cover_url FROM collections WHERE collection_id = ?", (collection_id,))
+        collection = cursor.fetchone()
+        if not collection:
+            raise HTTPException(status_code=404, detail="合集不存在")
+        if collection["is_public"] == 1 or collection["openid"] in ("official", "system"):
+            raise HTTPException(status_code=403, detail="不能修改官方合集")
+        if not openid or collection["openid"] != openid:
+            raise HTTPException(status_code=403, detail="无权修改该合集")
+        
+        added_count = 0
+        first_url = None
+        for it in items:
+            url = (it.get("gif_url") or "").strip()
+            title = (it.get("title") or "").strip()
+            if not url:
+                continue
+            cursor.execute("SELECT id FROM collection_items WHERE collection_id = ? AND gif_url = ?", (collection_id, url))
+            if cursor.fetchone():
+                continue
+            cursor.execute('''
+                INSERT INTO collection_items (collection_id, gif_url, title)
+                VALUES (?, ?, ?)
+            ''', (collection_id, url, title))
+            added_count += 1
+            if not first_url:
+                first_url = url
+        
+        # 若合集尚未设置封面，自动将首个表情包设为封面
+        if not collection["cover_url"] and first_url:
+            cursor.execute("UPDATE collections SET cover_url = ? WHERE collection_id = ?", (first_url, collection_id))
+        
+        conn.commit()
+    return {"added_count": added_count, "collection_id": collection_id}
+
 def get_fast_thumb_url(gif_url: str) -> str:
     """返回可直接展示的结果图；R2 模式只保留最终成品，不虚构缩略图地址。"""
     if not gif_url:

@@ -306,6 +306,8 @@ def build_sticker16_prompt(
         "fullbody": "full_body",
         "full_body": "full_body",
     }
+    comp_key = comp_map.get(composition, "bust")
+
     # 判断是否为写实真人风格
     style_lower = (style or "").lower()
     is_real_person = (style in ("real_person", "real", "photo")) or any(

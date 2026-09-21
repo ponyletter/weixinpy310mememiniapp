@@ -320,4 +320,70 @@
       </view>
     </view>
   </view>
+
+  <!-- 原地存入合集选择/新建弹窗 -->
+  <view wx:if="{{showCollectionModal}}" class="modal-mask" bindtap="closeCollectionModal">
+    <view class="col-select-modal" catchtap="preventBubble">
+      <view class="modal-header">
+        <view class="col-modal-head">
+          <text class="modal-title">存入表情合集</text>
+          <text class="col-modal-sub">将选中的 {{selectedCount}} 张表情独立存入：</text>
+        </view>
+        <view class="btn-close-icon" bindtap="closeCollectionModal">✕</view>
+      </view>
+
+      <!-- 合集列表加载中 -->
+      <view wx:if="{{loadingCollections}}" class="col-loading-wrap">
+        <view class="loading-spin"></view>
+        <text class="col-loading-text">正在读取我的合集...</text>
+      </view>
+
+      <!-- 用户已有合集列表 -->
+      <scroll-view wx:elif="{{userCollections && userCollections.length > 0}}" scroll-y="true" class="col-list-scroll">
+        <view 
+          wx:for="{{userCollections}}" 
+          wx:key="collection_id" 
+          class="col-select-row"
+          bindtap="chooseCollectionAndSave"
+          data-id="{{item.collection_id}}"
+        >
+          <view class="col-row-icon">
+            <image wx:if="{{item.cover_url}}" class="col-row-img" src="{{item.cover_url}}" mode="aspectFill"></image>
+            <text wx:else class="col-row-folder">📁</text>
+          </view>
+          <view class="col-row-info">
+            <view class="col-row-title">{{item.title}}</view>
+            <view class="col-row-desc">{{item.item_count || 0}} 款表情</view>
+          </view>
+          <view class="col-row-btn">存入</view>
+        </view>
+      </scroll-view>
+
+      <!-- 空状态提示 -->
+      <view wx:else class="col-empty-wrap">
+        <text class="col-empty-text">您还没有创建专属合集，新建一个即可存入：</text>
+      </view>
+
+      <!-- 新建合集区域 -->
+      <view class="col-create-section">
+        <view wx:if="{{!showCreateInput}}" class="btn-new-col-trigger" bindtap="toggleCreateInput">
+          <text class="new-col-plus">＋</text> 新建表情合集并存入
+        </view>
+        <view wx:else class="col-create-box">
+          <input 
+            class="new-col-input" 
+            placeholder="输入新合集名称 (如：我的自拍表情)" 
+            value="{{newCollectionTitle}}" 
+            bindinput="onNewCollectionTitleInput" 
+            maxlength="20"
+            focus="{{showCreateInput}}"
+          />
+          <view class="col-create-actions">
+            <button class="btn-col-cancel" size="mini" bindtap="toggleCreateInput">取消</button>
+            <button class="btn-col-submit" size="mini" bindtap="submitCreateAndSave" loading="{{isSavingBatch}}">创建并存入</button>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
 </view>

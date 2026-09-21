@@ -47,7 +47,15 @@ Page({
 
     // 大图预览
     showLargePreview: false,
-    largePreviewIndex: 0
+    largePreviewIndex: 0,
+
+    // 存入合集弹窗
+    showCollectionModal: false,
+    loadingCollections: false,
+    userCollections: [],
+    showCreateInput: false,
+    newCollectionTitle: '',
+    isSavingBatch: false
   },
 
   _timer: null,
@@ -639,16 +647,149 @@ Page({
     }
   },
 
-  // 存入合集 (TabBar 页面需使用 switchTab)
+  // ==================== 存入合集功能 (原地弹窗选择/新建 + 选中的表情批量独立存入) ====================
+  // 打开合集选择弹窗
   saveToMyCollection() {
-    const firstSticker = this.data.stickersList[0];
-    if (!firstSticker) return;
-    wx.setStorageSync('pending_add_gif', firstSticker.displayUrl);
-    wx.showToast({ title: '正在转入合集...', icon: 'loading', duration: 600 });
-    setTimeout(() => {
-      wx.switchTab({
-        url: '/pages/collection/collection'
-      });
-    }, 300);
+    const selectedStickers = (this.data.stickersList || []).filter(s => s.selected);
+    if (!selectedStickers.length) {
+      wx.showToast({ title: '请至少勾选 1 款表情', icon: 'none' });
+      return;
+    }
+    this.setData({
+      showCollectionModal: true,
+      showCreateInput: false,
+      newCollectionTitle: ''
+    });
+    this.fetchUserCollections();
+  },
+
+  // 关闭合集弹窗
+  closeCollectionModal() {
+    this.setData({
+      showCollectionModal: false,
+      showCreateInput: false
+    });
+  },
+
+  // 获取用户所有合集列表
+  fetchUserCollections() {
+    const openid = app.globalData.openid || wx.getStorageSync('openid') || '';
+    this.setData({ loadingCollections: true });
+    app.request({
+      url: `${app.globalData.baseURL}/api/collection/my?openid=${encodeURIComponent(openid)}`,
+      method: 'GET',
+      success: (res) => {
+        if (res.data && res.data.success && Array.isArray(res.data.data)) {
+          this.setData({ userCollections: res.data.data });
+        }
+      },
+      fail: () => {
+        wx.showToast({ title: '获取合集列表失败', icon: 'none' });
+      },
+      complete: () => {
+        this.setData({ loadingCollections: false });
+      }
+    });
+  },
+
+  // 选择已有合集并存入选中的表情
+  chooseCollectionAndSave(e) {
+    const colId = e.currentTarget.dataset.id;
+    if (!colId) return;
+    this.executeBatchSave(colId);
+  },
+
+  // 切换新建合集输入框
+  toggleCreateInput() {
+    this.setData({
+      showCreateInput: !this.data.showCreateInput,
+      newCollectionTitle: ''
+    });
+  },
+
+  onNewCollectionTitleInput(e) {
+    this.setData({
+      newCollectionTitle: e.detail.value
+    });
+  },
+
+  // 提交新建合集并存入
+  submitCreateAndSave() {
+    const title = (this.data.newCollectionTitle || '').trim();
+    if (!title) {
+      wx.showToast({ title: '请输入合集名称', icon: 'none' });
+      return;
+    }
+    const openid = app.globalData.openid || wx.getStorageSync('openid') || '';
+    wx.showLoading({ title: '正在创建合集...' });
+
+    app.request({
+      url: `${app.globalData.baseURL}/api/collection/create`,
+      method: 'POST',
+      data: {
+        openid: openid,
+        title: title,
+        description: '1图变16款表情专属合集'
+      },
+      success: (res) => {
+        wx.hideLoading();
+        if (res.data && res.data.success && res.data.data && res.data.data.collection_id) {
+          this.executeBatchSave(res.data.data.collection_id);
+        } else {
+          wx.showToast({ title: (res.data && res.data.detail) || '创建合集失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '创建合集失败', icon: 'none' });
+      }
+    });
+  },
+
+  // 批量存入选中的每张静态表情条目
+  executeBatchSave(collectionId) {
+    const selectedStickers = (this.data.stickersList || []).filter(s => s.selected);
+    if (!selectedStickers.length) {
+      wx.showToast({ title: '请至少勾选 1 款表情', icon: 'none' });
+      return;
+    }
+
+    const openid = app.globalData.openid || wx.getStorageSync('openid') || '';
+    const items = selectedStickers.map((s, idx) => ({
+      gif_url: s.displayUrl || s.url,
+      title: s.text || `表情 ${s.index !== undefined ? s.index + 1 : idx + 1}`
+    }));
+
+    this.setData({ isSavingBatch: true });
+    wx.showLoading({ title: `正在存入 ${items.length} 张表情...`, mask: true });
+
+    app.request({
+      url: `${app.globalData.baseURL}/api/collection/add-items-batch`,
+      method: 'POST',
+      data: {
+        collection_id: collectionId,
+        openid: openid,
+        items: items
+      },
+      success: (res) => {
+        wx.hideLoading();
+        this.setData({ isSavingBatch: false, showCollectionModal: false });
+        if (res.data && res.data.success) {
+          const count = (res.data.data && res.data.data.added_count) !== undefined ? res.data.data.added_count : items.length;
+          wx.showToast({
+            title: `成功存入 ${count} 张表情！`,
+            icon: 'success',
+            duration: 2200
+          });
+        } else {
+          wx.showToast({ title: (res.data && res.data.detail) || '存入失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        this.setData({ isSavingBatch: false });
+        wx.showToast({ title: '网络请求失败，请重试', icon: 'none' });
+      }
+    });
   }
 });

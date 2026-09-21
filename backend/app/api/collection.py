@@ -4,6 +4,7 @@ from typing import Optional, List
 from app.database import (
     create_collection,
     add_item_to_collection,
+    add_items_batch_to_collection_db,
     get_collection_detail,
     get_collection_visibility,
     get_user_collections,
@@ -35,6 +36,15 @@ class AddItemRequest(BaseModel):
     collection_id: str
     gif_url: str = Field(min_length=1, max_length=500)
     title: Optional[str] = Field(default="", max_length=80)
+
+class BatchItem(BaseModel):
+    gif_url: str = Field(min_length=1, max_length=500)
+    title: Optional[str] = Field(default="", max_length=80)
+
+class AddItemsBatchRequest(BaseModel):
+    collection_id: str
+    items: List[BatchItem] = Field(min_length=1)
+    openid: Optional[str] = ""
 
 class DeleteCollectionRequest(BaseModel):
     collection_id: str
@@ -121,6 +131,16 @@ def add_gif_to_collection(req: AddItemRequest, current_openid: CurrentOpenid):
     if not req.collection_id or not req.gif_url:
         raise HTTPException(status_code=400, detail="合集ID和表情包URL不能为空")
     res = add_item_to_collection(req.collection_id, req.gif_url, req.title, current_openid)
+    return {"success": True, "data": res}
+
+@router.post("/add-items-batch")
+def add_items_batch(req: AddItemsBatchRequest, current_openid: CurrentOpenid):
+    """批量向指定合集中添加多个表情（支持 16 款表情一键全部归档入库）"""
+    if not req.collection_id or not req.items:
+        raise HTTPException(status_code=400, detail="合集ID和表情列表不能为空")
+    openid = require_same_user(req.openid, current_openid)
+    items_list = [{"gif_url": it.gif_url, "title": it.title or ""} for it in req.items]
+    res = add_items_batch_to_collection_db(req.collection_id, items_list, openid)
     return {"success": True, "data": res}
 
 @router.get("/detail")
