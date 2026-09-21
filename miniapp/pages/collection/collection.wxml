@@ -16,6 +16,9 @@
       <view class="col-tab {{activeTab === 'explore' ? 'active' : ''}}" bindtap="switchTab" data-tab="explore">
         精选推荐
       </view>
+      <view class="col-tab {{activeTab === 'materials' ? 'active' : ''}}" bindtap="switchTab" data-tab="materials">
+        素材库 (5800+)
+      </view>
     </view>
   </view>
 
@@ -109,6 +112,79 @@
           <image class="mini-thumb-img" src="{{p.thumb_url || p.gif_url}}" mode="aspectFit" lazy-load="true"></image>
           <text class="mini-thumb-label">{{p.title}}</text>
         </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ==================== 素材库 (5800+ 开源表情) ==================== -->
+  <view wx:if="{{activeTab === 'materials'}}" class="materials-section">
+    <!-- 搜索栏 -->
+    <view class="mat-search-bar card">
+      <icon type="search" size="14" color="#94a3b8"></icon>
+      <input 
+        class="mat-search-input" 
+        placeholder="搜索 5,800+ 款表情 (熊猫头、斗图、猫咪...)" 
+        value="{{matSearchQuery}}"
+        bindinput="onInputMatSearch"
+        bindconfirm="onSearchMaterials"
+      />
+      <text wx:if="{{matSearchQuery}}" class="mat-search-clear" bindtap="clearMatSearch">✕</text>
+    </view>
+
+    <!-- 分类滑动胶囊栏 -->
+    <scroll-view scroll-x class="mat-cat-scroll" enable-flex="true">
+      <view class="mat-cat-list">
+        <view 
+          wx:for="{{matCategories}}" 
+          wx:key="id" 
+          class="mat-cat-pill {{currentMatCat === item.id ? 'active' : ''}}"
+          bindtap="onSelectMatCat"
+          data-id="{{item.id}}"
+        >
+          {{item.title}} ({{item.count}})
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 素材 4 列网格 -->
+    <view class="mat-grid">
+      <view 
+        wx:for="{{materialsList}}" 
+        wx:key="id" 
+        class="mat-item-card"
+        bindtap="openMaterialAction"
+        data-item="{{item}}"
+      >
+        <image class="mat-item-thumb" src="{{item.thumb_url || item.url}}" mode="aspectFit" lazy-load="true"></image>
+        <text class="mat-item-title">{{item.title}}</text>
+      </view>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="mat-load-more" wx:if="{{matHasMore}}">
+      <button class="btn-mat-more" bindtap="loadMoreMaterials" disabled="{{matLoading}}">
+        {{matLoading ? '⏳ 正在载入...' : '加载更多素材 ⬇️'}}
+      </button>
+    </view>
+  </view>
+
+  <!-- 素材操作/大图弹窗 -->
+  <view wx:if="{{showMatModal}}" class="modal-mask" bindtap="closeMatModal">
+    <view class="mat-modal-card card" catchtap="stopBubble">
+      <view class="mat-modal-header">
+        <text class="mat-modal-title">{{activeMatItem.title}}</text>
+        <text class="mat-modal-close" bindtap="closeMatModal">✕</text>
+      </view>
+      <view class="mat-modal-img-wrap">
+        <image class="mat-modal-img" src="{{activeMatItem.url || activeMatItem.thumb_url}}" mode="aspectFit"></image>
+      </view>
+      <view class="mat-modal-actions">
+        <button class="btn-mat-save" bindtap="saveMaterialToAlbum">
+          📥 保存到相册
+        </button>
+        <button class="btn-mat-use" bindtap="useMaterialForSticker16">
+          ⚡ 用此图做16款表情
+        </button>
       </view>
     </view>
   </view>

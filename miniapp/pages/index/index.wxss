@@ -61,6 +61,58 @@
   color: #cbd5e1;
 }
 
+/* ========== 爆款新功能 16 张贴纸横幅 ========== */
+.feature-banner-sticker16 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18rpx 22rpx;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1.5rpx solid #bbf7d0;
+  border-radius: 18rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 4rpx 14rpx rgba(7, 193, 96, 0.12);
+}
+
+.feature-banner-sticker16 .banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.feature-banner-sticker16 .banner-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 18rpx;
+  font-weight: 700;
+  background: #07c160;
+  color: #ffffff;
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+}
+
+.feature-banner-sticker16 .banner-title {
+  font-size: 27rpx;
+  font-weight: 800;
+  color: #065f46;
+}
+
+.feature-banner-sticker16 .banner-desc {
+  font-size: 21rpx;
+  color: #047857;
+}
+
+.feature-banner-sticker16 .banner-arrow-btn {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #ffffff;
+  background: #07c160;
+  padding: 10rpx 18rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(7, 193, 96, 0.25);
+  white-space: nowrap;
+}
+
 /* ========== 模版选择器胶囊栏 ========== */
 .template-selector-bar {
   display: flex;

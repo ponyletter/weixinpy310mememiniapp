@@ -2,14 +2,25 @@ const app = getApp();
 
 Page({
   data: {
-    activeTab: 'my', // 'my' | 'explore'
+    activeTab: 'my', // 'my' | 'explore' | 'materials'
     myCollections: [],
     exploreCollections: [],
     showCreateModal: false,
     newTitle: '',
     newDesc: '',
     pendingGifUrl: '',
-    currentShareItem: null
+    currentShareItem: null,
+
+    // 素材库 (5800+ ChineseBQB)
+    matCategories: [],
+    materialsList: [],
+    currentMatCat: 'all',
+    matPage: 1,
+    matHasMore: true,
+    matLoading: false,
+    matSearchQuery: '',
+    showMatModal: false,
+    activeMatItem: {}
   },
 
   onLoad(options) {
@@ -27,11 +38,20 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.fetchData(() => wx.stopPullDownRefresh());
+    if (this.data.activeTab === 'materials') {
+      this.fetchMaterialsList(this.data.currentMatCat, 1, false, () => wx.stopPullDownRefresh());
+    } else {
+      this.fetchData(() => wx.stopPullDownRefresh());
+    }
   },
 
   switchTab(e) {
-    this.setData({ activeTab: e.currentTarget.dataset.tab });
+    const tab = e.currentTarget.dataset.tab;
+    this.setData({ activeTab: tab });
+    if (tab === 'materials' && (!this.data.materialsList || this.data.materialsList.length === 0)) {
+      this.fetchMaterialsCategories();
+      this.fetchMaterialsList('all', 1, false);
+    }
   },
 
   fetchData(cb) {
@@ -258,6 +278,143 @@ Page({
           });
         }
       }
+    });
+  },
+
+  // ==================== 素材库 (5800+ ChineseBQB) ====================
+  fetchMaterialsCategories() {
+    app.request({
+      url: `${app.globalData.baseURL}/api/materials/categories`,
+      method: 'GET',
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.data) {
+          this.setData({ matCategories: res.data.data });
+        }
+      }
+    });
+  },
+
+  fetchMaterialsList(category, page, append, cb) {
+    this.setData({ matLoading: true });
+    let url = `${app.globalData.baseURL}/api/materials/list?category=${encodeURIComponent(category || 'all')}&page=${page || 1}&page_size=28`;
+    if (this.data.matSearchQuery && this.data.matSearchQuery.trim()) {
+      url = `${app.globalData.baseURL}/api/materials/search?q=${encodeURIComponent(this.data.matSearchQuery.trim())}&page=${page || 1}&page_size=28`;
+    }
+
+    app.request({
+      url: url,
+      method: 'GET',
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.data) {
+          const d = res.data.data;
+          const items = d.items || [];
+          const newList = append ? this.data.materialsList.concat(items) : items;
+          this.setData({
+            materialsList: newList,
+            matPage: d.page,
+            matHasMore: d.has_more,
+            currentMatCat: category || 'all'
+          });
+        }
+      },
+      complete: () => {
+        this.setData({ matLoading: false });
+        if (cb) cb();
+      }
+    });
+  },
+
+  loadMoreMaterials() {
+    if (!this.data.matHasMore || this.data.matLoading) return;
+    this.fetchMaterialsList(this.data.currentMatCat, this.data.matPage + 1, true);
+  },
+
+  onSelectMatCat(e) {
+    const id = e.currentTarget.dataset.id;
+    this.setData({ currentMatCat: id, matSearchQuery: '' });
+    this.fetchMaterialsList(id, 1, false);
+  },
+
+  onInputMatSearch(e) {
+    this.setData({ matSearchQuery: e.detail.value });
+  },
+
+  onSearchMaterials() {
+    this.fetchMaterialsList(this.data.currentMatCat, 1, false);
+  },
+
+  clearMatSearch() {
+    this.setData({ matSearchQuery: '' });
+    this.fetchMaterialsList(this.data.currentMatCat, 1, false);
+  },
+
+  openMaterialAction(e) {
+    const item = e.currentTarget.dataset.item;
+    this.setData({
+      activeMatItem: item,
+      showMatModal: true
+    });
+  },
+
+  closeMatModal() {
+    this.setData({ showMatModal: false });
+  },
+
+  // 保存素材图片到手机相册
+  saveMaterialToAlbum() {
+    const item = this.data.activeMatItem;
+    const url = item.url || item.thumb_url;
+    if (!url) return;
+
+    wx.showLoading({ title: '正在保存...', mask: true });
+    wx.downloadFile({
+      url: url,
+      success: (res) => {
+        if (res.statusCode === 200 && res.tempFilePath) {
+          wx.saveImageToPhotosAlbum({
+            filePath: res.tempFilePath,
+            success: () => {
+              wx.hideLoading();
+              wx.showToast({ title: '已保存到手机相册！', icon: 'success' });
+              this.closeMatModal();
+            },
+            fail: (err) => {
+              wx.hideLoading();
+              if (err && err.errMsg && err.errMsg.indexOf('auth') !== -1) {
+                wx.showModal({
+                  title: '需要相册权限',
+                  content: '请在设置中开启相册写入权限',
+                  confirmText: '去设置',
+                  confirmColor: '#07c160',
+                  success: (m) => {
+                    if (m.confirm) wx.openSetting();
+                  }
+                });
+              } else {
+                wx.showToast({ title: '保存失败', icon: 'none' });
+              }
+            }
+          });
+        } else {
+          wx.hideLoading();
+          wx.showToast({ title: '下载素材失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络请求失败', icon: 'none' });
+      }
+    });
+  },
+
+  // 以此图制作 16 款表情
+  useMaterialForSticker16() {
+    const item = this.data.activeMatItem;
+    const url = item.url || item.thumb_url;
+    if (!url) return;
+    this.closeMatModal();
+    wx.navigateTo({
+      url: `/pages/sticker16/sticker16?refUrl=${encodeURIComponent(url)}`
     });
   },
 

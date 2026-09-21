@@ -1372,6 +1372,12 @@ Page({
     });
   },
 
+  goToSticker16() {
+    wx.navigateTo({
+      url: '/pages/sticker16/sticker16'
+    });
+  },
+
   dismissFavoriteTip() {
     this.setData({ showFavoriteTip: false });
     wx.setStorageSync('dismiss_fav_tip', true);

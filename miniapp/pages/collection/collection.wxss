@@ -311,3 +311,188 @@
   gap: 20rpx;
   margin-top: 28rpx;
 }
+
+/* ==================== 素材库 (ChineseBQB) 样式 ==================== */
+.materials-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.mat-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: #ffffff;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 18rpx;
+  padding: 14rpx 20rpx;
+}
+
+.mat-search-input {
+  flex: 1;
+  font-size: 24rpx;
+  color: #1e293b;
+}
+
+.mat-search-clear {
+  font-size: 24rpx;
+  color: #94a3b8;
+  padding: 6rpx;
+}
+
+.mat-cat-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.mat-cat-list {
+  display: inline-flex;
+  gap: 12rpx;
+  padding: 4rpx 0;
+}
+
+.mat-cat-pill {
+  font-size: 22rpx;
+  padding: 8rpx 20rpx;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 20rpx;
+  border: 1rpx solid transparent;
+}
+
+.mat-cat-pill.active {
+  background: #f0fdf4;
+  color: #07c160;
+  border-color: #bbf7d0;
+  font-weight: 700;
+}
+
+.mat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14rpx;
+  margin-top: 8rpx;
+}
+
+.mat-item-card {
+  background: #ffffff;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 12rpx;
+  padding: 10rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.04);
+}
+
+.mat-item-thumb {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 8rpx;
+}
+
+.mat-item-title {
+  font-size: 19rpx;
+  color: #64748b;
+  margin-top: 6rpx;
+  max-width: 130rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.mat-load-more {
+  text-align: center;
+  margin-top: 20rpx;
+  margin-bottom: 30rpx;
+}
+
+.btn-mat-more {
+  background: #ffffff;
+  border: 1rpx solid #e2e8f0;
+  color: #475569;
+  font-size: 24rpx;
+  padding: 10rpx 28rpx;
+  border-radius: 24rpx;
+}
+
+/* 素材大图弹窗 */
+.mat-modal-card {
+  width: 580rpx;
+  padding: 30rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mat-modal-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.mat-modal-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.mat-modal-close {
+  font-size: 32rpx;
+  color: #94a3b8;
+  padding: 6rpx;
+}
+
+.mat-modal-img-wrap {
+  width: 460rpx;
+  height: 460rpx;
+  background: #f8fafc;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+  border: 1rpx solid #e2e8f0;
+}
+
+.mat-modal-img {
+  width: 400rpx;
+  height: 400rpx;
+}
+
+.mat-modal-actions {
+  width: 100%;
+  display: flex;
+  gap: 16rpx;
+}
+
+.btn-mat-save {
+  flex: 1;
+  background: #07c160;
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 700;
+  padding: 14rpx;
+  border-radius: 12rpx;
+  line-height: 1.5;
+  border: none;
+}
+
+.btn-mat-use {
+  flex: 1;
+  background: #f1f5f9;
+  color: #1e293b;
+  font-size: 24rpx;
+  font-weight: 600;
+  padding: 14rpx;
+  border-radius: 12rpx;
+  line-height: 1.5;
+  border: 1rpx solid #cbd5e1;
+}
+

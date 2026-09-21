@@ -38,6 +38,16 @@
     </view>
   </view>
 
+  <!-- 爆款新功能引流横幅：1图变16张表情 -->
+  <view class="feature-banner-sticker16" bindtap="goToSticker16">
+    <view class="banner-content">
+      <view class="banner-badge">全新上线</view>
+      <text class="banner-title">🌟 一张照片变 16 张表情包</text>
+      <text class="banner-desc">上传一张生活照或表情，1次额度立得16款Q版贴纸</text>
+    </view>
+    <view class="banner-arrow-btn">立即体验 ›</view>
+  </view>
+
   <!-- 动作模版选择器：紧凑内联胶囊 -->
   <view class="template-selector-bar" bindtap="openTemplateDrawer">
     <view class="tpl-current">

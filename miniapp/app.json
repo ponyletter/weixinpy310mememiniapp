@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/sticker16/sticker16",
     "pages/remix/remix",
     "pages/collection/collection",
     "pages/collection/detail",

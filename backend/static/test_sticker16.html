@@ -1307,6 +1307,45 @@
       box-shadow: var(--shadow-lg);
       position: relative;
     }
+
+    /* 独立配置区与制作弹窗 */
+    .config-studio-wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sticker16-modal-card {
+      max-width: 860px;
+      padding: 22px 24px;
+    }
+
+    .modal-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+      margin-bottom: 8px;
+    }
+
+    .recent-result-alert {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1.5px solid #bbf7d0;
+      border-radius: var(--radius-md);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease;
+    }
+    .recent-result-alert:hover {
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
@@ -1353,297 +1392,248 @@
     </nav>
 
     <!-- ================================================================= -->
-    <!-- TAB 1: 一张图片变出 16 张静态表情包 (Sticker16)                     -->
+    <!-- TAB 1: 一张图片变出 16 张静态表情包 (配置区 + 制作弹窗新界面)        -->
     <!-- ================================================================= -->
     <div id="tab-sticker16" class="tab-view-panel active">
-      <div class="main-grid">
-        <!-- 左侧：参数与设定 -->
-        <div class="form-col">
-          <!-- 1. 人设参考图 -->
-          <div class="card">
-            <div class="card-title">
-              <span>1. 上传参考图 / 选择原型</span>
-              <span class="step-tag">必选其一</span>
-            </div>
-
-            <div class="upload-box" id="dropBox" onclick="document.getElementById('fileInput').click()">
-              <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="handleFileSelect(event)">
-              <div id="uploadPrompt">
-                <div style="font-size: 32px; margin-bottom: 6px;">📷</div>
-                <p style="font-size: 13.5px; font-weight: 600; color: var(--text-main); margin-bottom: 2px;">点击或拖拽上传人像/自拍照</p>
-                <span style="font-size: 11.5px; color: var(--text-muted);">支持 JPG / PNG / 微信自拍头像 / 宠物照</span>
-              </div>
-              <div class="upload-preview" id="uploadPreview">
-                <img id="previewImg" src="" alt="预览">
-                <button type="button" class="btn-clear-img" onclick="clearFile(event)">✕</button>
-              </div>
-            </div>
-
-            <!-- 内置参考原型 -->
-            <div class="sample-strip">
-              <p>或快速使用内置参考原型：</p>
-              <div class="sample-items" id="sampleContainer">
-                <div class="sample-thumb selected" data-id="kiss_sample" title="接吻卡通" onclick="selectSample('kiss_sample', this)">
-                  <img src="/samples/kiss_sample.png" alt="kiss" onerror="this.src='/static/materials/mat_cute_01.png'">
-                </div>
-                <div class="sample-thumb" data-id="ref_realperson" title="原图真人实拍 (变16款Q版表情)" onclick="selectSample('ref_realperson', this)">
-                  <img src="/samples/ref_realperson.png" alt="真人原型" onerror="this.src='/static/materials/mat_funny_02.png'">
-                </div>
-                <div class="sample-thumb" data-id="ref_worker" title="打工人" onclick="selectSample('ref_worker', this)">
-                  <img src="/samples/ref_worker.png" alt="worker" onerror="this.src='/static/materials/mat_worker_01.png'">
-                </div>
-                <div class="sample-thumb" data-id="ref_pet" title="萌宠猫咪" onclick="selectSample('ref_pet', this)">
-                  <img src="/samples/ref_pet.png" alt="pet" onerror="this.src='/static/materials/mat_cute_02.png'">
-                </div>
-                <div class="sample-thumb" data-id="ref_battle" title="Q版斗图" onclick="selectSample('ref_battle', this)">
-                  <img src="/samples/ref_battle.png" alt="battle" onerror="this.src='/static/materials/mat_funny_03.png'">
-                </div>
-                <div class="sample-thumb" data-id="ref_dance" title="摇摆比心" onclick="selectSample('ref_dance', this)">
-                  <img src="/samples/ref_dance.png" alt="dance" onerror="this.src='/static/materials/mat_cute_03.png'">
-                </div>
-              </div>
-            </div>
+      <div class="config-studio-wrap">
+        <!-- 历史完成提醒条 -->
+        <div class="recent-result-alert" id="recentResultAlert" style="display: none;" onclick="openSticker16Modal()">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 18px;">🎉</span>
+            <span style="font-weight: 600; color: #065f46;">已为您生成好 16 款专属表情包，点击即可打开查看与保存</span>
           </div>
-
-          <!-- 2. 贴纸风格选择 -->
-          <div class="card">
-            <div class="card-title">
-              <span>2. 贴纸画风 (统一角色一致性)</span>
-              <span class="step-tag">经典微信风格</span>
-            </div>
-            <div class="option-grid" id="styleOptions">
-              <div class="option-card active" data-value="wechat_sticker" onclick="selectOption('style', 'wechat_sticker', this)">
-                <div class="option-title">✨ 经典微信贴纸 (推荐)</div>
-                <div class="option-desc">2D Q版扁平手绘 · 与动图统一</div>
-              </div>
-              <div class="option-card" data-value="cute_chibi" onclick="selectOption('style', 'cute_chibi', this)">
-                <div class="option-title">🐱 Q版萌系大眼</div>
-                <div class="option-desc">超甜圆润萌化感</div>
-              </div>
-              <div class="option-card" data-value="funny_line" onclick="selectOption('style', 'funny_line', this)">
-                <div class="option-title">✏️ 魔性沙雕线描</div>
-                <div class="option-desc">极简黑白斗图神作</div>
-              </div>
-              <div class="option-card" data-value="3d_toy" onclick="selectOption('style', '3d_toy', this)">
-                <div class="option-title">🧸 3D 公仔潮玩</div>
-                <div class="option-desc">立体盲盒玩具质感</div>
-              </div>
-            </div>
-
-            <div class="card-title" style="margin-top: 16px;">
-              <span>3. 画面构图与底色</span>
-              <span class="step-tag">版式定制</span>
-            </div>
-            <div class="option-grid">
-              <div class="option-card active" data-value="bust" onclick="selectOption('comp', 'bust', this)">
-                <div class="option-title">👤 半身手势 (默认)</div>
-                <div class="option-desc">表情与手势动作并存</div>
-              </div>
-              <div class="option-card" data-value="closeup" onclick="selectOption('comp', 'closeup', this)">
-                <div class="option-title">🔍 大头微表情</div>
-                <div class="option-desc">聚焦神情细节特写</div>
-              </div>
-            </div>
-            <div class="option-grid" style="margin-bottom: 0;">
-              <div class="option-card active" data-value="white" onclick="selectOption('bg', 'white', this)">
-                <div class="option-title">⚪ 白色背景 (规整稳定)</div>
-                <div class="option-desc">纯净白底 · 适合日常聊天</div>
-              </div>
-              <div class="option-card" data-value="transparent" onclick="selectOption('bg', 'transparent', this)">
-                <div class="option-title">🏁 透明背景 (免扣贴纸)</div>
-                <div class="option-desc">去底PNG · 利于二创合成</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 3. 场景文字模板包 -->
-          <div class="card">
-            <div class="card-title">
-              <span>4. 场景文字模板包</span>
-              <span class="step-tag">智能配词</span>
-            </div>
-            <div class="option-grid" id="pkgOptions">
-              <div class="option-card active" data-value="worker" onclick="selectOption('textPkg', 'worker', this)">
-                <div class="option-title">💼 打工人日常</div>
-                <div class="option-desc">收到/好的老板/搬砖/摸鱼</div>
-              </div>
-              <div class="option-card" data-value="battle" onclick="selectOption('textPkg', 'battle', this)">
-                <div class="option-title">⚡ 群聊斗图</div>
-                <div class="option-desc">点赞666/疯狂输出/暗中观察</div>
-              </div>
-              <div class="option-card" data-value="cute" onclick="selectOption('textPkg', 'cute', this)">
-                <div class="option-title">💖 萌系可爱</div>
-                <div class="option-desc">谢谢你/么么哒/加油鸭/抱抱</div>
-              </div>
-              <div class="option-card" data-value="slack" onclick="selectOption('textPkg', 'slack', this)">
-                <div class="option-title">🍵 摆烂躺平</div>
-                <div class="option-desc">随缘吧/我装的/看神仙打架</div>
-              </div>
-              <div class="option-card" data-value="none" onclick="selectOption('textPkg', 'none', this)">
-                <div class="option-title">🈳 无字纯表情</div>
-                <div class="option-desc">不加文字 · 纯动作表情</div>
-              </div>
-              <div class="option-card" data-value="custom" onclick="selectOption('textPkg', 'custom', this)">
-                <div class="option-title">✏️ 自定义 16 格台词</div>
-                <div class="option-desc">自由输入设置</div>
-              </div>
-            </div>
-
-            <!-- 自定义文字编辑抽屉 -->
-            <div id="customTextContainer" style="display: none; margin-top: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
-              <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 8px;">为 16 个格子指定台词（每格 2~6 字最佳）：</p>
-              <div id="customTextGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;"></div>
-            </div>
-
-            <!-- 创意提示词微调 -->
-            <div style="margin-top: 14px;">
-              <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">人设补充描述 (可选)：</label>
-              <textarea id="charDesc" class="form-textarea" rows="2" placeholder="例如：戴一副黑色圆框眼镜、可爱红色卫衣、表情生动夸张..."></textarea>
-            </div>
-          </div>
-
-          <!-- 制作大按钮 -->
-          <button type="button" class="btn btn-wechat btn-hero" id="btnGenerate" onclick="startGeneration()">
-            <span>🚀 制作 16 款表情贴纸 (消耗1次额度)</span>
-          </button>
+          <span style="font-size: 12px; color: var(--wechat-green); font-weight: 600;">查看结果 ›</span>
         </div>
 
-        <!-- 右侧：生成看板与实时文字排版 -->
-        <div class="result-col">
-          <!-- 微信步骤条组件 -->
-          <div class="step-flow">
-            <div class="step-flow-item active" id="step1">
-              <span class="step-flow-dot">1</span>
-              <span>原型分析</span>
+        <!-- 1. 人设参考图 -->
+        <div class="card">
+          <div class="card-title">
+            <span>1. 上传参考图</span>
+            <span class="step-tag">单张人物 / 萌宠 / 表情</span>
+          </div>
+
+          <div class="upload-box" id="dropBox" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="handleFileSelect(event)">
+            <div id="uploadPrompt">
+              <div style="font-size: 36px; margin-bottom: 6px;">📷</div>
+              <p style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">点击或拖拽上传人像/生活照/表情包</p>
+              <span style="font-size: 12px; color: var(--text-muted);">支持手机自拍、相册照片或从素材库保存的表情到本地后上传</span>
             </div>
-            <span class="step-flow-arrow">➔</span>
-            <div class="step-flow-item" id="step2">
-              <span class="step-flow-dot">2</span>
-              <span>绘制表情</span>
+            <div class="upload-preview" id="uploadPreview">
+              <img id="previewImg" src="" alt="预览">
+              <button type="button" class="btn-clear-img" onclick="clearFile(event)">✕</button>
             </div>
-            <span class="step-flow-arrow">➔</span>
-            <div class="step-flow-item" id="step3">
-              <span class="step-flow-dot">3</span>
-              <span>切分排版</span>
+          </div>
+        </div>
+
+        <!-- 2. 贴纸风格选择 -->
+        <div class="card">
+          <div class="card-title">
+            <span>2. 贴纸画风</span>
+            <span class="step-tag">微信统一规范</span>
+          </div>
+          <div class="option-grid" id="styleOptions">
+            <div class="option-card active" data-value="wechat_sticker" onclick="selectOption('style', 'wechat_sticker', this)">
+              <div class="option-title">✨ 经典微信贴纸 (推荐)</div>
+              <div class="option-desc">2D Q版扁平手绘 · 微信原生质感</div>
             </div>
-            <span class="step-flow-arrow">➔</span>
-            <div class="step-flow-item" id="step4">
-              <span class="step-flow-dot">4</span>
-              <span>制作完成</span>
+            <div class="option-card" data-value="cute_chibi" onclick="selectOption('style', 'cute_chibi', this)">
+              <div class="option-title">🐱 Q版萌系大眼</div>
+              <div class="option-desc">超甜圆润萌化感 · 活泼可爱</div>
+            </div>
+            <div class="option-card" data-value="funny_line" onclick="selectOption('style', 'funny_line', this)">
+              <div class="option-title">✏️ 魔性沙雕线描</div>
+              <div class="option-desc">极简黑白斗图线稿 · 幽默神作</div>
+            </div>
+            <div class="option-card" data-value="3d_toy" onclick="selectOption('style', '3d_toy', this)">
+              <div class="option-title">🧸 3D 公仔潮玩</div>
+              <div class="option-desc">立体盲盒潮玩质感 · 饱满光泽</div>
             </div>
           </div>
 
-          <!-- 结果看板卡片 -->
-          <div class="card">
-            <div class="card-title">
-              <span id="resultBoardTitle">16 宫格表情结果看板 (16张)</span>
-              <div style="display: flex; gap: 8px;">
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11.5px;" onclick="toggleSelectAll()">全选/反选</button>
-                <button type="button" class="btn btn-wechat" style="padding: 4px 10px; font-size: 11.5px;" onclick="saveSelectedStickers()">✓ 选中保存 (<span id="selectedCount">16</span>)</button>
-                <button type="button" class="btn btn-wechat" style="padding: 4px 10px; font-size: 11.5px;" onclick="downloadAllStickersZip()">💾 保存整套 (ZIP)</button>
+          <div class="card-title" style="margin-top: 16px;">
+            <span>3. 画面构图与底色</span>
+            <span class="step-tag">版式定制</span>
+          </div>
+          <div class="option-grid">
+            <div class="option-card active" data-value="bust" onclick="selectOption('comp', 'bust', this)">
+              <div class="option-title">👤 半身手势 (默认)</div>
+              <div class="option-desc">表情与手势动作并存</div>
+            </div>
+            <div class="option-card" data-value="closeup" onclick="selectOption('comp', 'closeup', this)">
+              <div class="option-title">🔍 大头微表情</div>
+              <div class="option-desc">聚焦神情细节特写</div>
+            </div>
+          </div>
+          <div class="option-grid" style="margin-bottom: 0;">
+            <div class="option-card active" data-value="white" onclick="selectOption('bg', 'white', this)">
+              <div class="option-title">⚪ 白色背景 (规整稳定)</div>
+              <div class="option-desc">纯净白底 · 适合日常聊天</div>
+            </div>
+            <div class="option-card" data-value="transparent" onclick="selectOption('bg', 'transparent', this)">
+              <div class="option-title">🏁 透明背景 (免扣贴纸)</div>
+              <div class="option-desc">去底PNG · 利于直接保存转发</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 场景主题预设包 -->
+        <div class="card">
+          <div class="card-title">
+            <span>4. 选择表情场景主题</span>
+            <span class="step-tag">决定表情动作</span>
+          </div>
+          <div class="option-grid" id="pkgOptions">
+            <div class="option-card active" data-value="worker" onclick="selectOption('textPkg', 'worker', this)">
+              <div class="option-title">💼 打工人日常</div>
+              <div class="option-desc">收到/好的老板/搬砖/摸鱼/改稿中</div>
+            </div>
+            <div class="option-card" data-value="battle" onclick="selectOption('textPkg', 'battle', this)">
+              <div class="option-title">⚡ 群聊斗图</div>
+              <div class="option-desc">点赞666/疯狂输出/暗中观察/问号脸</div>
+            </div>
+            <div class="option-card" data-value="cute" onclick="selectOption('textPkg', 'cute', this)">
+              <div class="option-title">💖 萌系可爱</div>
+              <div class="option-desc">谢谢你/么么哒/加油鸭/抱抱/比心</div>
+            </div>
+            <div class="option-card" data-value="slack" onclick="selectOption('textPkg', 'slack', this)">
+              <div class="option-title">🍵 摆烂躺平</div>
+              <div class="option-desc">随缘吧/我装的/看神仙打架/开摆</div>
+            </div>
+            <div class="option-card" data-value="daily" onclick="selectOption('textPkg', 'daily', this)">
+              <div class="option-title">💬 日常高频</div>
+              <div class="option-desc">OK/点赞/干饭啦/溜了溜了/好的</div>
+            </div>
+            <div class="option-card" data-value="custom" onclick="selectOption('textPkg', 'custom', this)">
+              <div class="option-title">✏️ 自定义动作灵感</div>
+              <div class="option-desc">自由输入角色神态</div>
+            </div>
+          </div>
+
+          <!-- 自定义文字编辑抽屉 -->
+          <div id="customTextContainer" style="display: none; margin-top: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 8px;">为 16 个格子指定动作或意图（每格 2~6 字）：</p>
+            <div id="customTextGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;"></div>
+          </div>
+
+          <!-- 创意提示词微调 -->
+          <div style="margin-top: 14px;">
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">补充外貌特征 (可选)：</label>
+            <textarea id="charDesc" class="form-textarea" rows="2" placeholder="例如：戴一副黑色圆框眼镜、短发、可爱红色卫衣、表情生动活泼..."></textarea>
+          </div>
+        </div>
+
+        <!-- 制作大按钮 -->
+        <button type="button" class="btn btn-wechat btn-hero" id="btnGenerate" onclick="startGeneration()">
+          <span>🚀 制作 16 款表情贴纸 (消耗1次额度)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- 制作结果弹窗 (新界面：平滑进度条 + 16 宫格纯净切片看板)              -->
+    <!-- ================================================================= -->
+    <div class="modal-overlay" id="sticker16Modal">
+      <div class="modal-card sticker16-modal-card">
+        <!-- 弹窗顶部栏 -->
+        <div class="modal-header-bar">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">✨</span>
+            <strong style="font-size: 16px; color: var(--text-main);" id="sticker16ModalTitle">16 宫格表情包制作看板</strong>
+            <span class="badge" id="sticker16ModalBadge" style="background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 10px; font-size: 11px;">处理中</span>
+          </div>
+          <button type="button" class="btn-clear-img" style="position: static;" onclick="closeModal('sticker16Modal')">✕</button>
+        </div>
+
+        <!-- 微信步骤条组件 -->
+        <div class="step-flow" style="margin: 12px 0 16px;">
+          <div class="step-flow-item active" id="step1">
+            <span class="step-flow-dot">1</span>
+            <span>原型分析</span>
+          </div>
+          <span class="step-flow-arrow">➔</span>
+          <div class="step-flow-item" id="step2">
+            <span class="step-flow-dot">2</span>
+            <span>绘制分镜</span>
+          </div>
+          <span class="step-flow-arrow">➔</span>
+          <div class="step-flow-item" id="step3">
+            <span class="step-flow-dot">3</span>
+            <span>矩阵切割</span>
+          </div>
+          <span class="step-flow-arrow">➔</span>
+          <div class="step-flow-item" id="step4">
+            <span class="step-flow-dot">4</span>
+            <span>制作完成</span>
+          </div>
+        </div>
+
+        <!-- 制作中平滑进度条 -->
+        <div id="loadingBox">
+          <div class="tqdm-container" style="margin: 20px 0;">
+            <div class="tqdm-header">
+              <span class="tqdm-stage" id="tqdmStageText">
+                <span class="pulse-ring">🎨</span>
+                <span id="tqdmStageTitle">阶段 1/4: 分析角色特征并组装 4x4 矩阵...</span>
+              </span>
+              <span class="tqdm-percent" id="tqdmPercentText">5%</span>
+            </div>
+            <div class="tqdm-bar-track">
+              <div class="tqdm-bar-fill" id="tqdmBarFill" style="width: 5%;"></div>
+            </div>
+            <div class="tqdm-meta">
+              <span class="tqdm-time" id="tqdmTime">耗时: 0s / 预计 32s</span>
+              <span class="tqdm-tip">✨ 预计 25~35 秒平滑完成，直接生成无需加字</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 制作完成内容区 (纯净 16 宫格表情看板，无文字重叠，无加字面板) -->
+        <div id="resultContentBox" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 13px; color: var(--text-muted);">共生成 16 张纯净表情贴纸，点击单张可大图查看或保存：</span>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11.5px;" onclick="toggleSelectAll()">全选/反选</button>
+              <button type="button" class="btn btn-wechat" style="padding: 4px 10px; font-size: 11.5px;" onclick="saveSelectedStickers()">✓ 选中保存 (<span id="selectedCount">16</span>)</button>
+              <button type="button" class="btn btn-wechat" style="padding: 4px 10px; font-size: 11.5px;" onclick="downloadAllStickersZip()">💾 保存整套 (ZIP)</button>
+            </div>
+          </div>
+
+          <!-- 4x4 静态贴纸展示网格 (直接使用纯净无字切片) -->
+          <div class="stickers-16-grid" id="stickersGrid">
+            <!-- 动态载入 16 张贴纸 -->
+          </div>
+
+          <!-- 延伸玩法：16张连成动图 (GIF轮播预览) -->
+          <div class="gif-player-card" id="gifPlayerCard" style="display: none; margin-top: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <strong style="font-size: 13px; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                <span>🔄 16张连成动图 (GIF轮播预览)</span>
+              </strong>
+              <button type="button" class="btn btn-white" style="padding: 3px 10px; font-size: 11px;" onclick="saveToMyCollectionModal()">📁 存入表情合集</button>
+            </div>
+            <div class="gif-player-layout">
+              <div class="gif-player-preview">
+                <img id="animatedStickerImg" src="" alt="动效预览">
+              </div>
+              <div class="gif-player-controls">
+                <div style="font-size: 12px; color: var(--text-muted);">轮播速率：</div>
+                <div class="speed-btn-group">
+                  <button class="speed-btn" onclick="setAnimSpeed(1, this)">1 帧/秒</button>
+                  <button class="speed-btn active" onclick="setAnimSpeed(2, this)">2 帧/秒</button>
+                  <button class="speed-btn" onclick="setAnimSpeed(4, this)">4 帧/秒</button>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 12px;" onclick="toggleAnimPlayback()" id="btnPlayPause">⏸️ 暂停</button>
+                  <a id="btnDownloadMemeGif" href="#" download="meme_result.gif" class="btn btn-wechat" style="padding: 5px 12px; font-size: 12px;">📥 下载动图</a>
+                </div>
               </div>
             </div>
+          </div>
 
-            <!-- =========================================================
-                 实时字体、字号、颜色无感微调面板 (无需点击确定，即刻同步)
-                 ========================================================= -->
-            <div class="typography-control-box" id="typographyControlBox">
-              <div class="typo-row">
-                <span class="typo-label">文字状态：</span>
-                <button type="button" class="typo-toggle-btn active" id="btnToggleShowText" onclick="toggleStickerText()">🔤 显示文字台词</button>
-                <span style="font-size: 11px; color: var(--text-muted); margin-left: 6px;">(点击可快速切换为纯表情)</span>
-              </div>
-
-              <div class="typo-row" id="typoDetailRows">
-                <span class="typo-label">字体类型：</span>
-                <select class="font-select" id="typoFontFamily" onchange="onTypographyChange()">
-                  <option value="sans-serif">经典粗黑体 (微信默认)</option>
-                  <option value="smiley">得意黑 (倾斜潮流感)</option>
-                  <option value="kaiti">经典楷体 (毛笔幽默感)</option>
-                  <option value="yuanti">可爱圆体 (萌系圆润)</option>
-                  <option value="songti">严肃宋体 (正经反差萌)</option>
-                </select>
-
-                <span class="typo-label" style="min-width: 45px; margin-left: 8px;">字号：</span>
-                <div class="slider-wrap">
-                  <input type="range" id="typoFontSize" min="14" max="44" value="26" oninput="onTypographyChange()">
-                  <span class="slider-val" id="typoFontSizeVal">26px</span>
-                </div>
-              </div>
-
-              <div class="typo-row" id="typoColorRows">
-                <span class="typo-label">文字颜色：</span>
-                <div class="color-swatches">
-                  <div class="color-dot active" style="background: #ffffff;" title="纯白" onclick="selectTextColor('#ffffff', this)"></div>
-                  <div class="color-dot" style="background: #111111;" title="经典黑" onclick="selectTextColor('#111111', this)"></div>
-                  <div class="color-dot" style="background: #ffe600;" title="亮黄" onclick="selectTextColor('#ffe600', this)"></div>
-                  <div class="color-dot" style="background: #ff3b30;" title="暴躁红" onclick="selectTextColor('#ff3b30', this)"></div>
-                  <div class="color-dot" style="background: #07c160;" title="微信绿" onclick="selectTextColor('#07c160', this)"></div>
-                  <input type="color" id="typoTextColorNative" class="color-input-native" value="#ffffff" title="自定义调色" oninput="onTypographyCustomColor(this.value)">
-                </div>
-
-                <span class="typo-label" style="min-width: 45px; margin-left: 12px;">描边：</span>
-                <div class="slider-wrap" style="max-width: 140px;">
-                  <input type="range" id="typoStrokeWidth" min="0" max="8" value="4" oninput="onTypographyChange()">
-                  <span class="slider-val" id="typoStrokeVal">4px</span>
-                </div>
-                <div class="color-swatches" style="margin-left: 6px;">
-                  <input type="color" id="typoStrokeColor" class="color-input-native" value="#000000" title="描边颜色" oninput="onTypographyChange()">
-                </div>
-              </div>
-            </div>
-
-            <!-- tqdm 风格平滑进度条组件 (耗时与动态预计时间) -->
-            <div id="loadingBox" style="display: none;">
-              <div class="tqdm-container">
-                <div class="tqdm-header">
-                  <span class="tqdm-stage" id="tqdmStageText">
-                    <span class="pulse-ring">🎨</span>
-                    <span id="tqdmStageTitle">阶段 1/4: 组装 4x4 矩阵 16 种无字表情提示词...</span>
-                  </span>
-                  <span class="tqdm-percent" id="tqdmPercentText">5%</span>
-                </div>
-                <div class="tqdm-bar-track">
-                  <div class="tqdm-bar-fill" id="tqdmBarFill" style="width: 5%;"></div>
-                </div>
-                <div class="tqdm-meta">
-                  <span class="tqdm-time" id="tqdmTime">耗时: 0s / 预计 32s</span>
-                  <span class="tqdm-tip">✨ 预计 25~35 秒平滑完成</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 4x4 静态贴纸展示网格 (内置 Canvas 动态排版) -->
-            <div class="stickers-16-grid" id="stickersGrid">
-              <!-- 初始空态骨架占位 -->
-            </div>
-
-            <!-- 延伸玩法：16张连成动图 (GIF轮播动效预览) -->
-            <div class="gif-player-card" id="gifPlayerCard" style="display: none;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                <strong style="font-size: 13.5px; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
-                  <span>🔄 16张连成动图 (GIF轮播预览)</span>
-                </strong>
-                <button type="button" class="btn btn-white" style="padding: 3px 10px; font-size: 11px;" onclick="saveToMyCollectionModal()">📁 存入表情合集</button>
-              </div>
-              <div class="gif-player-layout">
-                <div class="gif-player-preview">
-                  <img id="animatedStickerImg" src="" alt="动效预览">
-                </div>
-                <div class="gif-player-controls">
-                  <div style="font-size: 12px; color: var(--text-muted);">轮播速率调节：</div>
-                  <div class="speed-btn-group">
-                    <button class="speed-btn" onclick="setAnimSpeed(1, this)">1 帧/秒 (慢速)</button>
-                    <button class="speed-btn active" onclick="setAnimSpeed(2, this)">2 帧/秒 (推荐)</button>
-                    <button class="speed-btn" onclick="setAnimSpeed(4, this)">4 帧/秒 (极速)</button>
-                  </div>
-                  <div style="display: flex; gap: 8px;">
-                    <button type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="toggleAnimPlayback()" id="btnPlayPause">⏸️ 暂停</button>
-                    <a id="btnDownloadMemeGif" href="#" download="meme_result.gif" class="btn btn-wechat" style="padding: 6px 12px; font-size: 12px;">📥 下载合成动图</a>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <!-- 弹窗底部关闭栏 -->
+          <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('sticker16Modal')">关闭看板</button>
           </div>
         </div>
       </div>
@@ -1851,14 +1841,6 @@
         <button type="button" class="lightbox-nav-btn lightbox-nav-next" id="btnLightboxNext" onclick="navigateLightbox(1)">▶</button>
       </div>
 
-      <!-- 单张即时台词编辑栏 -->
-      <div class="lightbox-editor-bar">
-        <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">编辑当前这张表情的台词文字：</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="lightboxCaptionInput" class="form-input" placeholder="输入台词，实时同步更新..." oninput="onLightboxCaptionInput(this.value)">
-        </div>
-      </div>
-
       <!-- 底部 16 张快速切换胶卷缩略图条 -->
       <div class="lightbox-filmstrip" id="lightboxFilmstrip">
         <!-- 动态生成 16 个小缩略图 -->
@@ -1950,7 +1932,7 @@
     // =========================================================================
     const state = {
       activeTab: 'tab-sticker16',
-      sampleId: 'kiss_sample',
+      sampleId: null,
       uploadedFile: null,
       selectedMaterialUrl: null,
       style: 'wechat_sticker',
@@ -2153,10 +2135,10 @@
       if (e) e.stopPropagation();
       state.uploadedFile = null;
       state.selectedMaterialUrl = null;
+      state.sampleId = null;
       document.getElementById('fileInput').value = '';
       document.getElementById('uploadPreview').style.display = 'none';
       document.getElementById('uploadPrompt').style.display = 'block';
-      selectSample('kiss_sample', document.querySelector('.sample-thumb[data-id="kiss_sample"]'));
     }
 
     function selectSample(id, el) {
@@ -2244,9 +2226,25 @@
     }
 
     // =========================================================================
-    // 启动 16 宫格制作流程
+    // 启动 16 宫格制作流程 (弹窗新界面模式)
     // =========================================================================
+    function openSticker16Modal() {
+      document.getElementById('sticker16Modal').classList.add('active');
+    }
+
     async function startGeneration() {
+      if (!state.uploadedFile && !state.selectedMaterialUrl) {
+        wxToast('请先上传一张参考图片', '⚠️');
+        return;
+      }
+
+      openSticker16Modal();
+      document.getElementById('loadingBox').style.display = 'block';
+      document.getElementById('resultContentBox').style.display = 'none';
+      document.getElementById('sticker16ModalBadge').textContent = '处理中';
+      document.getElementById('sticker16ModalBadge').style.background = '#e0f2fe';
+      document.getElementById('sticker16ModalBadge').style.color = '#0284c7';
+
       const btn = document.getElementById('btnGenerate');
       btn.disabled = true;
       btn.innerHTML = '<span>⏳ 智能引擎处理中...</span>';
@@ -2260,8 +2258,6 @@
           fd.append('image', state.uploadedFile);
         } else if (state.selectedMaterialUrl) {
           fd.append('material_url', state.selectedMaterialUrl);
-        } else if (state.sampleId) {
-          fd.append('sample_id', state.sampleId);
         }
 
         fd.append('style', state.style);
@@ -2350,14 +2346,23 @@
     }
 
     // =========================================================================
-    // 渲染 16 宫格贴纸结果看板 (HTML5 Canvas 实时可调节排版引擎)
+    // 渲染 16 宫格贴纸结果 (弹窗内展示纯净切片，无任何重叠叠字)
     // =========================================================================
     function renderStickersResult(data) {
+      document.getElementById('loadingBox').style.display = 'none';
+      document.getElementById('resultContentBox').style.display = 'block';
+      document.getElementById('sticker16ModalBadge').textContent = '制作完成';
+      document.getElementById('sticker16ModalBadge').style.background = '#dcfce7';
+      document.getElementById('sticker16ModalBadge').style.color = '#15803d';
+
+      const alertEl = document.getElementById('recentResultAlert');
+      if (alertEl) alertEl.style.display = 'flex';
+
       const grid = document.getElementById('stickersGrid');
       grid.innerHTML = '';
       const items = (data.stickers && data.stickers.length) ? data.stickers : (data.frames || []);
       state.generatedFrames = items.map((it, idx) => {
-        if (typeof it === 'string') return { index: idx + 1, url: it };
+        if (typeof it === 'string') return { index: idx + 1, url: it, raw_url: it };
         return it;
       });
       state.zipUrl = data.zip_url || data.stickers_pack_url || '#';
@@ -2365,48 +2370,38 @@
       state.selectedStickers.clear();
       state.rawStickerImages = Array(16).fill(null);
 
-      // 初始化各格台词
-      const pkgDefaults = state.allPackages[state.textPkg] || [];
-      state.activeCaptions = state.generatedFrames.map((f, i) => {
-        return f.caption || f.text || (state.textPkg === 'custom' ? state.customTexts[i] : pkgDefaults[i]) || '';
-      });
-
       state.generatedFrames.forEach((frame, idx) => {
         state.selectedStickers.add(idx);
         const cell = document.createElement('div');
         cell.className = 'sticker-cell selected';
         cell.dataset.index = idx;
 
-        // 点击卡片主体打开全屏单张查看
         cell.onclick = (e) => {
           if (e.target.closest('.sticker-checkbox') || e.target.closest('.cell-action-btn')) return;
           openStickerLightbox(idx);
         };
 
+        const imgUrl = frame.raw_url || frame.url;
         cell.innerHTML = `
-          <canvas id="stickerCanvas_${idx}" width="360" height="360"></canvas>
+          <img src="${imgUrl}" alt="sticker_${idx+1}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">
           <div class="sticker-checkbox" onclick="event.stopPropagation(); toggleStickerSelection(${idx}, this.parentElement)">✓</div>
           <span class="sticker-num-badge">${String(idx+1).padStart(2, '0')}</span>
           <div class="cell-hover-bar">
             <button type="button" class="cell-action-btn" onclick="event.stopPropagation(); openStickerLightbox(${idx})">🔍 查看大图</button>
             <button type="button" class="cell-action-btn" onclick="event.stopPropagation(); downloadSingleSticker(${idx})">📥 保存</button>
-            <button type="button" class="cell-action-btn" onclick="event.stopPropagation(); promptEditCaption(${idx})">✏️ 改词</button>
           </div>
         `;
         grid.appendChild(cell);
 
-        // 异步预加载原始贴纸切片并绘制 (优先加载 raw_url 纯净切片，彻底避免双重叠字！)
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
           state.rawStickerImages[idx] = img;
-          renderSingleStickerCanvas(idx);
         };
-        img.src = frame.raw_url || frame.url;
+        img.src = imgUrl;
       });
 
       document.getElementById('selectedCount').textContent = state.selectedStickers.size;
-      document.getElementById('resultBoardTitle').textContent = `16 宫格表情结果看板 (${state.generatedFrames.length}张)`;
 
       // 启动 16 张连成动图播放器
       initGifLoopPlayer(data);
@@ -2594,9 +2589,7 @@
       const idx = state.lightboxIndex;
       const total = state.generatedFrames.length;
       document.getElementById('lightboxCounter').textContent = `第 ${String(idx+1).padStart(2, '0')} / ${total} 张`;
-      const caption = state.activeCaptions[idx] || '';
-      document.getElementById('lightboxTitle').textContent = caption ? `【${caption}】` : '无文字纯表情';
-      document.getElementById('lightboxCaptionInput').value = caption;
+      document.getElementById('lightboxTitle').textContent = `表情贴纸 第 ${idx+1} 张`;
 
       // 禁用边缘按钮
       document.getElementById('btnLightboxPrev').style.opacity = (idx === 0) ? '0.3' : '1';
@@ -2609,70 +2602,47 @@
       const canvas = document.getElementById('lightboxCanvas');
       const ctx = canvas.getContext('2d');
       const idx = state.lightboxIndex;
-      const img = state.rawStickerImages[idx];
-      const text = state.typography.showText ? (state.activeCaptions[idx] || '') : '';
+      const frame = state.generatedFrames[idx];
+      if (!frame) return;
 
       ctx.clearRect(0, 0, 400, 400);
 
-      if (state.bg === 'white') {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, 400, 400);
-      }
-
-      if (img && img.complete) {
+      const drawImg = (img) => {
+        if (!img) return;
         ctx.drawImage(img, 0, 0, 400, 400);
-      }
+      };
 
-      if (text) {
-        ctx.save();
-        const scale = 400 / 360;
-        ctx.font = `bold ${Math.round(state.typography.fontSize * scale)}px ${getFontFamilyCss(state.typography.fontFamily)}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        const tx = 200;
-        let ty = 400 - Math.round(state.typography.fontSize * scale) - 14;
-        if (state.typography.position === 'top') ty = Math.round(state.typography.fontSize * scale) + 16;
-        if (state.typography.position === 'center') ty = 200;
-
-        if (state.typography.strokeWidth > 0) {
-          ctx.strokeStyle = state.typography.strokeColor;
-          ctx.lineWidth = state.typography.strokeWidth * 2 * scale;
-          ctx.lineJoin = 'round';
-          ctx.miterLimit = 2;
-          ctx.strokeText(text, tx, ty);
-        }
-
-        ctx.fillStyle = state.typography.textColor;
-        ctx.fillText(text, tx, ty);
-        ctx.restore();
+      if (state.rawStickerImages[idx] && state.rawStickerImages[idx].complete) {
+        drawImg(state.rawStickerImages[idx]);
+      } else {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          state.rawStickerImages[idx] = img;
+          drawImg(img);
+        };
+        img.src = frame.raw_url || frame.url;
       }
     }
 
-    function onLightboxCaptionInput(newText) {
-      const idx = state.lightboxIndex;
-      state.activeCaptions[idx] = newText.trim();
-      document.getElementById('lightboxTitle').textContent = newText.trim() ? `【${newText.trim()}】` : '无文字纯表情';
-      renderLightboxCanvas();
-      renderSingleStickerCanvas(idx);
-    }
-
-    // 下载当前 Lightbox 查看的单张表情 (导出当前高清 Canvas)
+    // 下载当前 Lightbox 查看的单张表情
     function downloadCurrentLightboxSticker() {
-      const canvas = document.getElementById('lightboxCanvas');
-      const idx = state.lightboxIndex;
-      const filename = `sticker_${String(idx+1).padStart(2, '0')}.png`;
-      downloadCanvasAsImage(canvas, filename);
-      wxToast(`第 ${idx+1} 张表情已下载至本地/相册`, '✓');
+      downloadSingleSticker(state.lightboxIndex);
     }
 
     // 下载 16 格子中的任意单张
     function downloadSingleSticker(idx) {
-      const canvas = document.getElementById(`stickerCanvas_${idx}`);
-      if (!canvas) return;
+      const frame = state.generatedFrames[idx];
+      if (!frame) return;
+      const url = frame.raw_url || frame.url;
       const filename = `sticker_${String(idx+1).padStart(2, '0')}.png`;
-      downloadCanvasAsImage(canvas, filename);
-      wxToast(`第 ${idx+1} 张表情已下载至本地/相册`, '✓');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      wxToast(`第 ${idx+1} 张表情已下载至本地`, '✓');
     }
 
     function downloadCanvasAsImage(canvas, filename) {

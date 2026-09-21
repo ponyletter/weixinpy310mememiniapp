@@ -1,0 +1,238 @@
+<view class="container">
+  <!-- 顶部标题引导区 -->
+  <view class="page-heading">
+    <view class="heading-badge">全新AI功能</view>
+    <text class="page-title">一张照片变出 16 张表情包</text>
+    <text class="page-subtitle">上传一张自拍、萌宠或从素材库保存的表情，一键生成 16 款生动实用的聊天表情贴纸。</text>
+  </view>
+
+  <!-- 历史完成提醒条 -->
+  <view wx:if="{{hasCompletedTask && !showModal}}" class="history-bar card" bindtap="openResultModal">
+    <view class="history-left">
+      <text class="history-icon">🎉</text>
+      <text class="history-text">已为您生成好 16 款专属表情包</text>
+    </view>
+    <text class="history-link">查看结果 ›</text>
+  </view>
+
+  <!-- ==================== 配置区 ==================== -->
+  <view class="config-card card">
+    <!-- 1. 参考原型图片上传 -->
+    <view class="section-title">
+      <text class="section-step">1</text>
+      <text class="section-name">上传参考图</text>
+      <text class="section-tag">单张人物 / 萌宠 / 表情</text>
+    </view>
+
+    <view class="upload-box" bindtap="chooseImage">
+      <view wx:if="{{!refImagePath}}" class="upload-placeholder">
+        <text class="upload-icon">📷</text>
+        <text class="upload-main-text">点击上传照片 / 表情包</text>
+        <text class="upload-sub-text">支持相册自拍、生活照或从素材库保存的图片</text>
+      </view>
+      <view wx:else class="upload-preview" catchtap="preventBubble">
+        <image class="preview-img" src="{{refImagePath}}" mode="aspectFit" bindtap="previewRefImage"></image>
+        <view class="preview-actions">
+          <button class="btn-action-sm btn-change" bindtap="chooseImage">更换图片</button>
+          <button class="btn-action-sm btn-remove" bindtap="clearImage">✕ 清除</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 2. 场景主题选择 -->
+    <view class="section-title" style="margin-top: 22px;">
+      <text class="section-step">2</text>
+      <text class="section-name">选择场景主题</text>
+      <text class="section-tag">决定表情类型</text>
+    </view>
+    <view class="theme-grid">
+      <view 
+        wx:for="{{themePackages}}" 
+        wx:key="id" 
+        class="theme-chip {{selectedTheme === item.id ? 'active' : ''}}"
+        bindtap="selectTheme"
+        data-id="{{item.id}}"
+      >
+        <text class="theme-icon">{{item.icon}}</text>
+        <view class="theme-info">
+          <text class="theme-name">{{item.name}}</text>
+          <text class="theme-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 3. 贴纸画风选择 -->
+    <view class="section-title" style="margin-top: 22px;">
+      <text class="section-step">3</text>
+      <text class="section-name">贴纸画风</text>
+      <text class="section-tag">微信统一规范</text>
+    </view>
+    <view class="style-grid">
+      <view 
+        wx:for="{{stylePresets}}" 
+        wx:key="id" 
+        class="style-chip {{selectedStyle === item.id ? 'active' : ''}}"
+        bindtap="selectStyle"
+        data-id="{{item.id}}"
+      >
+        <text class="style-name">{{item.name}}</text>
+        <text class="style-desc">{{item.desc}}</text>
+      </view>
+    </view>
+
+    <!-- 4. 补充人设特征 (可选) -->
+    <view class="section-title" style="margin-top: 22px;">
+      <text class="section-step">4</text>
+      <text class="section-name">补充外貌特征 (可选)</text>
+    </view>
+    <input 
+      class="desc-input" 
+      placeholder="例如：戴圆框眼镜的短发青年、白色带橘斑小猫..." 
+      value="{{characterDesc}}"
+      bindinput="onInputDesc"
+    />
+
+    <!-- 底部大按钮 -->
+    <view class="submit-wrap">
+      <button 
+        class="btn-primary btn-make" 
+        bindtap="startMakeStickers"
+        disabled="{{isGenerating}}"
+      >
+        <text wx:if="{{!isGenerating}}">🚀 开始制作 16 款表情贴纸 (消耗1次额度)</text>
+        <text wx:else>⏳ 正在排队绘制中...</text>
+      </button>
+    </view>
+  </view>
+
+  <!-- ==================== 制作结果弹窗 (新界面) ==================== -->
+  <view wx:if="{{showModal}}" class="modal-mask" catchtouchmove="preventScroll">
+    <view class="modal-dialog">
+      <!-- 弹窗顶部栏 -->
+      <view class="modal-header">
+        <view class="modal-title-row">
+          <text class="modal-icon">✨</text>
+          <text class="modal-title">16 宫格表情包制作</text>
+          <text class="modal-badge {{isGenerating ? 'badge-processing' : 'badge-done'}}">
+            {{isGenerating ? '处理中' : '制作完成'}}
+          </text>
+        </view>
+        <view class="modal-close" bindtap="closeModal">✕</view>
+      </view>
+
+      <!-- 步骤流程指示条 -->
+      <view class="step-flow-bar">
+        <view class="flow-item {{currentStep >= 1 ? 'active' : ''}}">
+          <text class="flow-dot">1</text>
+          <text class="flow-text">分析原型</text>
+        </view>
+        <text class="flow-arrow">➔</text>
+        <view class="flow-item {{currentStep >= 2 ? 'active' : ''}}">
+          <text class="flow-dot">2</text>
+          <text class="flow-text">绘制分镜</text>
+        </view>
+        <text class="flow-arrow">➔</text>
+        <view class="flow-item {{currentStep >= 3 ? 'active' : ''}}">
+          <text class="flow-dot">3</text>
+          <text class="flow-text">矩阵切割</text>
+        </view>
+        <text class="flow-arrow">➔</text>
+        <view class="flow-item {{currentStep >= 4 ? 'active' : ''}}">
+          <text class="flow-dot">4</text>
+          <text class="flow-text">制作完成</text>
+        </view>
+      </view>
+
+      <!-- 弹窗主体内容区 -->
+      <scroll-view scroll-y class="modal-body">
+        <!-- 阶段 1: 制作中进度条 (平滑倒计时 + 阶段文字) -->
+        <view wx:if="{{isGenerating}}" class="loading-container">
+          <view class="loading-header">
+            <text class="loading-stage-title">{{stageTitle}}</text>
+            <text class="loading-percent">{{progress}}%</text>
+          </view>
+          <view class="progress-track">
+            <view class="progress-fill" style="width: {{progress}}%;"></view>
+          </view>
+          <view class="loading-meta">
+            <text class="loading-time">已耗时: {{elapsedSeconds}}s / 预计 32s</text>
+            <text class="loading-hint">✨ 预计 25~35 秒完成，无需加字直接可用</text>
+          </view>
+          <view class="loading-spinner-box">
+            <view class="loading-spinner"></view>
+            <text class="spinner-tip">正在后台渲染 4x4 矩阵切片，请稍候...</text>
+          </view>
+        </view>
+
+        <!-- 阶段 2: 制作完成，展示 16 宫格表情切片 (无字纯净版) -->
+        <view wx:else class="result-container">
+          <view class="result-header-row">
+            <text class="result-tip">共生成 16 张表情贴纸，点击可单张大图查看：</text>
+            <text class="select-all-link" bindtap="toggleSelectAll">
+              {{isAllSelected ? '取消全选' : '全选'}}
+            </text>
+          </view>
+
+          <!-- 4x4 网格 -->
+          <view class="stickers-grid">
+            <view 
+              wx:for="{{stickersList}}" 
+              wx:key="index" 
+              class="sticker-card {{item.selected ? 'selected' : ''}}"
+              bindtap="toggleSelectSticker"
+              data-index="{{index}}"
+            >
+              <image 
+                class="sticker-img" 
+                src="{{item.displayUrl}}" 
+                mode="aspectFit" 
+                lazy-load="true"
+                catchtap="viewStickerLarge"
+                data-index="{{index}}"
+              ></image>
+              <view class="sticker-check {{item.selected ? 'checked' : ''}}">
+                {{item.selected ? '✓' : ''}}
+              </view>
+              <view class="sticker-index-tag">{{index + 1}}</view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 弹窗底部操作栏 -->
+      <view class="modal-footer">
+        <block wx:if="{{!isGenerating && stickersList.length > 0}}">
+          <button class="btn-modal-sub" bindtap="saveToMyCollection">
+            📁 存入合集
+          </button>
+          <button class="btn-modal-main" bindtap="saveSelectedStickersToAlbum" disabled="{{selectedCount === 0}}">
+            📥 保存到手机相册 ({{selectedCount}})
+          </button>
+        </block>
+        <block wx:else>
+          <button class="btn-modal-sub" style="width: 100%;" bindtap="closeModal">
+            收起弹窗 (后台继续绘制)
+          </button>
+        </block>
+      </view>
+    </view>
+  </view>
+
+  <!-- 单张表情大图放大预览弹窗 -->
+  <view wx:if="{{showLargePreview}}" class="large-mask" bindtap="closeLargePreview">
+    <view class="large-card" catchtap="preventBubble">
+      <view class="large-header">
+        <text class="large-title">第 {{largePreviewIndex + 1}} / 16 张表情</text>
+        <text class="large-close" bindtap="closeLargePreview">✕</text>
+      </view>
+      <view class="large-body">
+        <image class="large-img" src="{{stickersList[largePreviewIndex].displayUrl}}" mode="aspectFit"></image>
+      </view>
+      <view class="large-footer">
+        <button class="btn-large-save" bindtap="saveSingleStickerToAlbum">
+          📥 保存此张表情到手机相册
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

@@ -156,6 +156,12 @@ Page({
     this.recordRecentTool(tab);
   },
 
+  goToSticker16() {
+    wx.navigateTo({
+      url: '/pages/sticker16/sticker16'
+    });
+  },
+
   // 百宝箱独立修图入口：复用制作页的贴纸、文字、气泡、涂鸦和裁剪能力，并支持直接保存。
   openStickerEditor() {
     const openEditor = (path) => {

@@ -29,6 +29,9 @@
 
   <!-- 实用图片处理工具导航网格 -->
   <view class="remix-tabs card">
+    <view class="remix-tab remix-tab-highlight" bindtap="goToSticker16">
+      <text class="remix-tab-icon">🤹</text><text>1图变16款</text>
+    </view>
     <view class="remix-tab {{tab === 'video' ? 'active' : ''}}" bindtap="switchTab" data-tab="video">
       <text class="remix-tab-icon">📹</text><text>视频转GIF</text>
     </view>

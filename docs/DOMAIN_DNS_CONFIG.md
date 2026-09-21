@@ -77,7 +77,10 @@ server {
 
 ## 四、微信小程序后台“服务器域名”配置
 
-在微信公众平台【开发管理】➔【开发设置】➔【服务器域名】中需配置：
-- **`request` 合法域名**：`https://meme.tg-cc755.cn`
-- **`downloadFile` 合法域名**：`https://meme.tg-cc755.cn`（用于用户在小程序内保存表情包到手机相册）
-- **`uploadFile` 合法域名**：`https://meme.tg-cc755.cn`（若支持用户上传表情或留言截图）
+在微信公众平台【开发管理】➔【开发设置】➔【服务器域名】中必须配置以下域名（注：微信强制要求 HTTPS 协议，且域名不能带自定义端口号）：
+
+| 域名类型 | 必填域名 | 实际业务用途说明 |
+| :--- | :--- | :--- |
+| **`request` 合法域名** | `https://meme.tg-cc755.cn` | 小程序调用后端生图、任务轮询、分类检索、合集管理等所有 API 接口 |
+| **`uploadFile` 合法域名** | `https://meme.tg-cc755.cn` | 用户从手机相册/拍照上传真人自拍、宠物照等参考原型图片至服务器 |
+| **`downloadFile` 合法域名** | `https://zhaoolee.com`<br>`https://meme.tg-cc755.cn`<br>`https://pub-xxxx.r2.dev` (可选，若配置 R2) | **关键项**：<br>1. `https://zhaoolee.com`：精选素材库 5,800+ 款表情的 CDN 源站，小程序内保存素材到手机相册（`wx.saveImageToPhotosAlbum`）或下载后制作必须配置此项！<br>2. `https://meme.tg-cc755.cn`：用于下载保存服务器生成的 16 张切片贴纸与动图；<br>3. R2 存储桶域名（若启用对象存储）。 |
