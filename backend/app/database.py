@@ -1,6 +1,7 @@
 import sqlite3
 import datetime
 import uuid
+import json
 from typing import Optional, List, Dict, Any
 from zoneinfo import ZoneInfo
 from fastapi import HTTPException
@@ -220,6 +221,25 @@ def init_db():
             )
         ''')
 
+        # 9. 素材库表 (R-01 ChineseBQB 精选表情素材库)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS materials (
+                id TEXT PRIMARY KEY,
+                category TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '',
+                url TEXT NOT NULL,
+                thumb_url TEXT NOT NULL DEFAULT '',
+                tags TEXT NOT NULL DEFAULT '[]',
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_materials_category
+            ON materials(category, is_active, sort_order)
+        ''')
+
         # 预置三大极简黄金道具 (meme_ 为前端主显，item_ 开启底层兼容以支持旧版请求)
         default_packages = [
             ("meme_100", "动图制作尝鲜包1元", "尝鲜包 (20次)", 100, 20, 0, "超低破冰", 1, 1),
@@ -358,6 +378,32 @@ def init_db():
                     INSERT INTO collection_items (collection_id, gif_url, title, sort_order)
                     VALUES (?, ?, ?, ?)
                 ''', (col_id, gif_url, item_title, idx))
+
+        # 10. 初始化精选素材库基础数据 (R-01 ChineseBQB 精选表情素材)
+        cursor.execute("SELECT COUNT(*) FROM materials")
+        if cursor.fetchone()[0] == 0:
+            try:
+                import sys
+                from pathlib import Path
+                scripts_dir = str(Path(__file__).resolve().parent.parent / "scripts")
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                from generate_default_materials import MATERIALS
+                for idx, m in enumerate(MATERIALS, 1):
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO materials (id, category, title, url, thumb_url, tags, sort_order, is_active)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                    ''', (
+                        m["id"],
+                        m["category"],
+                        m["title"],
+                        f"/static/materials/{m['id']}.png",
+                        f"/static/materials/{m['id']}_thumb.png",
+                        json.dumps(m["tags"], ensure_ascii=False),
+                        idx
+                    ))
+            except Exception as e:
+                print(f"[init_db] seed materials failed: {e}")
 
         conn.commit()
 
@@ -1106,3 +1152,79 @@ def get_public_collections(limit: int = 15) -> List[Dict[str, Any]]:
                 it["thumb_url"] = get_fast_thumb_url(it.get("gif_url") or "")
             c["preview_items"] = items
         return cols
+
+
+# =========================================================================
+# 素材库 (R-01 ChineseBQB 精选素材库) 接口支持
+# =========================================================================
+
+def get_material_categories() -> List[Dict[str, Any]]:
+    """获取素材分类列表及其统计数量"""
+    categories = [
+        {"id": "all", "name": "全部精选", "emoji": "🌟"},
+        {"id": "funny", "name": "熊猫头/沙雕", "emoji": "🐼"},
+        {"id": "cute", "name": "萌宠可爱", "emoji": "🐱"},
+        {"id": "worker", "name": "打工人日常", "emoji": "💼"},
+        {"id": "sarcasm", "name": "吐槽斗图", "emoji": "😒"},
+        {"id": "classic", "name": "经典名场面", "emoji": "🎬"},
+    ]
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT category, COUNT(*) as cnt 
+            FROM materials 
+            WHERE is_active = 1 
+            GROUP BY category
+        ''')
+        counts = {row["category"]: row["cnt"] for row in cursor.fetchall()}
+        total = sum(counts.values())
+        for c in categories:
+            if c["id"] == "all":
+                c["count"] = total
+            else:
+                c["count"] = counts.get(c["id"], 0)
+    return categories
+
+
+def get_materials_list(category: str = "all", page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+    """获取素材分页列表"""
+    offset = max(0, (page - 1) * page_size)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if not category or category == "all":
+            cursor.execute("SELECT COUNT(*) FROM materials WHERE is_active = 1")
+            total = cursor.fetchone()[0]
+            cursor.execute('''
+                SELECT id, category, title, url, thumb_url, tags, sort_order, created_at
+                FROM materials
+                WHERE is_active = 1
+                ORDER BY sort_order ASC, id ASC
+                LIMIT ? OFFSET ?
+            ''', (page_size, offset))
+        else:
+            cursor.execute("SELECT COUNT(*) FROM materials WHERE category = ? AND is_active = 1", (category,))
+            total = cursor.fetchone()[0]
+            cursor.execute('''
+                SELECT id, category, title, url, thumb_url, tags, sort_order, created_at
+                FROM materials
+                WHERE category = ? AND is_active = 1
+                ORDER BY sort_order ASC, id ASC
+                LIMIT ? OFFSET ?
+            ''', (category, page_size, offset))
+        rows = cursor.fetchall()
+        items = []
+        for r in rows:
+            it = dict(r)
+            try:
+                it["tags"] = json.loads(it.get("tags") or "[]")
+            except Exception:
+                it["tags"] = []
+            items.append(it)
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "has_more": (offset + len(items)) < total
+        }
+

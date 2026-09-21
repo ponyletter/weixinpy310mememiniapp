@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GIF表情包制作神器 - ChatGPT Images 2.5 动图实验室</title>
+  <title>动态表情包制作神器 · 智能微动效工坊</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -13,8 +13,8 @@
       <div class="brand">
         <div class="logo-badge">GIF</div>
         <div class="title-group">
-          <h1>GIF表情包制作神器</h1>
-          <p class="subtitle">基于 ChatGPT Images 2.5 角色一致性 16 帧原生动图引擎</p>
+          <h1>动态表情包制作神器</h1>
+          <p class="subtitle">智能微动效引擎 · 16 帧连贯动图制作工坊</p>
         </div>
       </div>
       <div class="status-badge" id="serviceStatus">● 引擎极速运行中</div>
@@ -22,18 +22,18 @@
 
     <!-- 工作模式切换 Tabs -->
     <div class="mode-tabs">
-      <a href="/sticker16" class="mode-tab" style="text-decoration: none; border: 1.5px solid #8b5cf6; background: rgba(139, 92, 246, 0.15);">
+      <a href="/sticker16" class="mode-tab" style="text-decoration: none; border: 1.5px solid #07c160; background: rgba(7, 193, 96, 0.12);">
         <span class="tab-icon">🌟</span>
         <div class="tab-info">
-          <span class="tab-title" style="color: #c084fc;">【全新功能】一张图片变16张静态表情包</span>
-          <span class="tab-sub">1次额度生成 4x4 矩阵 · 场景台词精准匹配 · 贴纸合辑下载</span>
+          <span class="tab-title" style="color: #07c160; font-weight: bold;">【核心功能】一张图片变16张表情包 · 完整工作台</span>
+          <span class="tab-sub">16款表情贴纸 · 文字气泡工坊 · 精选素材库 · 表情合集管理</span>
         </div>
       </a>
       <button type="button" class="mode-tab active" id="tabModeAI">
         <span class="tab-icon">✨</span>
         <div class="tab-info">
-          <span class="tab-title">AI 智能生图模式 (全自动)</span>
-          <span class="tab-sub">手绘草图/上传人设 ➔ ChatGPT 原生出图 ➔ 自动切帧合成</span>
+          <span class="tab-title">智能微动效模式 (连贯动图)</span>
+          <span class="tab-sub">手绘草图/上传人设 ➔ 智能原生出图 ➔ 自动切帧合成</span>
         </div>
       </button>
       <button type="button" class="mode-tab" id="tabModeSlicer">
@@ -53,7 +53,7 @@
           <span class="badge badge-purple">设定 1</span>
           <h2>角色形象设定 (支持手绘草图 Sketch & 人设图参考)</h2>
         </div>
-        <p class="desc">ChatGPT Images 2.5 原生支持<strong>草图草稿重绘 (Sketch-to-Image)</strong>。你可以上传现成图片，或直接在线手绘简笔画：</p>
+        <p class="desc">智能绘图引擎原生支持<strong>草图草稿重绘 (Sketch-to-Image)</strong>。你可以上传现成图片，或直接在线手绘简笔画：</p>
 
         <!-- 人设输入源切换 Segmented Control -->
         <div class="input-source-tabs">
@@ -62,7 +62,7 @@
           </button>
           <button type="button" class="source-tab" id="btnSourceSketch">
             <span>🖌️ 在线手绘草图 (SketchUP 涂鸦板)</span>
-            <span class="source-tag">Images 2.5 特色</span>
+            <span class="source-tag">微动效特色</span>
           </button>
         </div>
 
@@ -127,7 +127,7 @@
                 <button type="button" class="tool-btn-sm" id="btnClearSketch" title="清空画板">🗑️</button>
               </div>
             </div>
-            <p class="field-hint">💡 随意勾勒几笔姿态、五官或造型，ChatGPT 将把您的草图精修为 16 帧动图！</p>
+            <p class="field-hint">💡 随意勾勒几笔姿态、五官或造型，智能绘图引擎将把您的草图精修为 16 帧动图！</p>
           </div>
 
           <!-- 角色外貌补充描述 -->
@@ -148,7 +148,7 @@
           <span class="badge badge-purple">设定 2</span>
           <h2>选择 16 帧动作连贯模版 & 动态字幕</h2>
         </div>
-        <p class="desc">选择连贯动作，输入想要包含的字幕，ChatGPT 将在画画时<strong>直接把文字画成随动作律动跳跃的艺术字</strong>：</p>
+        <p class="desc">选择连贯动作，输入想要包含的字幕，智能引擎将在画画时<strong>直接把文字画成随动作律动跳跃的艺术字</strong>：</p>
 
         <!-- 动作卡片选择 -->
         <div class="template-grid" id="templateGrid">
@@ -200,8 +200,8 @@
 
           <div class="prompt-box">
             <div class="prompt-header">
-              <span>📋 组装好的 ChatGPT Plus 提示词预览：</span>
-              <button type="button" class="btn btn-secondary btn-sm" id="btnCopyPrompt">一键复制提示词</button>
+              <span>📋 组装好的绘图指令预览：</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnCopyPrompt">一键复制指令</button>
             </div>
             <textarea id="promptOutput" readonly rows="4"></textarea>
           </div>
@@ -212,8 +212,8 @@
           <button type="button" class="btn btn-hero" id="btnAIGenerate">
             <span class="btn-hero-icon">🚀</span>
             <div class="btn-hero-text">
-              <strong>启动 AI 生图并合成表情包</strong>
-              <small>ChatGPT Plus (Images 2.5) 原生驱动 · 自动切片去底</small>
+              <strong>启动智能生图并合成表情包</strong>
+              <small>智能微动效引擎驱动 · 自动切片去底</small>
             </div>
           </button>
         </div>
@@ -227,7 +227,7 @@
           <span class="badge badge-blue">工具模式</span>
           <h2>上传本地 4×4 精灵大图 (1024×1024)</h2>
         </div>
-        <p class="desc">如果你已经在 ChatGPT 网页端生成了 16 宫格图片，直接拖拽到此处快速切片与合成：</p>
+        <p class="desc">如果你已经拥有 16 宫格雪碧大图，直接拖拽到此处快速切片与合成：</p>
 
         <div class="upload-options">
           <div class="drop-zone" id="dropZone">
@@ -244,7 +244,7 @@
           </div>
 
           <div class="quick-test-bar">
-            <span>不想开 ChatGPT？直接体验效果：</span>
+            <span>快速体验效果：</span>
             <button type="button" class="btn btn-outline" id="btnUseSample">🚀 载入【飞吻16帧】测试样本</button>
           </div>
         </div>
@@ -277,14 +277,14 @@
     <!-- 等待中交互容器：tqdm 进度条 + 紧凑棋盘格 + 彩蛋式贪吃蛇 (默认隐藏，点击展开) -->
     <section class="card waiting-card" id="waitingCard" style="display: none;">
       <div class="card-header">
-        <span class="badge badge-green">AI 制作进行中</span>
-        <h2>正在通过海外 Plus 账号为您精心制作</h2>
+        <span class="badge badge-green">制作进行中</span>
+        <h2>正在为您精心制作表情包</h2>
       </div>
 
       <!-- tqdm 风格进度条 -->
       <div class="tqdm-container">
         <div class="tqdm-header">
-          <span class="tqdm-stage" id="tqdmStageText">阶段 2/4: ChatGPT Plus (Images 2.5) 正在逐帧绘制 16 宫格雪碧图...</span>
+          <span class="tqdm-stage" id="tqdmStageText">阶段 2/4: 智能绘图引擎正在逐帧绘制 16 宫格雪碧图...</span>
           <span class="tqdm-percent" id="tqdmPercentText">15%</span>
         </div>
         <div class="tqdm-bar-track">
@@ -304,7 +304,7 @@
           <div class="loading-state-compact" id="compactLoadingState">
             <div class="pulse-ring"></div>
             <div class="loading-icon-anim">🎨</div>
-            <p class="loading-title">AI 正在绘制 16 帧角色连贯动作...</p>
+            <p class="loading-title">智能引擎正在绘制 16 帧角色连贯动作...</p>
             <div class="egg-hint-badge">
               <span>🕹️ 等待无聊？点击此区域展开互动解闷彩蛋 ➔</span>
             </div>
@@ -377,7 +377,7 @@
           <div class="download-buttons">
             <a id="btnDownloadGif" href="#" download="meme.gif" class="btn btn-primary btn-block">📥 下载透明 GIF 动图</a>
             <a id="btnDownloadZip" href="#" download="frames.zip" class="btn btn-secondary btn-block">📦 下载全部 16 帧透明 PNG (ZIP)</a>
-            <p class="mobile-tip">📱 手机端提示：长按上方动图即可直接【发送给朋友】或【保存到相册】添加到微信表情！</p>
+            <p class="mobile-tip">📱 手机端提示：长按上方动图即可直接【保存到相册】添加到微信表情！</p>
           </div>
         </div>
       </div>
@@ -393,7 +393,7 @@
 
     <!-- 页脚 -->
     <footer class="footer">
-      <p>© 2026 GIF表情包制作神器 · weixinpy310mememiniapp · ChatGPT Images 2.5 动图实验室</p>
+      <p>© 2026 动态表情包制作神器 · 智能微动效工坊</p>
     </footer>
   </div>
 

@@ -578,7 +578,7 @@ async def run_generate_pipeline(
                 openid,
                 25,
                 "drawing",
-                "阶段 2/4: 正在调用 CPA 绘图引擎绘制 4x4 矩阵 (16 款表情原画)...",
+                "阶段 2/4: 智能绘图引擎正在绘制 16 宫格表情原画...",
             )
 
             headers = {
@@ -1290,7 +1290,7 @@ def preview_prompt(
     is_sketch: bool = Form(False),
     custom_action: str = Form(""),
 ):
-    """【调试辅助】预览将发送给 CPA 模型的 16 宫格专业英文提示词"""
+    """【调试辅助】预览将发送给绘图引擎的 16 宫格专业英文提示词"""
     prompt = build_sticker16_prompt(
         character_desc=character_desc.strip(),
         style=style_preset,
@@ -1304,8 +1304,7 @@ def preview_prompt(
         "code": 0,
         "data": {
             "prompt": prompt,
-            "model": settings.CPA_IMAGE_MODEL,
-            "cpa_api_base": settings.CPA_API_BASE
+            "model": "image-engine-v2",
         }
     }
 
@@ -1313,22 +1312,30 @@ def preview_prompt(
 @router.post("/debug/test-sticker16")
 async def debug_test_sticker16(
     ref_image: Optional[UploadFile] = File(None),
+    image: Optional[UploadFile] = File(None),
     sample_id: Optional[str] = Form(None),
     character_desc: str = Form(""),
-    style_preset: str = Form("chibi_3d"),
+    style: Optional[str] = Form(None),
+    style_preset: str = Form("wechat_sticker"),
+    composition: Optional[str] = Form(None),
     composition_preset: str = Form("bust"),
+    background: Optional[str] = Form(None),
     bg_preset: str = Form("white"),
     text_package: str = Form("worker"),
     custom_texts: Optional[str] = Form(None),
     resolution: str = Form("256x256"),
     force_audit: bool = Form(False),
 ):
-    """【Web调试台专用】直接测试 16 静态表情包生成，免去小程序鉴权，快速联调"""
+    """【Web控制台专用】直接测试 16 静态表情包生成，免去小程序鉴权，快速联调"""
     task_id = uuid.uuid4().hex
     ref_image_bytes = None
+    upload_file = image or ref_image
+    chosen_style = style or style_preset or "wechat_sticker"
+    chosen_comp = composition or composition_preset or "bust"
+    chosen_bg = background or bg_preset or "white"
 
-    if ref_image and getattr(ref_image, "filename", None):
-        ref_image_bytes = await read_limited_upload(ref_image, settings.MAX_IMAGE_UPLOAD_MB)
+    if upload_file and getattr(upload_file, "filename", None):
+        ref_image_bytes = await read_limited_upload(upload_file, settings.MAX_IMAGE_UPLOAD_MB)
     elif sample_id:
         sample_path = settings.SAMPLES_DIR / f"{sample_id}.png"
         if not sample_path.exists():
@@ -1365,7 +1372,7 @@ async def debug_test_sticker16(
         custom_caption="",
         character_desc=character_desc,
         fps=1,
-        make_transparent=(bg_preset == "transparent"),
+        make_transparent=(chosen_bg == "transparent"),
         padding_percent=2.5,
         is_sketch=False,
         openid=openid,
@@ -1374,9 +1381,9 @@ async def debug_test_sticker16(
         frame_count=16,
         resolution=resolution,
         output_mode="sticker16",
-        style_preset=style_preset,
-        composition_preset=composition_preset,
-        bg_preset=bg_preset,
+        style_preset=chosen_style,
+        composition_preset=chosen_comp,
+        bg_preset=chosen_bg,
         text_package=text_package,
         custom_texts=custom_texts_list,
     ))

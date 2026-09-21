@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentTemplateId = "kiss";
   let templatesData = [];
   let selectedRefImage = null;       // 模式 1：参考角色图片 (文件或草图导出)
-  let isSketchMode = false;          // 是否为 ChatGPT Images 2.5 手绘草图模式
+  let isSketchMode = false;          // 是否为手绘草图模式
   let selectedSpriteFile = null;     // 模式 2：已有 4x4 精灵图
   let selectedSampleId = null;       // 模式 2：内置测试样本
   let progressInterval = null;
@@ -201,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 3. ChatGPT Images 2.5 在线手绘草图引擎 (Sketch Board)
+  // 3. 在线手绘草图引擎 (Sketch Board)
   // ==========================================
   let isDrawing = false;
   let sketchTool = "pencil";

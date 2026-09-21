@@ -271,9 +271,9 @@ EMOTION_TAGS_16 = [
 
 def build_sticker16_prompt(
     character_desc: str = "",
-    style: str = "keep_orig",         # keep_orig | cute_chibi | 3d_toy
-    composition: str = "bust",        # closeup | bust | full_body
-    background: str = "white",        # white | transparent
+    style: str = "wechat_sticker",     # wechat_sticker | keep_orig | cute_chibi | funny_line | 3d_toy
+    composition: str = "bust",         # closeup | bust | full_body
+    background: str = "white",         # white | transparent
     has_image: bool = True,
     is_sketch: bool = False,
     custom_action: str = ""
@@ -281,18 +281,21 @@ def build_sticker16_prompt(
     """
     组装 16 款静态独立表情包雪碧图专用 Prompt：
     固定 4×4 共 16 个格子的差异化情绪姿态，严禁绘制文字，保证纯净画面与高表现力。
+    统一采用与原有动图一致的可爱Line贴纸/微信Q版表情包风格，严守角色一致性。
     """
     char_desc = (character_desc or "").strip()
     custom_action = (custom_action or "").strip()
 
     # 别名规范化
     style_map = {
-        "3d_toy": "3d_toy",
-        "chibi_3d": "3d_toy",
+        "wechat_sticker": "wechat_sticker",
+        "line_sticker": "wechat_sticker",
+        "keep_orig": "wechat_sticker",
         "cute_chibi": "cute_chibi",
         "anime": "cute_chibi",
-        "keep_orig": "keep_orig",
         "funny_line": "funny_line",
+        "3d_toy": "3d_toy",
+        "chibi_3d": "3d_toy",
     }
     comp_map = {
         "bust": "bust",
@@ -300,7 +303,7 @@ def build_sticker16_prompt(
         "fullbody": "full_body",
         "full_body": "full_body",
     }
-    style_key = style_map.get(style, "3d_toy")
+    style_key = style_map.get(style, "wechat_sticker")
     comp_key = comp_map.get(composition, "bust")
 
     # 1. 人设与身份来源
@@ -313,19 +316,19 @@ def build_sticker16_prompt(
         if char_desc:
             char_id = f"the person/character in the reference image, preserving facial identity, haircut and core features ({char_desc})"
         else:
-            char_id = "the person/character in the reference image, keeping consistent facial identity and signature look"
+            char_id = "the person/character in the reference image, strictly keeping consistent facial identity and signature look"
     else:
         if char_desc:
-            char_id = f"a charismatic original character based on '{char_desc}'"
+            char_id = f"a cute charismatic original character based on '{char_desc}'"
         else:
-            char_id = "an adorable expressive anime cartoon avatar character"
+            char_id = "an adorable expressive chibi cartoon avatar character"
 
-    # 2. 风格定义
+    # 2. 风格定义 (与原有小程序动图风格保持高度统一：经典微信2D手绘贴纸/Line表情包画风)
     style_prompts = {
-        "keep_orig": "maintain original character identity, modern 2D flat avatar sticker art style, clean bold outlines, consistent color palette",
-        "cute_chibi": "chibi kawaii anime sticker style, super cute rounded facial features, big expressive eyes, bold sticker cut outline, soft pastel lighting",
-        "3d_toy": "3D vinyl collectible toy figure style, PopMart blind box aesthetic, smooth claymation shading, soft ambient occlusion lighting, premium cute",
-        "funny_line": "hilarious funny comic sticker style, simplified expressive doodle lineart, exaggerated comical meme reactions, clean white paper background",
+        "wechat_sticker": "classic WeChat & Line cute emoji sticker style, 2D flat vector cartoon character, bold clean dark sticker contour lines, flat bright cel-shading, Japanese Line sticker aesthetic, white paper cutout sticker border, cute chibi proportions",
+        "cute_chibi": "ultra-cute kawaii chibi sticker, big expressive sparkling anime eyes, soft rounded face, adorable pastel colors, thick sticker cut outline",
+        "funny_line": "funny hilarious comic meme sticker, doodle cartoon lineart, exaggerated comical meme reactions, clean black and white with minimal color accents",
+        "3d_toy": "3D vinyl collectible toy figure style, PopMart blind box aesthetic, smooth claymation shading, soft ambient occlusion lighting",
     }
 
     # 3. 构图定义
@@ -367,9 +370,11 @@ def build_sticker16_prompt(
 
     prompt = (
         f"A master emoji sticker sheet depicting {char_id}. "
-        f"Art style: {style_prompts.get(style_key, style_prompts['keep_orig'])}. "
+        f"Art style: {style_prompts.get(style_key, style_prompts['wechat_sticker'])}. "
         f"Framing: {comp_prompts.get(comp_key, comp_prompts['bust'])}. "
         f"Background: {bg_prompts.get(background, bg_prompts['white'])}. "
+        f"STRICT CHARACTER IDENTITY CONSISTENCY: Every single cell of the 16 panels MUST depict the EXACT SAME character. "
+        "The face, hairstyle, hair color, skin tone, clothing design, color palette, and line art MUST remain completely uniform and identical across all 16 cells. "
         f"{grid_actions}"
         f"{action_extra} "
         "CRITICAL RULES: NO text, NO typography, NO watermark, NO Chinese characters, NO English letters, "

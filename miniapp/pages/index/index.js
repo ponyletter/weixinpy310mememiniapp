@@ -1181,7 +1181,7 @@ Page({
             this.setData({ showCollectionModal: false });
             wx.showModal({
               title: '存入成功 🎉',
-              content: `已成功存入表情合集【${colTitle}】！\n随时可在底栏【表情合集】或【个人中心】中查看与批量分享。`,
+              content: `已成功存入表情合集【${colTitle}】！\n随时可在底栏【表情合集】或【个人中心】中查看。`,
               confirmText: '前往查看',
               cancelText: '留在本页',
               success: (mRes) => {
@@ -1329,7 +1329,7 @@ Page({
           const colName = targetCol ? targetCol.title : '合集';
           wx.showModal({
             title: '存入成功 🎉',
-            content: `已成功收入【${colName}】！可在底栏【表情合集】中查看或分享给微信好友。`,
+            content: `已成功收入【${colName}】！可在底栏【表情合集】中查看。`,
             confirmText: '前往查看',
             cancelText: '留在本页',
             success: (mRes) => {

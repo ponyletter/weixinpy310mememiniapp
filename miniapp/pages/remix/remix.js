@@ -1103,7 +1103,7 @@ Page({
               }
               wx.showModal({
                   title: '存入成功 🎉',
-                  content: '已成功存入表情合集！可前往底栏【表情合集】查看或打包分享给好友。',
+                  content: '已成功存入表情合集！可前往底栏【表情合集】查看。',
                   confirmText: '前往查看',
                   cancelText: '留在本页',
                   success: (mRes) => {
