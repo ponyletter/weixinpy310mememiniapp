@@ -587,7 +587,10 @@ async def run_generate_pipeline(
 
             async with httpx.AsyncClient(timeout=180.0) as client:
                 if has_image:
-                    ref_img_pil = Image.open(io.BytesIO(ref_image_bytes)).convert("RGBA")
+                    ref_pil = Image.open(io.BytesIO(ref_image_bytes))
+                    if getattr(ref_pil, "is_animated", False):
+                        ref_pil.seek(0)
+                    ref_img_pil = ref_pil.convert("RGBA")
                     buf = io.BytesIO()
                     ref_img_pil.save(buf, format="PNG")
                     buf.seek(0)
@@ -892,7 +895,10 @@ async def run_generate_pipeline(
 
         async with httpx.AsyncClient(timeout=180.0) as client:
             if has_image:
-                ref_img_pil = Image.open(io.BytesIO(ref_image_bytes)).convert("RGBA")
+                ref_pil = Image.open(io.BytesIO(ref_image_bytes))
+                if getattr(ref_pil, "is_animated", False):
+                    ref_pil.seek(0)
+                ref_img_pil = ref_pil.convert("RGBA")
                 buf = io.BytesIO()
                 ref_img_pil.save(buf, format="PNG")
                 buf.seek(0)
@@ -1155,7 +1161,7 @@ async def generate_async(
     ref_image_bytes = None
     if ref_image is not None and getattr(ref_image, "filename", None) not in [None, ""]:
         ref_image_bytes = await read_limited_upload(ref_image, settings.MAX_IMAGE_UPLOAD_MB)
-        open_validated_image(ref_image_bytes, allow_animation=False)
+        open_validated_image(ref_image_bytes, allow_animation=True)
 
     custom_texts_list = None
     if custom_texts and custom_texts.strip():
@@ -1475,22 +1481,40 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
     if not owner or owner["openid"] != current_openid:
         raise HTTPException(status_code=404, detail="任务不存在")
     task_dir = settings.OUTPUT_DIR / task_id
-    if owner["status"] == "completed" or (task_dir / "meme_result.gif").exists():
+    if owner["status"] == "completed" or (task_dir / "stickers_pack.zip").exists() or (task_dir / "meme_result.gif").exists():
         frames_dir = task_dir / "frames"
+        stickers_dir = task_dir / "stickers"
+        raw_stickers_dir = task_dir / "raw_stickers"
         raw_gif_url = owner["gif_url"] or ""
         use_r2 = is_public_r2_url(raw_gif_url) or raw_gif_url.startswith(("http://", "https://"))
         frame_urls = [f"/outputs/{task_id}/frames/{f.name}" for f in sorted(frames_dir.glob("*.png"))] if frames_dir.exists() else []
+
+        sticker_items = []
+        if stickers_dir.exists():
+            for f in sorted(stickers_dir.glob("*.png")):
+                raw_f = raw_stickers_dir / f.name if raw_stickers_dir.exists() else f
+                sticker_items.append({
+                    "url": f"/outputs/{task_id}/stickers/{f.name}",
+                    "raw_url": f"/outputs/{task_id}/raw_stickers/{raw_f.name}" if raw_f.exists() else f"/outputs/{task_id}/stickers/{f.name}",
+                    "caption": ""
+                })
+
         gif_file = task_dir / "meme_result.gif"
         file_size_kb = round(gif_file.stat().st_size / 1024, 1) if gif_file.exists() else 0.0
         is_compliant = (gif_file.stat().st_size <= settings.WECHAT_GIF_MAX_BYTES) if gif_file.exists() else True
+        is_sticker16 = bool(sticker_items) or (task_dir / "stickers_pack.zip").exists()
+
         result_payload = {
             "task_id": task_id,
+            "output_mode": "sticker16" if is_sticker16 else "gif",
             "gif_url": f"/outputs/{task_id}/meme_result.gif",
-            "zip_url": f"/outputs/{task_id}/frames_pack.zip" if (task_dir / "frames_pack.zip").exists() else "",
+            "zip_url": f"/outputs/{task_id}/stickers_pack.zip" if (task_dir / "stickers_pack.zip").exists() else (f"/outputs/{task_id}/frames_pack.zip" if (task_dir / "frames_pack.zip").exists() else ""),
+            "stickers_pack_url": f"/outputs/{task_id}/stickers_pack.zip" if (task_dir / "stickers_pack.zip").exists() else "",
             "input_url": f"/outputs/{task_id}/input_sprite.png",
-            "frames": frame_urls,
+            "frames": [s["url"] for s in sticker_items] if sticker_items else frame_urls,
+            "stickers": sticker_items if sticker_items else frame_urls,
             "stats": {
-                "frame_count": len(frame_urls),
+                "frame_count": len(sticker_items) if sticker_items else len(frame_urls),
                 "file_size_kb": file_size_kb,
                 "duration_per_frame_ms": 125,
                 "duration_seconds": owner["duration_seconds"] or 0.0,

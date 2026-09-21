@@ -3,8 +3,12 @@ const app = getApp();
 Page({
   data: {
     refImagePath: '',
+    textMode: 'none', // 'none' (纯表情) | 'auto' (预设场景) | 'custom' (自定义台词)
     selectedTheme: 'worker',
+    customTexts: '',
+    composition: 'bust', // 'bust' (半身手势) | 'closeup' (大头微表情)
     selectedStyle: 'wechat_sticker',
+    customStyleText: '',
     characterDesc: '',
 
     themePackages: [
@@ -16,10 +20,11 @@ Page({
     ],
 
     stylePresets: [
-      { id: 'wechat_sticker', name: '✨ 经典微信贴纸', desc: '2D Q版扁平手绘 · 微信原生质感' },
+      { id: 'wechat_sticker', name: '✨ 经典手绘贴纸', desc: '2D Q版扁平手绘 · 微信原生质感' },
       { id: 'cute_chibi', name: '🐱 Q版萌系大眼', desc: '超甜圆润萌化感 · 活泼可爱' },
       { id: 'funny_line', name: '✏️ 魔性沙雕线描', desc: '黑白搞怪线稿 · 斗图神作' },
-      { id: '3d_toy', name: '🧸 3D 公仔潮玩', desc: '立体盲盒潮玩 · 饱满光泽' }
+      { id: '3d_toy', name: '🧸 3D 公仔潮玩', desc: '立体盲盒潮玩 · 饱满光泽' },
+      { id: 'custom', name: '🎨 自定义画风...', desc: '手动输入任何专属画风关键词' }
     ],
 
     // 弹窗状态
@@ -129,12 +134,28 @@ Page({
     }
   },
 
+  selectTextMode(e) {
+    this.setData({ textMode: e.currentTarget.dataset.mode });
+  },
+
   selectTheme(e) {
     this.setData({ selectedTheme: e.currentTarget.dataset.id });
   },
 
+  onInputCustomTexts(e) {
+    this.setData({ customTexts: e.detail.value });
+  },
+
+  selectComposition(e) {
+    this.setData({ composition: e.currentTarget.dataset.comp });
+  },
+
   selectStyle(e) {
     this.setData({ selectedStyle: e.currentTarget.dataset.id });
+  },
+
+  onInputCustomStyle(e) {
+    this.setData({ customStyleText: e.detail.value });
   },
 
   onInputDesc(e) {
@@ -144,12 +165,22 @@ Page({
   preventBubble() {},
   preventScroll() {},
 
+  onStickerImageError(e) {
+    const idx = e.currentTarget.dataset.index;
+    console.warn(`Sticker ${idx} failed to load, falling back`, e);
+    const list = this.data.stickersList;
+    if (list[idx] && list[idx].url && list[idx].displayUrl !== list[idx].url) {
+      list[idx].displayUrl = list[idx].url;
+      this.setData({ stickersList: list });
+    }
+  },
+
   // ==================== 启动制作 16 款表情 ====================
   async startMakeStickers() {
     if (!this.data.refImagePath) {
       wx.showModal({
         title: '提示',
-        content: '请先上传一张参考图片（可自拍、生活照或从素材库保存的表情）',
+        content: '请先上传一张参考图片（可自拍、生活照、萌宠或从素材库保存的表情）',
         showCancel: false,
         confirmText: '去上传',
         confirmColor: '#07c160'
@@ -158,9 +189,19 @@ Page({
     }
 
     // 文本内容安全校验
-    if (this.data.characterDesc && app.checkTextSecurity) {
-      const isSafe = await app.checkTextSecurity(this.data.characterDesc);
-      if (!isSafe) return;
+    const textsToCheck = [this.data.characterDesc];
+    if (this.data.textMode === 'custom' && this.data.customTexts) {
+      textsToCheck.push(this.data.customTexts);
+    }
+    if (this.data.selectedStyle === 'custom' && this.data.customStyleText) {
+      textsToCheck.push(this.data.customStyleText);
+    }
+
+    for (let txt of textsToCheck) {
+      if (txt && app.checkTextSecurity) {
+        const isSafe = await app.checkTextSecurity(txt);
+        if (!isSafe) return;
+      }
     }
 
     // 检查并准备本地临时文件
@@ -200,23 +241,48 @@ Page({
 
     this.startProgressTicker();
 
-    // 发起异步生图任务
+    // 组装参数
+    let finalTheme = 'none';
+    let customTextsParam = '';
+
+    if (this.data.textMode === 'none') {
+      finalTheme = 'none';
+    } else if (this.data.textMode === 'auto') {
+      finalTheme = this.data.selectedTheme;
+    } else if (this.data.textMode === 'custom') {
+      finalTheme = 'custom';
+      const lines = (this.data.customTexts || '').split('\n').map(s => s.trim()).filter(Boolean);
+      if (lines.length > 0) {
+        customTextsParam = JSON.stringify(lines);
+      }
+    }
+
+    let finalStyle = this.data.selectedStyle;
+    if (this.data.selectedStyle === 'custom' && this.data.customStyleText.trim()) {
+      finalStyle = this.data.customStyleText.trim();
+    }
+
     const openid = app.globalData.openid || wx.getStorageSync('openid') || '';
     const uploadUrl = `${app.globalData.baseURL}/api/generate-async`;
+
+    const formData = {
+      output_mode: 'sticker16',
+      text_package: finalTheme,
+      style_preset: finalStyle,
+      composition_preset: this.data.composition,
+      character_desc: this.data.characterDesc || '',
+      bg_preset: 'white',
+      openid: openid
+    };
+    if (customTextsParam) {
+      formData.custom_texts = customTextsParam;
+    }
 
     app.uploadFile({
       url: uploadUrl,
       filePath: localFilePath,
       name: 'ref_image',
-      formData: {
-        output_mode: 'sticker16',
-        text_package: this.data.selectedTheme,
-        style_preset: this.data.selectedStyle,
-        character_desc: this.data.characterDesc || '',
-        composition_preset: 'bust',
-        bg_preset: 'white',
-        openid: openid
-      },
+      formData: formData,
       success: (res) => {
         let respData = null;
         try {
@@ -301,20 +367,25 @@ Page({
     const formattedList = rawItems.map((item, idx) => {
       let rawUrl = '';
       let standardUrl = '';
+      let text = '';
       if (typeof item === 'string') {
         standardUrl = app.toAbsoluteUrl(item);
         rawUrl = standardUrl;
       } else {
         standardUrl = app.toAbsoluteUrl(item.url || '');
         rawUrl = app.toAbsoluteUrl(item.raw_url || item.url || '');
+        text = item.caption || item.text || '';
       }
+
+      const displayUrl = (this.data.textMode === 'none' ? (rawUrl || standardUrl) : (standardUrl || rawUrl));
 
       return {
         id: `sticker_${idx + 1}`,
         index: idx,
         url: standardUrl,
         rawUrl: rawUrl,
-        displayUrl: rawUrl || standardUrl, // 优先纯净无字切片
+        displayUrl: displayUrl,
+        text: text,
         selected: true
       };
     });

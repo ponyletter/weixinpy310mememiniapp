@@ -29,9 +29,18 @@ def validate_image(image: Image.Image, *, allow_animation: bool = True) -> None:
 
 
 def safe_image_extension(image: Image.Image) -> str:
-    extension = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}.get((image.format or "").upper())
+    fmt = (image.format or "").upper()
+    extension = {
+        "PNG": ".png",
+        "JPEG": ".jpg",
+        "JPG": ".jpg",
+        "WEBP": ".webp",
+        "GIF": ".gif",
+        "BMP": ".bmp",
+        "TIFF": ".tiff"
+    }.get(fmt)
     if not extension:
-        raise HTTPException(status_code=415, detail="仅支持 PNG、JPEG 或 WebP 图片")
+        return ".png"
     return extension
 
 

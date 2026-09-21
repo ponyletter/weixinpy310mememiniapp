@@ -179,12 +179,12 @@
         <image class="mat-modal-img" src="{{activeMatItem.url || activeMatItem.thumb_url}}" mode="aspectFit"></image>
       </view>
       <view class="mat-modal-actions">
-        <button class="btn-mat-save" bindtap="saveMaterialToAlbum">
-          📥 保存到相册
+        <button class="btn-mat-save" style="width: 100%;" bindtap="saveMaterialToAlbum">
+          📥 保存到手机相册
         </button>
-        <button class="btn-mat-use" bindtap="useMaterialForSticker16">
-          ⚡ 用此图做16款表情
-        </button>
+      </view>
+      <view class="mat-modal-tip">
+        💡 保存到相册后，可前往「1图变16张表情」选取作为参考图
       </view>
     </view>
   </view>

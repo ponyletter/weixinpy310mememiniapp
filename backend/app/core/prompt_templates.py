@@ -366,11 +366,21 @@ def build_sticker16_prompt(
         "16. dashing away with backpack waving goodbye. "
     )
 
+    if style in style_map:
+        style_key = style_map[style]
+        style_prompt_text = style_prompts.get(style_key, style_prompts["wechat_sticker"])
+    elif style in style_prompts:
+        style_prompt_text = style_prompts[style]
+    elif style and style.strip():
+        style_prompt_text = f"custom art style: {style.strip()}, clean sticker aesthetic, 2D vector chibi cartoon, high quality lineart"
+    else:
+        style_prompt_text = style_prompts["wechat_sticker"]
+
     action_extra = f" Additional custom nuance: {custom_action}." if custom_action else ""
 
     prompt = (
         f"A master emoji sticker sheet depicting {char_id}. "
-        f"Art style: {style_prompts.get(style_key, style_prompts['wechat_sticker'])}. "
+        f"Art style: {style_prompt_text}. "
         f"Framing: {comp_prompts.get(comp_key, comp_prompts['bust'])}. "
         f"Background: {bg_prompts.get(background, bg_prompts['white'])}. "
         f"STRICT CHARACTER IDENTITY CONSISTENCY: Every single cell of the 16 panels MUST depict the EXACT SAME character. "

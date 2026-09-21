@@ -1,7 +1,7 @@
 <view class="container">
-  <!-- 顶部标题引导区 -->
+  <!-- 顶部标题引导区 (去除敏感宣传词) -->
   <view class="page-heading">
-    <view class="heading-badge">全新AI功能</view>
+    <view class="heading-badge">🔥 热门表情贴纸工坊</view>
     <text class="page-title">一张照片变出 16 张表情包</text>
     <text class="page-subtitle">上传一张自拍、萌宠或从素材库保存的表情，一键生成 16 款生动实用的聊天表情贴纸。</text>
   </view>
@@ -21,14 +21,14 @@
     <view class="section-title">
       <text class="section-step">1</text>
       <text class="section-name">上传参考图</text>
-      <text class="section-tag">单张人物 / 萌宠 / 表情</text>
+      <text class="section-tag">人物 / 萌宠 / 表情素材</text>
     </view>
 
     <view class="upload-box" bindtap="chooseImage">
       <view wx:if="{{!refImagePath}}" class="upload-placeholder">
         <text class="upload-icon">📷</text>
         <text class="upload-main-text">点击上传照片 / 表情包</text>
-        <text class="upload-sub-text">支持相册自拍、生活照或从素材库保存的图片</text>
+        <text class="upload-sub-text">支持相册照片、动图或从素材库保存的图片</text>
       </view>
       <view wx:else class="upload-preview" catchtap="preventBubble">
         <image class="preview-img" src="{{refImagePath}}" mode="aspectFit" bindtap="previewRefImage"></image>
@@ -39,33 +39,108 @@
       </view>
     </view>
 
-    <!-- 2. 场景主题选择 -->
-    <view class="section-title" style="margin-top: 22px;">
+    <!-- 2. 台词文字模式选择 -->
+    <view class="section-title" style="margin-top: 24px;">
       <text class="section-step">2</text>
-      <text class="section-name">选择场景主题</text>
-      <text class="section-tag">决定表情类型</text>
+      <text class="section-name">台词文字模式</text>
+      <text class="section-tag">默认纯表情更自由</text>
     </view>
-    <view class="theme-grid">
+
+    <view class="pill-group">
       <view 
-        wx:for="{{themePackages}}" 
-        wx:key="id" 
-        class="theme-chip {{selectedTheme === item.id ? 'active' : ''}}"
-        bindtap="selectTheme"
-        data-id="{{item.id}}"
+        class="pill-item {{textMode === 'none' ? 'active' : ''}}" 
+        bindtap="selectTextMode" 
+        data-mode="none"
       >
-        <text class="theme-icon">{{item.icon}}</text>
-        <view class="theme-info">
-          <text class="theme-name">{{item.name}}</text>
-          <text class="theme-desc">{{item.desc}}</text>
+        <text class="pill-title">🈳 纯表情无文字</text>
+        <text class="pill-sub">默认推荐 · 画面纯净自由斗图</text>
+      </view>
+      <view 
+        class="pill-item {{textMode === 'auto' ? 'active' : ''}}" 
+        bindtap="selectTextMode" 
+        data-mode="auto"
+      >
+        <text class="pill-title">💬 场景主题配字</text>
+        <text class="pill-sub">职场生存/群聊斗图高频短句</text>
+      </view>
+      <view 
+        class="pill-item {{textMode === 'custom' ? 'active' : ''}}" 
+        bindtap="selectTextMode" 
+        data-mode="custom"
+      >
+        <text class="pill-title">✏️ 自定义16格台词</text>
+        <text class="pill-sub">自由输入每一帧说话台词</text>
+      </view>
+    </view>
+
+    <!-- 2.1 场景主题选择 (仅在 auto 模式显示) -->
+    <view wx:if="{{textMode === 'auto'}}" class="sub-panel">
+      <text class="sub-panel-label">选择场景主题预设：</text>
+      <view class="theme-grid">
+        <view 
+          wx:for="{{themePackages}}" 
+          wx:key="id" 
+          class="theme-chip {{selectedTheme === item.id ? 'active' : ''}}"
+          bindtap="selectTheme"
+          data-id="{{item.id}}"
+        >
+          <text class="theme-icon">{{item.icon}}</text>
+          <view class="theme-info">
+            <text class="theme-name">{{item.name}}</text>
+            <text class="theme-desc">{{item.desc}}</text>
+          </view>
         </view>
       </view>
     </view>
 
-    <!-- 3. 贴纸画风选择 -->
-    <view class="section-title" style="margin-top: 22px;">
+    <!-- 2.2 自定义台词输入框 (仅在 custom 模式显示) -->
+    <view wx:if="{{textMode === 'custom'}}" class="sub-panel">
+      <text class="sub-panel-label">输入16格台词 (每行一句，自动对齐16款表情)：</text>
+      <textarea 
+        class="custom-texts-textarea" 
+        placeholder="收到&#10;好的老板&#10;疯狂搬砖&#10;摸鱼中&#10;头秃了&#10;我太难了&#10;别催了&#10;下班溜了..."
+        value="{{customTexts}}"
+        bindinput="onInputCustomTexts"
+        maxlength="300"
+      ></textarea>
+    </view>
+
+    <!-- 3. 构图视角选择 -->
+    <view class="section-title" style="margin-top: 24px;">
       <text class="section-step">3</text>
+      <text class="section-name">构图视角</text>
+      <text class="section-tag">手势动作更生动</text>
+    </view>
+    <view class="composition-grid">
+      <view 
+        class="comp-chip {{composition === 'bust' ? 'active' : ''}}"
+        bindtap="selectComposition"
+        data-comp="bust"
+      >
+        <text class="comp-icon">👤</text>
+        <view class="comp-info">
+          <text class="comp-name">半身手势 (默认推荐)</text>
+          <text class="comp-desc">呈现丰富双手手势与夸张肢体动作</text>
+        </view>
+      </view>
+      <view 
+        class="comp-chip {{composition === 'closeup' ? 'active' : ''}}"
+        bindtap="selectComposition"
+        data-comp="closeup"
+      >
+        <text class="comp-icon">🔍</text>
+        <view class="comp-info">
+          <text class="comp-name">大头微表情</text>
+          <text class="comp-desc">聚焦面部五官表情与搞怪神态</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 4. 贴纸画风选择 -->
+    <view class="section-title" style="margin-top: 24px;">
+      <text class="section-step">4</text>
       <text class="section-name">贴纸画风</text>
-      <text class="section-tag">微信统一规范</text>
+      <text class="section-tag">规范统一</text>
     </view>
     <view class="style-grid">
       <view 
@@ -80,29 +155,40 @@
       </view>
     </view>
 
-    <!-- 4. 补充人设特征 (可选) -->
-    <view class="section-title" style="margin-top: 22px;">
-      <text class="section-step">4</text>
+    <!-- 4.1 自定义画风输入框 (仅选自定义画风时显示) -->
+    <view wx:if="{{selectedStyle === 'custom'}}" class="sub-panel">
+      <input 
+        class="desc-input" 
+        placeholder="例如：复古美式插画、赛博朋克像素风、蜡笔手绘..." 
+        value="{{customStyleText}}"
+        bindinput="onInputCustomStyle"
+      />
+    </view>
+
+    <!-- 5. 补充外貌或动作特征 (可选) -->
+    <view class="section-title" style="margin-top: 24px;">
+      <text class="section-step">5</text>
       <text class="section-name">补充外貌特征 (可选)</text>
+      <text class="section-tag">提升角色还原度</text>
     </view>
     <input 
       class="desc-input" 
-      placeholder="例如：戴圆框眼镜的短发青年、白色带橘斑小猫..." 
+      placeholder="例如：戴圆框眼镜的青年、白色带橘斑小猫、穿黄色卫衣..." 
       value="{{characterDesc}}"
       bindinput="onInputDesc"
     />
+  </view>
 
-    <!-- 底部大按钮 -->
-    <view class="submit-wrap">
-      <button 
-        class="btn-primary btn-make" 
-        bindtap="startMakeStickers"
-        disabled="{{isGenerating}}"
-      >
-        <text wx:if="{{!isGenerating}}">🚀 开始制作 16 款表情贴纸 (消耗1次额度)</text>
-        <text wx:else>⏳ 正在排队绘制中...</text>
-      </button>
-    </view>
+  <!-- ==================== 底部固定操作栏 (安全区适配，杜绝挤压) ==================== -->
+  <view class="bottom-dock">
+    <button 
+      class="btn-primary btn-make" 
+      bindtap="startMakeStickers"
+      disabled="{{isGenerating}}"
+    >
+      <text wx:if="{{!isGenerating}}">🚀 开始制作 16 款表情贴纸 (消耗1次额度)</text>
+      <text wx:else>⏳ 正在排队绘制中...</text>
+    </button>
   </view>
 
   <!-- ==================== 制作结果弹窗 (新界面) ==================== -->
@@ -156,7 +242,7 @@
           </view>
           <view class="loading-meta">
             <text class="loading-time">已耗时: {{elapsedSeconds}}s / 预计 32s</text>
-            <text class="loading-hint">✨ 预计 25~35 秒完成，无需加字直接可用</text>
+            <text class="loading-hint">✨ 预计 25~35 秒完成，默认纯净无字直接可用</text>
           </view>
           <view class="loading-spinner-box">
             <view class="loading-spinner"></view>
@@ -173,7 +259,7 @@
             </text>
           </view>
 
-          <!-- 4x4 网格 -->
+          <!-- 4x4 网格 (完美 1:1 比例与防空白加载) -->
           <view class="stickers-grid">
             <view 
               wx:for="{{stickersList}}" 
@@ -182,18 +268,22 @@
               bindtap="toggleSelectSticker"
               data-index="{{index}}"
             >
-              <image 
-                class="sticker-img" 
-                src="{{item.displayUrl}}" 
-                mode="aspectFit" 
-                lazy-load="true"
-                catchtap="viewStickerLarge"
-                data-index="{{index}}"
-              ></image>
-              <view class="sticker-check {{item.selected ? 'checked' : ''}}">
-                {{item.selected ? '✓' : ''}}
+              <view class="sticker-card-inner">
+                <image 
+                  class="sticker-img" 
+                  src="{{item.displayUrl}}" 
+                  mode="aspectFit" 
+                  lazy-load="true"
+                  catchtap="viewStickerLarge"
+                  data-index="{{index}}"
+                  binderror="onStickerImageError"
+                ></image>
+                <view class="sticker-check {{item.selected ? 'checked' : ''}}">
+                  {{item.selected ? '✓' : ''}}
+                </view>
+                <view class="sticker-index-tag">{{index + 1}}</view>
+                <view wx:if="{{item.text}}" class="sticker-caption-pill">{{item.text}}</view>
               </view>
-              <view class="sticker-index-tag">{{index + 1}}</view>
             </view>
           </view>
         </view>
