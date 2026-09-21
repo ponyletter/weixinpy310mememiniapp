@@ -1313,6 +1313,7 @@ def preview_prompt(
 async def debug_test_sticker16(
     ref_image: Optional[UploadFile] = File(None),
     image: Optional[UploadFile] = File(None),
+    material_url: Optional[str] = Form(None),
     sample_id: Optional[str] = Form(None),
     character_desc: str = Form(""),
     style: Optional[str] = Form(None),
@@ -1336,6 +1337,15 @@ async def debug_test_sticker16(
 
     if upload_file and getattr(upload_file, "filename", None):
         ref_image_bytes = await read_limited_upload(upload_file, settings.MAX_IMAGE_UPLOAD_MB)
+    elif material_url and material_url.startswith("http"):
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(material_url)
+                if r.status_code == 200:
+                    ref_image_bytes = r.content
+        except Exception as e:
+            logger.warning(f"Failed to fetch material_url {material_url}: {e}")
     elif sample_id:
         sample_path = settings.SAMPLES_DIR / f"{sample_id}.png"
         if not sample_path.exists():

@@ -4,23 +4,32 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>表情包制作工坊 · 微信小程序功能控制台</title>
+  <!-- JSZip 用于客户端快速打包当前排版的高清表情包 -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     :root {
-      --bg-primary: #0f141f;
-      --bg-card: #182234;
-      --bg-card-hover: #222f46;
-      --border-color: #2a3a54;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
+      --bg-primary: #f6f8fb;
+      --bg-card: #ffffff;
+      --bg-card-subtle: #f8fafc;
+      --bg-card-hover: #f1f5f9;
+      --border-color: #e2e8f0;
+      --border-focus: #07c160;
+      --text-main: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
       --wechat-green: #07c160;
       --wechat-green-hover: #06ad56;
-      --accent-purple: #8b5cf6;
+      --wechat-green-light: #f0fdf4;
+      --wechat-green-border: #bbf7d0;
       --accent-blue: #3b82f6;
       --accent-orange: #f59e0b;
       --accent-red: #ef4444;
       --radius-sm: 8px;
-      --radius-md: 14px;
-      --radius-lg: 20px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.1);
     }
 
     * {
@@ -34,39 +43,39 @@
       background-color: var(--bg-primary);
       color: var(--text-main);
       line-height: 1.5;
-      padding: 16px 12px 60px;
+      padding: 16px 14px 60px;
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
 
     .container {
-      max-width: 1240px;
+      max-width: 1280px;
       margin: 0 auto;
     }
 
-    /* 微信风格 Toast 模拟组件 */
+    /* 微信风格原生 Toast 模拟组件 (深色半透明胶囊，与真机一致) */
     .wx-toast {
       position: fixed;
       top: 45%;
       left: 50%;
       transform: translate(-50%, -50%) scale(0.9);
-      background: rgba(18, 22, 28, 0.94);
+      background: rgba(18, 22, 28, 0.92);
       color: #ffffff;
-      padding: 20px 24px;
+      padding: 18px 24px;
       border-radius: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      min-width: 136px;
-      max-width: 280px;
+      gap: 10px;
+      min-width: 140px;
+      max-width: 320px;
       z-index: 99999;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(12px);
       text-align: center;
     }
     .wx-toast.show {
@@ -75,12 +84,12 @@
       pointer-events: auto;
     }
     .wx-toast-icon {
-      width: 42px;
-      height: 42px;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
+      font-size: 26px;
     }
     .wx-toast-text {
       font-size: 14px;
@@ -88,19 +97,19 @@
       letter-spacing: 0.3px;
     }
 
-    /* Header */
+    /* 顶部白底 Header */
     .header {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
-      padding: 20px 24px;
+      padding: 18px 24px;
       margin-bottom: 16px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+      box-shadow: var(--shadow-sm);
     }
 
     .header-left {
@@ -110,21 +119,22 @@
     }
 
     .logo-badge {
-      width: 48px;
-      height: 48px;
-      background: linear-gradient(135deg, #07c160 0%, #10b981 60%, #3b82f6 100%);
-      border-radius: 14px;
+      width: 46px;
+      height: 46px;
+      background: linear-gradient(135deg, #07c160 0%, #10b981 60%, #059669 100%);
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 24px;
-      box-shadow: 0 6px 18px rgba(7, 193, 96, 0.35);
+      box-shadow: 0 4px 12px rgba(7, 193, 96, 0.25);
+      color: #fff;
     }
 
     .header-title h1 {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--text-main);
       margin-bottom: 2px;
     }
 
@@ -147,29 +157,29 @@
       border-radius: 20px;
       font-size: 12px;
       font-weight: 600;
-      background: rgba(7, 193, 96, 0.12);
-      color: #07c160;
-      border: 1px solid rgba(7, 193, 96, 0.3);
+      background: var(--wechat-green-light);
+      color: var(--wechat-green);
+      border: 1px solid var(--wechat-green-border);
     }
 
     .header-link-btn {
-      padding: 7px 14px;
+      padding: 6px 14px;
       font-size: 12px;
       font-weight: 600;
       border-radius: 20px;
       border: 1px solid var(--border-color);
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-muted);
+      background: #f8fafc;
+      color: var(--text-secondary);
       text-decoration: none;
       transition: all 0.2s;
     }
     .header-link-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: #ffffff;
-      border-color: #64748b;
+      background: #f1f5f9;
+      color: var(--text-main);
+      border-color: #cbd5e1;
     }
 
-    /* 微信风格主导航 Tabs */
+    /* 微信风格主导航 Tabs (白底卡片) */
     .wx-nav-tabs {
       display: flex;
       background: var(--bg-card);
@@ -178,20 +188,21 @@
       padding: 6px;
       margin-bottom: 20px;
       gap: 6px;
+      box-shadow: var(--shadow-sm);
       overflow-x: auto;
     }
 
     .nav-tab-item {
       flex: 1;
-      min-width: 140px;
+      min-width: 150px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       padding: 10px 16px;
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 600;
       color: var(--text-muted);
       border: none;
@@ -201,14 +212,14 @@
     }
 
     .nav-tab-item:hover {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      background: #f8fafc;
     }
 
     .nav-tab-item.active {
       background: var(--wechat-green);
       color: #ffffff;
-      box-shadow: 0 4px 12px rgba(7, 193, 96, 0.35);
+      box-shadow: 0 3px 10px rgba(7, 193, 96, 0.3);
     }
 
     /* 各功能面板容器 */
@@ -217,18 +228,18 @@
     }
     .tab-view-panel.active {
       display: block;
-      animation: fadeIn 0.25s ease forwards;
+      animation: fadeIn 0.2s ease forwards;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
     /* 布局网格 */
     .main-grid {
       display: grid;
-      grid-template-columns: 440px 1fr;
+      grid-template-columns: 430px 1fr;
       gap: 20px;
       align-items: start;
     }
@@ -239,48 +250,50 @@
       }
     }
 
-    /* 卡片通用样式 */
+    /* 卡片通用白底样式 */
     .card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       padding: 18px 20px;
       margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
     }
 
     .card-title {
-      font-size: 14px;
+      font-size: 14.5px;
       font-weight: 700;
       margin-bottom: 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      color: #ffffff;
+      color: var(--text-main);
     }
 
     .step-tag {
       font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 10px;
-      background: rgba(7, 193, 96, 0.15);
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: var(--wechat-green-light);
       color: var(--wechat-green);
+      border: 1px solid var(--wechat-green-border);
       font-weight: 600;
     }
 
     /* 上传区域 */
     .upload-box {
-      border: 2px dashed var(--border-color);
+      border: 2px dashed #cbd5e1;
       border-radius: var(--radius-sm);
       padding: 24px 16px;
       text-align: center;
       cursor: pointer;
-      background: rgba(255, 255, 255, 0.02);
+      background: #fafbfc;
       transition: all 0.2s;
       position: relative;
     }
     .upload-box:hover {
       border-color: var(--wechat-green);
-      background: rgba(7, 193, 96, 0.04);
+      background: var(--wechat-green-light);
     }
     .upload-preview {
       display: none;
@@ -289,6 +302,7 @@
       max-width: 180px;
       border-radius: var(--radius-sm);
       overflow: hidden;
+      box-shadow: var(--shadow-sm);
     }
     .upload-preview img {
       width: 100%;
@@ -301,7 +315,7 @@
       position: absolute;
       top: 6px;
       right: 6px;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.65);
       color: #fff;
       border: none;
       width: 24px;
@@ -310,6 +324,10 @@
       cursor: pointer;
       font-size: 12px;
       line-height: 24px;
+      transition: background 0.2s;
+    }
+    .btn-clear-img:hover {
+      background: rgba(0, 0, 0, 0.85);
     }
 
     /* 样本横向滑动条 */
@@ -319,7 +337,7 @@
       border-top: 1px dashed var(--border-color);
     }
     .sample-strip p {
-      font-size: 11px;
+      font-size: 11.5px;
       color: var(--text-muted);
       margin-bottom: 8px;
     }
@@ -337,7 +355,7 @@
       cursor: pointer;
       overflow: hidden;
       transition: all 0.2s;
-      background: #000;
+      background: #f1f5f9;
     }
     .sample-thumb img {
       width: 100%;
@@ -349,7 +367,7 @@
     }
     .sample-thumb.selected {
       border-color: var(--wechat-green);
-      box-shadow: 0 0 0 2px rgba(7, 193, 96, 0.4);
+      box-shadow: 0 0 0 2px rgba(7, 193, 96, 0.3);
     }
 
     /* 单选卡片网格 */
@@ -364,23 +382,23 @@
       border-radius: var(--radius-sm);
       padding: 12px 10px;
       cursor: pointer;
-      background: rgba(255, 255, 255, 0.02);
+      background: #fafbfc;
       transition: all 0.2s;
       text-align: left;
     }
     .option-card:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: #475569;
+      background: #f1f5f9;
+      border-color: #cbd5e1;
     }
     .option-card.active {
       border-color: var(--wechat-green);
-      background: rgba(7, 193, 96, 0.1);
+      background: var(--wechat-green-light);
       box-shadow: 0 0 0 1px var(--wechat-green);
     }
     .option-title {
       font-size: 13px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--text-main);
       margin-bottom: 2px;
       display: flex;
       align-items: center;
@@ -391,25 +409,26 @@
       color: var(--text-muted);
     }
 
-    /* 输入框 */
+    /* 输入框组件 */
     .form-input, .form-select, .form-textarea {
       width: 100%;
-      padding: 10px 12px;
-      background: rgba(15, 20, 31, 0.8);
-      border: 1px solid var(--border-color);
+      padding: 9px 12px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
       border-radius: var(--radius-sm);
-      color: #ffffff;
+      color: var(--text-main);
       font-size: 13px;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
     .form-input:focus, .form-select:focus, .form-textarea:focus {
       border-color: var(--wechat-green);
+      box-shadow: 0 0 0 2px rgba(7, 193, 96, 0.15);
     }
 
-    /* 按钮 */
+    /* 按钮规范 */
     .btn {
-      padding: 10px 18px;
+      padding: 9px 16px;
       font-size: 13px;
       font-weight: 600;
       border-radius: var(--radius-sm);
@@ -419,31 +438,43 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.18s;
       text-decoration: none;
     }
     .btn-wechat {
       background: var(--wechat-green);
       color: #ffffff;
-      box-shadow: 0 4px 14px rgba(7, 193, 96, 0.35);
+      box-shadow: 0 3px 10px rgba(7, 193, 96, 0.28);
     }
     .btn-wechat:hover {
       background: var(--wechat-green-hover);
       transform: translateY(-1px);
     }
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.08);
-      color: #ffffff;
+      background: #f1f5f9;
+      color: var(--text-secondary);
       border: 1px solid var(--border-color);
     }
     .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.14);
+      background: #e2e8f0;
+      color: var(--text-main);
+    }
+    .btn-white {
+      background: #ffffff;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-white:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: var(--text-main);
     }
     .btn-block {
       width: 100%;
     }
     .btn-hero {
-      padding: 14px 20px;
+      padding: 13px 20px;
       font-size: 15px;
       border-radius: var(--radius-md);
       width: 100%;
@@ -454,15 +485,16 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 16px;
-      background: rgba(15, 20, 31, 0.6);
+      padding: 12px 16px;
+      background: #fafbfc;
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
       margin-bottom: 16px;
     }
     .step-flow-item {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       font-size: 12px;
       color: var(--text-muted);
       font-weight: 500;
@@ -475,26 +507,127 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.1);
+      background: #e2e8f0;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 11px;
+      color: #64748b;
     }
     .step-flow-item.active .step-flow-dot {
       background: var(--wechat-green);
       color: #fff;
     }
     .step-flow-arrow {
-      color: #475569;
+      color: #cbd5e1;
       font-size: 12px;
     }
 
-    /* 4x4 静态贴纸结果网格 */
+    /* =========================================================================
+       实时排版控制面板 (Typography & Caption Live Controller)
+       ========================================================================= */
+    .typography-control-box {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .typo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .typo-row:last-child {
+      margin-bottom: 0;
+    }
+    .typo-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 68px;
+    }
+    .typo-toggle-btn {
+      padding: 5px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+    .typo-toggle-btn.active {
+      background: var(--wechat-green);
+      color: #ffffff;
+      border-color: var(--wechat-green);
+      box-shadow: 0 2px 6px rgba(7, 193, 96, 0.25);
+    }
+    .font-select {
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 140px;
+    }
+    .slider-wrap input[type="range"] {
+      flex: 1;
+      accent-color: var(--wechat-green);
+      cursor: pointer;
+    }
+    .slider-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 38px;
+    }
+    .color-swatches {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .color-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 1px #cbd5e1;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .color-dot:hover {
+      transform: scale(1.15);
+    }
+    .color-dot.active {
+      box-shadow: 0 0 0 2px var(--wechat-green);
+      transform: scale(1.15);
+    }
+    .color-input-native {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    /* 4x4 静态贴纸结果网格 (干净明亮的白色卡片) */
     .stickers-16-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 16px;
     }
     .sticker-cell {
@@ -506,20 +639,21 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      border: 2px solid transparent;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      transition: transform 0.15s, border-color 0.15s;
+      border: 2px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
       cursor: pointer;
     }
     .sticker-cell:hover {
       transform: translateY(-2px);
       border-color: var(--wechat-green);
+      box-shadow: var(--shadow-md);
     }
     .sticker-cell.selected {
       border-color: var(--wechat-green);
-      box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.5);
+      box-shadow: 0 0 0 2px var(--wechat-green);
     }
-    .sticker-cell img {
+    .sticker-cell canvas {
       width: 100%;
       height: 100%;
       object-fit: contain;
@@ -529,39 +663,80 @@
       position: absolute;
       top: 6px;
       right: 6px;
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
-      background: rgba(0,0,0,0.5);
-      border: 2px solid #ffffff;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1.5px solid #cbd5e1;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #ffffff;
+      color: transparent;
       font-size: 11px;
       font-weight: bold;
-      transition: all 0.2s;
+      transition: all 0.18s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      z-index: 2;
     }
     .sticker-cell.selected .sticker-checkbox {
       background: var(--wechat-green);
       border-color: var(--wechat-green);
+      color: #ffffff;
     }
     .sticker-num-badge {
       position: absolute;
-      bottom: 4px;
-      left: 4px;
-      background: rgba(0,0,0,0.65);
-      color: #fff;
+      top: 6px;
+      left: 6px;
+      background: rgba(15, 23, 42, 0.7);
+      color: #ffffff;
       font-size: 10px;
       padding: 1px 6px;
       border-radius: 6px;
+      font-weight: 700;
+      z-index: 2;
+      backdrop-filter: blur(4px);
+    }
+    /* 单张悬浮快捷工具栏 */
+    .cell-hover-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 100%);
+      padding: 14px 6px 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 3;
+    }
+    .sticker-cell:hover .cell-hover-bar {
+      opacity: 1;
+    }
+    .cell-action-btn {
+      background: rgba(255, 255, 255, 0.95);
+      border: none;
+      color: #0f172a;
+      border-radius: 4px;
+      font-size: 10.5px;
       font-weight: 600;
+      padding: 3px 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: background 0.15s;
+    }
+    .cell-action-btn:hover {
+      background: #ffffff;
+      color: var(--wechat-green);
     }
 
-    /* 动图连成播放器组件 (16张连成动图) */
+    /* 动图连成播放器组件 (白底带微信绿微光) */
     .gif-player-card {
-      background: linear-gradient(135deg, rgba(7, 193, 96, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
-      border: 1px solid rgba(7, 193, 96, 0.3);
+      background: #f0fdf4;
+      border: 1px solid var(--wechat-green-border);
       border-radius: var(--radius-md);
       padding: 16px;
       margin-top: 16px;
@@ -581,8 +756,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid var(--border-color);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
     }
     .gif-player-preview img {
       width: 100%;
@@ -602,10 +777,11 @@
       padding: 5px 12px;
       font-size: 12px;
       border-radius: 16px;
-      background: rgba(255, 255, 255, 0.08);
+      background: #ffffff;
       border: 1px solid var(--border-color);
-      color: var(--text-muted);
+      color: var(--text-secondary);
       cursor: pointer;
+      transition: all 0.15s;
     }
     .speed-btn.active {
       background: var(--wechat-green);
@@ -613,9 +789,9 @@
       border-color: var(--wechat-green);
     }
 
-    /* 文字气泡贴纸工坊 (R-02) */
+    /* 单图文字气泡贴纸工坊 (R-02) */
     .bubble-canvas-container {
-      background: #111827;
+      background: #f8fafc;
       border-radius: var(--radius-md);
       border: 1px solid var(--border-color);
       display: flex;
@@ -627,7 +803,7 @@
     }
     #bubbleCanvas {
       background: #ffffff;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      box-shadow: var(--shadow-md);
       border-radius: 8px;
       cursor: move;
       max-width: 100%;
@@ -643,8 +819,8 @@
       padding: 10px;
       border-radius: 8px;
       border: 1px solid var(--border-color);
-      background: rgba(255, 255, 255, 0.03);
-      color: #ffffff;
+      background: #ffffff;
+      color: var(--text-main);
       font-size: 12px;
       cursor: pointer;
       text-align: left;
@@ -655,11 +831,61 @@
     }
     .bubble-style-btn.active {
       border-color: var(--wechat-green);
-      background: rgba(7, 193, 96, 0.12);
+      background: var(--wechat-green-light);
       font-weight: 700;
     }
 
-    /* 素材库 (R-01) */
+    /* =========================================================================
+       精选素材库 (ChineseBQB 5,800+ 款开源素材与实时搜索)
+       ========================================================================= */
+    .mat-search-container {
+      margin-bottom: 16px;
+      background: #f8fafc;
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+    }
+    .mat-search-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .mat-search-input {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 13.5px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      outline: none;
+      background: #ffffff;
+      color: var(--text-main);
+    }
+    .mat-search-input:focus {
+      border-color: var(--wechat-green);
+      box-shadow: 0 0 0 2px rgba(7, 193, 96, 0.15);
+    }
+    .quick-tag-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .quick-tag {
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+    .quick-tag:hover {
+      border-color: var(--wechat-green);
+      color: var(--wechat-green);
+    }
+
     .materials-cat-bar {
       display: flex;
       gap: 8px;
@@ -668,52 +894,64 @@
       margin-bottom: 16px;
     }
     .mat-cat-pill {
-      padding: 7px 16px;
+      padding: 6px 14px;
       border-radius: 20px;
-      background: var(--bg-card);
+      background: #ffffff;
       border: 1px solid var(--border-color);
-      font-size: 13px;
-      color: var(--text-muted);
+      font-size: 12.5px;
+      color: var(--text-secondary);
       cursor: pointer;
       white-space: nowrap;
-      transition: all 0.2s;
+      transition: all 0.18s;
+    }
+    .mat-cat-pill:hover {
+      border-color: #cbd5e1;
+      color: var(--text-main);
     }
     .mat-cat-pill.active {
       background: var(--wechat-green);
       color: #ffffff;
       border-color: var(--wechat-green);
       font-weight: 600;
+      box-shadow: 0 2px 6px rgba(7, 193, 96, 0.25);
     }
     .materials-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 14px;
     }
     .mat-card {
-      background: var(--bg-card);
+      background: #ffffff;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
       overflow: hidden;
-      transition: all 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
       display: flex;
       flex-direction: column;
+      box-shadow: var(--shadow-sm);
     }
     .mat-card:hover {
-      border-color: #64748b;
+      border-color: var(--wechat-green);
+      box-shadow: var(--shadow-md);
       transform: translateY(-2px);
     }
     .mat-img-wrap {
-      background: #ffffff;
-      height: 160px;
+      background: #f8fafc;
+      height: 150px;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      cursor: pointer;
     }
     .mat-img-wrap img {
-      max-width: 90%;
-      max-height: 90%;
+      max-width: 88%;
+      max-height: 88%;
       object-fit: contain;
+      transition: transform 0.2s;
+    }
+    .mat-img-wrap:hover img {
+      transform: scale(1.06);
     }
     .mat-info {
       padding: 10px 12px;
@@ -723,69 +961,93 @@
       justify-content: space-between;
     }
     .mat-title {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 600;
-      color: #fff;
+      color: var(--text-main);
       margin-bottom: 8px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .mat-actions {
-      display: flex;
+    .mat-actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 6px;
     }
-    .mat-btn-use {
-      flex: 1;
-      padding: 6px;
+    .mat-btn-action {
+      padding: 5px 4px;
       font-size: 11px;
       border-radius: 6px;
-      border: none;
-      background: var(--wechat-green);
-      color: #fff;
       cursor: pointer;
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .mat-btn-make {
+      background: var(--wechat-green);
+      color: #ffffff;
+      border: none;
+    }
+    .mat-btn-make:hover {
+      background: var(--wechat-green-hover);
     }
     .mat-btn-bubble {
-      flex: 1;
-      padding: 6px;
-      font-size: 11px;
-      border-radius: 6px;
+      background: #f1f5f9;
+      color: var(--text-secondary);
       border: 1px solid var(--border-color);
-      background: rgba(255, 255, 255, 0.05);
-      color: #fff;
-      cursor: pointer;
+    }
+    .mat-btn-bubble:hover {
+      background: #e2e8f0;
+      color: var(--text-main);
+    }
+    .mat-btn-view {
+      background: #ffffff;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+    .mat-btn-download {
+      background: #f8fafc;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
     }
 
-    /* 表情合集管理 (C-01 & C-02) */
+    /* 表情合集管理 */
     .collections-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 18px;
     }
     .col-card {
-      background: var(--bg-card);
+      background: #ffffff;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       padding: 16px;
       transition: all 0.2s;
+      box-shadow: var(--shadow-sm);
     }
     .col-card:hover {
-      border-color: #64748b;
+      border-color: #cbd5e1;
+      box-shadow: var(--shadow-md);
       transform: translateY(-2px);
     }
     .col-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .col-badge {
       font-size: 11px;
       padding: 2px 8px;
       border-radius: 10px;
-      background: rgba(7, 193, 96, 0.15);
+      background: var(--wechat-green-light);
       color: var(--wechat-green);
+      border: 1px solid var(--wechat-green-border);
+      font-weight: 600;
     }
     .col-thumbs-grid {
       display: grid;
@@ -795,7 +1057,8 @@
     }
     .col-thumb-item {
       aspect-ratio: 1;
-      background: #000;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
       border-radius: 6px;
       overflow: hidden;
       display: flex;
@@ -808,15 +1071,162 @@
       object-fit: cover;
     }
 
-    /* 弹窗 Modal */
+    /* =========================================================================
+       单张表情全屏沉浸式 Lightbox 弹窗 (一张一张查看、下载保存、改词)
+       ========================================================================= */
+    .lightbox-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.85);
+      z-index: 100000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(6px);
+      animation: fadeIn 0.2s ease;
+    }
+    .lightbox-overlay.active {
+      display: flex;
+    }
+    .lightbox-card {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 580px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .lightbox-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .lightbox-counter {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--wechat-green);
+      background: var(--wechat-green-light);
+      padding: 3px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--wechat-green-border);
+    }
+    .lightbox-stage {
+      padding: 24px 20px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: #fafbfc;
+    }
+    .lightbox-canvas-wrap {
+      width: 320px;
+      height: 320px;
+      background: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #lightboxCanvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .lightbox-nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      color: var(--text-main);
+      transition: all 0.18s;
+      z-index: 5;
+    }
+    .lightbox-nav-btn:hover {
+      background: var(--wechat-green);
+      color: #ffffff;
+      border-color: var(--wechat-green);
+    }
+    .lightbox-nav-prev { left: 16px; }
+    .lightbox-nav-next { right: 16px; }
+    .lightbox-editor-bar {
+      padding: 14px 20px;
+      background: #ffffff;
+      border-top: 1px solid var(--border-color);
+    }
+    .lightbox-filmstrip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 10px 20px;
+      background: #f1f5f9;
+      border-top: 1px solid var(--border-color);
+    }
+    .filmstrip-thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      background: #ffffff;
+      cursor: pointer;
+      overflow: hidden;
+      flex-shrink: 0;
+      opacity: 0.65;
+      transition: all 0.15s;
+    }
+    .filmstrip-thumb:hover {
+      opacity: 1;
+    }
+    .filmstrip-thumb.active {
+      border-color: var(--wechat-green);
+      opacity: 1;
+      transform: scale(1.08);
+      box-shadow: 0 2px 6px rgba(7, 193, 96, 0.3);
+    }
+    .filmstrip-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .lightbox-footer {
+      padding: 14px 20px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* 通用弹窗 Modal */
     .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.75);
-      z-index: 10000;
+      background: rgba(15, 23, 42, 0.7);
+      z-index: 99990;
       display: none;
       align-items: center;
       justify-content: center;
@@ -827,7 +1237,7 @@
       display: flex;
     }
     .modal-card {
-      background: var(--bg-card);
+      background: #ffffff;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       width: 100%;
@@ -835,27 +1245,27 @@
       max-height: 90vh;
       overflow-y: auto;
       padding: 24px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      box-shadow: var(--shadow-lg);
       position: relative;
     }
   </style>
 </head>
 <body>
 
-  <!-- 微信原生风格 Toast -->
+  <!-- 微信原生风格 Toast 组件 -->
   <div class="wx-toast" id="wxToast">
     <div class="wx-toast-icon" id="wxToastIcon">✓</div>
     <div class="wx-toast-text" id="wxToastText">已完成</div>
   </div>
 
   <div class="container">
-    <!-- 头部导航条 -->
+    <!-- 头部白底导航条 -->
     <header class="header">
       <div class="header-left">
         <div class="logo-badge">💬</div>
         <div class="header-title">
           <h1>表情包制作工坊 · 功能测试控制台</h1>
-          <p>微信小程序扩展功能验证台 · 16款表情贴纸 · 单图文字气泡 · 精选素材库 · 表情合集</p>
+          <p>微信小程序扩展验证台 · 16款表情贴纸 · 单图文字气泡 · 5800+ 开源素材库 · 表情合集</p>
         </div>
       </div>
       <div class="header-actions">
@@ -876,7 +1286,7 @@
         <span>💬 单图文字气泡工坊</span>
       </button>
       <button class="nav-tab-item" onclick="switchMainTab('tab-materials')">
-        <span>🎨 精选素材库</span>
+        <span>🎨 精选素材库 (5800+)</span>
       </button>
       <button class="nav-tab-item" onclick="switchMainTab('tab-collections')">
         <span>📁 表情合集管理</span>
@@ -893,7 +1303,7 @@
           <!-- 1. 人设参考图 -->
           <div class="card">
             <div class="card-title">
-              <span>1. 上传参考图 / 选择角色原型</span>
+              <span>1. 上传参考图 / 选择原型</span>
               <span class="step-tag">必选其一</span>
             </div>
 
@@ -901,8 +1311,8 @@
               <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="handleFileSelect(event)">
               <div id="uploadPrompt">
                 <div style="font-size: 32px; margin-bottom: 6px;">📷</div>
-                <p style="font-size: 13px; font-weight: 600; margin-bottom: 2px;">点击或拖拽上传人像/宠物照</p>
-                <span style="font-size: 11px; color: var(--text-muted);">支持 JPG / PNG / 微信自拍头像</span>
+                <p style="font-size: 13.5px; font-weight: 600; color: var(--text-main); margin-bottom: 2px;">点击或拖拽上传人像/自拍照</p>
+                <span style="font-size: 11.5px; color: var(--text-muted);">支持 JPG / PNG / 微信自拍头像 / 宠物照</span>
               </div>
               <div class="upload-preview" id="uploadPreview">
                 <img id="previewImg" src="" alt="预览">
@@ -910,9 +1320,9 @@
               </div>
             </div>
 
-            <!-- 内置参考样本 -->
+            <!-- 内置参考原型 -->
             <div class="sample-strip">
-              <p>或快速点击使用内置参考原型：</p>
+              <p>或快速使用内置参考原型：</p>
               <div class="sample-items" id="sampleContainer">
                 <div class="sample-thumb selected" data-id="kiss_sample" title="接吻卡通" onclick="selectSample('kiss_sample', this)">
                   <img src="/samples/kiss_sample.png" alt="kiss" onerror="this.src='/static/materials/mat_cute_01.png'">
@@ -920,10 +1330,10 @@
                 <div class="sample-thumb" data-id="ref_worker" title="打工人" onclick="selectSample('ref_worker', this)">
                   <img src="/samples/ref_worker.png" alt="worker" onerror="this.src='/static/materials/mat_worker_01.png'">
                 </div>
-                <div class="sample-thumb" data-id="ref_pet" title="萌宠" onclick="selectSample('ref_pet', this)">
+                <div class="sample-thumb" data-id="ref_pet" title="萌宠猫咪" onclick="selectSample('ref_pet', this)">
                   <img src="/samples/ref_pet.png" alt="pet" onerror="this.src='/static/materials/mat_cute_02.png'">
                 </div>
-                <div class="sample-thumb" data-id="ref_battle" title="Q版战斗" onclick="selectSample('ref_battle', this)">
+                <div class="sample-thumb" data-id="ref_battle" title="Q版斗图" onclick="selectSample('ref_battle', this)">
                   <img src="/samples/ref_battle.png" alt="battle" onerror="this.src='/static/materials/mat_funny_03.png'">
                 </div>
                 <div class="sample-thumb" data-id="ref_dance" title="摇摆比心" onclick="selectSample('ref_dance', this)">
@@ -933,7 +1343,7 @@
             </div>
           </div>
 
-          <!-- 2. 统一风格选择 (默认与原小程序一致的经典微信Q版Line贴纸画风) -->
+          <!-- 2. 贴纸风格选择 -->
           <div class="card">
             <div class="card-title">
               <span>2. 贴纸画风 (统一角色一致性)</span>
@@ -950,11 +1360,11 @@
               </div>
               <div class="option-card" data-value="funny_line" onclick="selectOption('style', 'funny_line', this)">
                 <div class="option-title">✏️ 魔性沙雕线描</div>
-                <div class="option-desc">黑白极简斗图神作</div>
+                <div class="option-desc">极简黑白斗图神作</div>
               </div>
               <div class="option-card" data-value="3d_toy" onclick="selectOption('style', '3d_toy', this)">
                 <div class="option-title">🧸 3D 公仔潮玩</div>
-                <div class="option-desc">立体盲盒质感</div>
+                <div class="option-desc">立体盲盒玩具质感</div>
               </div>
             </div>
 
@@ -965,21 +1375,21 @@
             <div class="option-grid">
               <div class="option-card active" data-value="bust" onclick="selectOption('comp', 'bust', this)">
                 <div class="option-title">👤 半身手势 (默认)</div>
-                <div class="option-desc">表情与手势并存</div>
+                <div class="option-desc">表情与手势动作并存</div>
               </div>
               <div class="option-card" data-value="closeup" onclick="selectOption('comp', 'closeup', this)">
                 <div class="option-title">🔍 大头微表情</div>
-                <div class="option-desc">聚焦神情细节</div>
+                <div class="option-desc">聚焦神情细节特写</div>
               </div>
             </div>
             <div class="option-grid" style="margin-bottom: 0;">
               <div class="option-card active" data-value="white" onclick="selectOption('bg', 'white', this)">
-                <div class="option-title">⚪ 白色背景</div>
-                <div class="option-desc">纯净规整稳定</div>
+                <div class="option-title">⚪ 白色背景 (规整稳定)</div>
+                <div class="option-desc">纯净白底 · 适合日常聊天</div>
               </div>
               <div class="option-card" data-value="transparent" onclick="selectOption('bg', 'transparent', this)">
-                <div class="option-title">🏁 透明背景</div>
-                <div class="option-desc">去底贴纸利于二次编辑</div>
+                <div class="option-title">🏁 透明背景 (免扣贴纸)</div>
+                <div class="option-desc">去底PNG · 利于二创合成</div>
               </div>
             </div>
           </div>
@@ -988,7 +1398,7 @@
           <div class="card">
             <div class="card-title">
               <span>4. 场景文字模板包</span>
-              <span class="step-tag">黑白描边汉字</span>
+              <span class="step-tag">智能配词</span>
             </div>
             <div class="option-grid" id="pkgOptions">
               <div class="option-card active" data-value="worker" onclick="selectOption('textPkg', 'worker', this)">
@@ -1013,36 +1423,36 @@
               </div>
               <div class="option-card" data-value="custom" onclick="selectOption('textPkg', 'custom', this)">
                 <div class="option-title">✏️ 自定义 16 格台词</div>
-                <div class="option-desc">自由填词设置</div>
+                <div class="option-desc">自由输入设置</div>
               </div>
             </div>
 
             <!-- 自定义文字编辑抽屉 -->
-            <div id="customTextContainer" style="display: none; margin-top: 12px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
-              <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">为 16 个格子指定台词（每格 2~6 字最佳）：</p>
+            <div id="customTextContainer" style="display: none; margin-top: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 8px;">为 16 个格子指定台词（每格 2~6 字最佳）：</p>
               <div id="customTextGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;"></div>
             </div>
 
-            <!-- 创意提示词补充描述 -->
+            <!-- 创意提示词微调 -->
             <div style="margin-top: 14px;">
-              <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">创意人设微调描述 (可选)：</label>
-              <textarea id="charDesc" class="form-textarea" rows="2" placeholder="例：更像原图、戴一副黑色圆框眼镜、可爱红色卫衣、表情生动夸张..."></textarea>
+              <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">人设补充描述 (可选)：</label>
+              <textarea id="charDesc" class="form-textarea" rows="2" placeholder="例如：戴一副黑色圆框眼镜、可爱红色卫衣、表情生动夸张..."></textarea>
             </div>
           </div>
 
-          <!-- 生成大按钮 -->
+          <!-- 制作大按钮 -->
           <button type="button" class="btn btn-wechat btn-hero" id="btnGenerate" onclick="startGeneration()">
             <span>🚀 制作 16 款表情贴纸 (消耗1次额度)</span>
           </button>
         </div>
 
-        <!-- 右侧：生成等待与结果看板 -->
+        <!-- 右侧：生成看板与实时文字排版 -->
         <div class="result-col">
           <!-- 微信步骤条组件 -->
           <div class="step-flow">
             <div class="step-flow-item active" id="step1">
               <span class="step-flow-dot">1</span>
-              <span>人设分析</span>
+              <span>原型分析</span>
             </div>
             <span class="step-flow-arrow">➔</span>
             <div class="step-flow-item" id="step2">
@@ -1052,7 +1462,7 @@
             <span class="step-flow-arrow">➔</span>
             <div class="step-flow-item" id="step3">
               <span class="step-flow-dot">3</span>
-              <span>网格排版</span>
+              <span>切分排版</span>
             </div>
             <span class="step-flow-arrow">➔</span>
             <div class="step-flow-item" id="step4">
@@ -1064,33 +1474,82 @@
           <!-- 结果看板卡片 -->
           <div class="card">
             <div class="card-title">
-              <span id="resultBoardTitle">16 宫格表情结果看板</span>
+              <span id="resultBoardTitle">16 宫格表情结果看板 (16张)</span>
               <div style="display: flex; gap: 8px;">
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="toggleSelectAll()">全选/反选</button>
-                <button type="button" class="btn btn-wechat" style="padding: 4px 10px; font-size: 11px;" onclick="saveSelectedStickers()">✓ 选中保存 (<span id="selectedCount">16</span>)</button>
-                <button type="button" class="btn btn-wechat" style="padding: 4px 10px; font-size: 11px;" onclick="downloadZipPack()">💾 保存整套 (ZIP)</button>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11.5px;" onclick="toggleSelectAll()">全选/反选</button>
+                <button type="button" class="btn btn-wechat" style="padding: 4px 10px; font-size: 11.5px;" onclick="saveSelectedStickers()">✓ 选中保存 (<span id="selectedCount">16</span>)</button>
+                <button type="button" class="btn btn-wechat" style="padding: 4px 10px; font-size: 11.5px;" onclick="downloadAllStickersZip()">💾 保存整套 (ZIP)</button>
+              </div>
+            </div>
+
+            <!-- =========================================================
+                 实时字体、字号、颜色无感微调面板 (无需点击确定，即刻同步)
+                 ========================================================= -->
+            <div class="typography-control-box" id="typographyControlBox">
+              <div class="typo-row">
+                <span class="typo-label">文字状态：</span>
+                <button type="button" class="typo-toggle-btn active" id="btnToggleShowText" onclick="toggleStickerText()">🔤 显示文字台词</button>
+                <span style="font-size: 11px; color: var(--text-muted); margin-left: 6px;">(点击可快速切换为纯表情)</span>
+              </div>
+
+              <div class="typo-row" id="typoDetailRows">
+                <span class="typo-label">字体类型：</span>
+                <select class="font-select" id="typoFontFamily" onchange="onTypographyChange()">
+                  <option value="sans-serif">经典粗黑体 (微信默认)</option>
+                  <option value="smiley">得意黑 (倾斜潮流感)</option>
+                  <option value="kaiti">经典楷体 (毛笔幽默感)</option>
+                  <option value="yuanti">可爱圆体 (萌系圆润)</option>
+                  <option value="songti">严肃宋体 (正经反差萌)</option>
+                </select>
+
+                <span class="typo-label" style="min-width: 45px; margin-left: 8px;">字号：</span>
+                <div class="slider-wrap">
+                  <input type="range" id="typoFontSize" min="14" max="44" value="26" oninput="onTypographyChange()">
+                  <span class="slider-val" id="typoFontSizeVal">26px</span>
+                </div>
+              </div>
+
+              <div class="typo-row" id="typoColorRows">
+                <span class="typo-label">文字颜色：</span>
+                <div class="color-swatches">
+                  <div class="color-dot active" style="background: #ffffff;" title="纯白" onclick="selectTextColor('#ffffff', this)"></div>
+                  <div class="color-dot" style="background: #111111;" title="经典黑" onclick="selectTextColor('#111111', this)"></div>
+                  <div class="color-dot" style="background: #ffe600;" title="亮黄" onclick="selectTextColor('#ffe600', this)"></div>
+                  <div class="color-dot" style="background: #ff3b30;" title="暴躁红" onclick="selectTextColor('#ff3b30', this)"></div>
+                  <div class="color-dot" style="background: #07c160;" title="微信绿" onclick="selectTextColor('#07c160', this)"></div>
+                  <input type="color" id="typoTextColorNative" class="color-input-native" value="#ffffff" title="自定义调色" oninput="onTypographyCustomColor(this.value)">
+                </div>
+
+                <span class="typo-label" style="min-width: 45px; margin-left: 12px;">描边：</span>
+                <div class="slider-wrap" style="max-width: 140px;">
+                  <input type="range" id="typoStrokeWidth" min="0" max="8" value="4" oninput="onTypographyChange()">
+                  <span class="slider-val" id="typoStrokeVal">4px</span>
+                </div>
+                <div class="color-swatches" style="margin-left: 6px;">
+                  <input type="color" id="typoStrokeColor" class="color-input-native" value="#000000" title="描边颜色" oninput="onTypographyChange()">
+                </div>
               </div>
             </div>
 
             <!-- 等待遮罩指示条 -->
-            <div id="loadingBox" style="display: none; padding: 36px 20px; text-align: center; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 16px;">
+            <div id="loadingBox" style="display: none; padding: 36px 20px; text-align: center; background: #f8fafc; border-radius: 8px; margin-bottom: 16px; border: 1px dashed var(--border-color);">
               <div style="font-size: 32px; margin-bottom: 10px;" class="pulse-ring">⏳</div>
-              <h3 style="font-size: 15px; margin-bottom: 6px;" id="loadingStatusText">正在绘制 16 帧角色生动表情...</h3>
+              <h3 style="font-size: 15px; margin-bottom: 6px; color: var(--text-main);" id="loadingStatusText">正在绘制 16 帧角色生动表情...</h3>
               <p style="font-size: 12px; color: var(--text-muted);">预计耗时 20~30 秒，请稍候</p>
             </div>
 
-            <!-- 4x4 静态贴纸展示网格 -->
+            <!-- 4x4 静态贴纸展示网格 (内置 Canvas 动态排版) -->
             <div class="stickers-16-grid" id="stickersGrid">
               <!-- 初始空态骨架占位 -->
             </div>
 
-            <!-- 延伸玩法栏：16张连成动图 (GIF轮播动效) -->
+            <!-- 延伸玩法：16张连成动图 (GIF轮播动效预览) -->
             <div class="gif-player-card" id="gifPlayerCard" style="display: none;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                <strong style="font-size: 13px; color: #fff; display: flex; align-items: center; gap: 6px;">
+                <strong style="font-size: 13.5px; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
                   <span>🔄 16张连成动图 (GIF轮播预览)</span>
                 </strong>
-                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px;" onclick="saveToMyCollectionModal()">📁 存入表情合集</button>
+                <button type="button" class="btn btn-white" style="padding: 3px 10px; font-size: 11px;" onclick="saveToMyCollectionModal()">📁 存入表情合集</button>
               </div>
               <div class="gif-player-layout">
                 <div class="gif-player-preview">
@@ -1131,7 +1590,7 @@
               <input type="file" id="bubbleFileInput" accept="image/*" style="display:none;" onchange="handleBubbleImgUpload(event)">
               <div id="bubbleUploadPrompt">
                 <div style="font-size: 28px; margin-bottom: 4px;">🖼️</div>
-                <p style="font-size: 13px; font-weight: 600;">点击上传底图照片</p>
+                <p style="font-size: 13px; font-weight: 600; color: var(--text-main);">点击上传底图照片</p>
                 <span style="font-size: 11px; color: var(--text-muted);">或从上方按钮直接从素材库选择</span>
               </div>
             </div>
@@ -1149,87 +1608,123 @@
               <input type="text" id="bubbleTextInput" class="form-input" value="收到，好的老板！" maxlength="50" oninput="renderBubbleCanvas()">
             </div>
 
-            <!-- 气泡样式选择器 -->
-            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">选择气泡对话框造型：</label>
+            <!-- 快捷常用热词 -->
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;">
+              <button type="button" class="quick-tag" onclick="setBubbleText('收到，好的老板！')">收到老板</button>
+              <button type="button" class="quick-tag" onclick="setBubbleText('你在教我做事？')">教我做事</button>
+              <button type="button" class="quick-tag" onclick="setBubbleText('摸鱼使我快乐')">摸鱼快乐</button>
+              <button type="button" class="quick-tag" onclick="setBubbleText('暗中观察.jpg')">暗中观察</button>
+              <button type="button" class="quick-tag" onclick="setBubbleText('给大佬递茶 🍵')">递茶</button>
+              <button type="button" class="quick-tag" onclick="setBubbleText('我裂开了 💥')">我裂开了</button>
+            </div>
+
+            <!-- 气泡样式选择 -->
             <div class="bubble-style-picker">
-              <button type="button" class="bubble-style-btn active" data-style="wechat_green" onclick="setBubbleStyle('wechat_green', this)">
-                <span>🟢 微信经典绿底气泡</span>
-              </button>
-              <button type="button" class="bubble-style-btn" data-style="white_pill" onclick="setBubbleStyle('white_pill', this)">
-                <span>💬 简约白底圆角气泡</span>
-              </button>
-              <button type="button" class="bubble-style-btn" data-style="comic_burst" onclick="setBubbleStyle('comic_burst', this)">
-                <span>💥 漫画爆炸狂怒框</span>
-              </button>
-              <button type="button" class="bubble-style-btn" data-style="subtitle_bar" onclick="setBubbleStyle('subtitle_bar', this)">
-                <span>⬛ 经典黑底白字字幕条</span>
-              </button>
-              <button type="button" class="bubble-style-btn" data-style="stroke_only" onclick="setBubbleStyle('stroke_only', this)">
-                <span>🔤 纯黑白粗描边文字</span>
-              </button>
-            </div>
-
-            <!-- 字号与颜色调节 -->
-            <div style="margin-top: 14px;">
-              <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">
-                <span>文字字号大小</span>
-                <span id="fontSizeVal">28px</span>
+              <div class="bubble-style-btn active" data-style="wechat_green" onclick="setBubbleStyle('wechat_green', this)">
+                <span style="color: #07c160; font-size: 16px;">💬</span>
+                <span>微信经典绿气泡</span>
               </div>
-              <input type="range" id="fontSizeSlider" min="16" max="52" value="28" style="width: 100%; accent-color: var(--wechat-green);" oninput="document.getElementById('fontSizeVal').textContent = this.value + 'px'; renderBubbleCanvas();">
-            </div>
-
-            <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between;">
-              <span style="font-size: 12px; color: var(--text-muted);">文字颜色：</span>
-              <div style="display: flex; gap: 8px;">
-                <input type="color" id="textColorPicker" value="#000000" onchange="renderBubbleCanvas()" style="width: 32px; height: 32px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+              <div class="bubble-style-btn" data-style="white_pill" onclick="setBubbleStyle('white_pill', this)">
+                <span style="font-size: 16px;">⚪</span>
+                <span>极简白底描边</span>
+              </div>
+              <div class="bubble-style-btn" data-style="comic_burst" onclick="setBubbleStyle('comic_burst', this)">
+                <span style="color: #f59e0b; font-size: 16px;">💥</span>
+                <span>热血漫画爆炸框</span>
+              </div>
+              <div class="bubble-style-btn" data-style="subtitle_bar" onclick="setBubbleStyle('subtitle_bar', this)">
+                <span style="color: #64748b; font-size: 16px;">🎬</span>
+                <span>电影字幕条</span>
+              </div>
+              <div class="bubble-style-btn" data-style="stroke_only" onclick="setBubbleStyle('stroke_only', this)">
+                <span style="font-size: 16px;">✏️</span>
+                <span>黑白粗描边字</span>
               </div>
             </div>
 
-            <p style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">
-              💡 提示：按住右侧画板中的文字气泡，可<strong>随意拖动位置</strong>！
-            </p>
+            <!-- 字号与颜色调整 -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;">
+              <div>
+                <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">字号大小：</label>
+                <input type="range" id="fontSizeSlider" min="16" max="52" value="28" style="width: 100%;" oninput="renderBubbleCanvas()">
+              </div>
+              <div>
+                <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">字体颜色：</label>
+                <input type="color" id="textColorPicker" value="#000000" style="width: 100%; height: 32px; border: none; border-radius: 4px; cursor: pointer;" oninput="renderBubbleCanvas()">
+              </div>
+            </div>
           </div>
 
-          <!-- 保存按钮 -->
           <button type="button" class="btn btn-wechat btn-hero" onclick="saveBubbleSticker()">
-            <span>💾 导出贴纸并保存到相册</span>
+            <span>📥 保存气泡表情 (到相册)</span>
           </button>
         </div>
 
-        <!-- 右侧：可交互拖拽的 Canvas 2D 贴纸画布 -->
+        <!-- 右侧：Canvas 预览与自由拖拽 -->
         <div class="result-col">
           <div class="card">
             <div class="card-title">
-              <span>可拖动文字气泡实时画布</span>
+              <span>画布实时预览 (支持鼠标/手指直接拖拽文字位置)</span>
               <button type="button" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="resetBubblePos()">居中对齐</button>
             </div>
-
             <div class="bubble-canvas-container">
-              <canvas id="bubbleCanvas" width="400" height="400"></canvas>
+              <canvas id="bubbleCanvas" width="480" height="480"></canvas>
             </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin-top: 10px; text-align: center;">
+              💡 提示：在上方画布中按住文字气泡，可自由拖动至画面的任意位置。
+            </p>
           </div>
         </div>
       </div>
     </div>
 
     <!-- ================================================================= -->
-    <!-- TAB 3: 精选素材库 (R-01 ChineseBQB Classic Memes)                 -->
+    <!-- TAB 3: 精选素材库 (5,800+ ChineseBQB 开源表情素材与搜索)             -->
     <!-- ================================================================= -->
     <div id="tab-materials" class="tab-view-panel">
       <div class="card">
         <div class="card-title">
-          <span>精选表情素材分类浏览</span>
-          <span class="step-tag" id="materialsCountTag">共 19 款精选模板</span>
+          <span>精选表情素材分类与实时搜索</span>
+          <span class="step-tag" id="materialsCountTag">共 5,871 款精选素材</span>
         </div>
 
-        <!-- 分类横向滚动条 -->
+        <!-- 关键词实时搜索栏 -->
+        <div class="mat-search-container">
+          <div class="mat-search-bar">
+            <input type="text" id="matSearchInput" class="mat-search-input" placeholder="🔍 输入关键词搜索 5800+ 款表情包 (例如: 熊猫头、打工人、猫、假笑、蘑菇头、汪星人...)" onkeydown="if(event.key==='Enter') doSearchMaterials()">
+            <button type="button" class="btn btn-wechat" style="padding: 0 20px;" onclick="doSearchMaterials()">搜索素材</button>
+          </div>
+          <div class="quick-tag-wrap">
+            <span>🔥 热门关键词：</span>
+            <span class="quick-tag" onclick="quickSearch('熊猫')">🐼 熊猫头</span>
+            <span class="quick-tag" onclick="quickSearch('打工')">💼 打工人</span>
+            <span class="quick-tag" onclick="quickSearch('猫')">🐱 喵星人</span>
+            <span class="quick-tag" onclick="quickSearch('狗')">🐶 汪星人</span>
+            <span class="quick-tag" onclick="quickSearch('假笑')">👦 假笑男孩</span>
+            <span class="quick-tag" onclick="quickSearch('罗翔')">⚖️ 罗翔老师</span>
+            <span class="quick-tag" onclick="quickSearch('悟空')">🐒 悟空</span>
+            <span class="quick-tag" onclick="quickSearch('原神')">⚔️ 原神</span>
+            <span class="quick-tag" onclick="quickSearch('程序员')">💻 程序员</span>
+            <span class="quick-tag" onclick="quickSearch('斗图')">⚡ 斗图之王</span>
+            <span class="quick-tag" style="color: var(--wechat-green);" onclick="resetMaterialsFilter()">🔄 重置全部</span>
+          </div>
+        </div>
+
+        <!-- 分类横向滚动条 (114 个精选分类) -->
         <div class="materials-cat-bar" id="materialsCatBar">
           <!-- 动态加载分类 -->
         </div>
 
-        <!-- 素材卡片列表 -->
+        <!-- 素材卡片网格 -->
         <div class="materials-grid" id="materialsListGrid">
           <!-- 动态加载素材卡片 -->
+        </div>
+
+        <!-- 加载更多分页按钮 -->
+        <div style="text-align: center; margin-top: 20px;">
+          <button type="button" class="btn btn-white" id="btnLoadMoreMat" onclick="loadMoreMaterials()" style="padding: 8px 24px;">
+            <span>加载更多素材 ⬇️</span>
+          </button>
         </div>
       </div>
     </div>
@@ -1259,12 +1754,76 @@
 
   </div> <!-- /container -->
 
+  <!-- ===================================================================
+       单张表情全屏沉浸式大图弹窗 (一张一张查看、下载保存、改词)
+       =================================================================== -->
+  <div class="lightbox-overlay" id="stickerLightboxModal" onclick="if(event.target===this) closeStickerLightbox()">
+    <div class="lightbox-card">
+      <div class="lightbox-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="lightbox-counter" id="lightboxCounter">第 01 / 16 张</span>
+          <strong style="font-size: 14px; color: var(--text-main);" id="lightboxTitle">表情单张预览</strong>
+        </div>
+        <button type="button" class="btn-clear-img" style="position: static; width: 28px; height: 28px;" onclick="closeStickerLightbox()">✕</button>
+      </div>
+
+      <!-- 居中大图画布与左右导航键 -->
+      <div class="lightbox-stage">
+        <button type="button" class="lightbox-nav-btn lightbox-nav-prev" id="btnLightboxPrev" onclick="navigateLightbox(-1)">◀</button>
+        <div class="lightbox-canvas-wrap">
+          <canvas id="lightboxCanvas" width="400" height="400"></canvas>
+        </div>
+        <button type="button" class="lightbox-nav-btn lightbox-nav-next" id="btnLightboxNext" onclick="navigateLightbox(1)">▶</button>
+      </div>
+
+      <!-- 单张即时台词编辑栏 -->
+      <div class="lightbox-editor-bar">
+        <label style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">编辑当前这张表情的台词文字：</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="lightboxCaptionInput" class="form-input" placeholder="输入台词，实时同步更新..." oninput="onLightboxCaptionInput(this.value)">
+        </div>
+      </div>
+
+      <!-- 底部 16 张快速切换胶卷缩略图条 -->
+      <div class="lightbox-filmstrip" id="lightboxFilmstrip">
+        <!-- 动态生成 16 个小缩略图 -->
+      </div>
+
+      <!-- 弹窗底部操作栏 -->
+      <div class="lightbox-footer">
+        <button type="button" class="btn btn-secondary" onclick="useCurrentLightboxForBubble()">💬 送去加气泡</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-white" onclick="closeStickerLightbox()">关闭</button>
+          <button type="button" class="btn btn-wechat" onclick="downloadCurrentLightboxSticker()">📥 保存此张表情 (PNG)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 素材原图大图查看弹窗 -->
+  <div class="lightbox-overlay" id="materialPreviewModal" onclick="if(event.target===this) closeMaterialPreview()">
+    <div class="lightbox-card" style="max-width: 480px;">
+      <div class="lightbox-header">
+        <strong style="font-size: 14px;" id="matPreviewTitle">素材大图查看</strong>
+        <button type="button" class="btn-clear-img" style="position: static;" onclick="closeMaterialPreview()">✕</button>
+      </div>
+      <div style="padding: 24px; text-align: center; background: #fafbfc;">
+        <img id="matPreviewImg" src="" alt="preview" style="max-width: 100%; max-height: 360px; object-fit: contain; border-radius: 8px; box-shadow: var(--shadow-sm);">
+      </div>
+      <div class="lightbox-footer">
+        <button type="button" class="btn btn-secondary" id="btnMatPreviewUse16">⚡ 做16张表情</button>
+        <button type="button" class="btn btn-secondary" id="btnMatPreviewUseBubble">💬 加文字气泡</button>
+        <a id="btnMatPreviewDownload" href="#" download="" class="btn btn-wechat">📥 下载原图</a>
+      </div>
+    </div>
+  </div>
+
   <!-- 创建合集弹窗 -->
   <div class="modal-overlay" id="createColModal">
     <div class="modal-card">
       <div class="card-title">
         <span>新建表情合集</span>
-        <button type="button" class="btn-clear-img" onclick="closeModal('createColModal')">✕</button>
+        <button type="button" class="btn-clear-img" style="position: static;" onclick="closeModal('createColModal')">✕</button>
       </div>
       <div style="margin-bottom: 12px;">
         <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">合集名称：</label>
@@ -1283,7 +1842,7 @@
     <div class="modal-card">
       <div class="card-title">
         <span>选择要存入的表情合集</span>
-        <button type="button" class="btn-clear-img" onclick="closeModal('addToColModal')">✕</button>
+        <button type="button" class="btn-clear-img" style="position: static;" onclick="closeModal('addToColModal')">✕</button>
       </div>
       <div id="colSelectList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 280px; overflow-y: auto;">
         <!-- 动态渲染可选合集 -->
@@ -1297,7 +1856,7 @@
     <div class="modal-card" style="max-width: 640px;">
       <div class="card-title">
         <span id="detailColTitle">合集详情</span>
-        <button type="button" class="btn-clear-img" onclick="closeModal('colDetailModal')">✕</button>
+        <button type="button" class="btn-clear-img" style="position: static;" onclick="closeModal('colDetailModal')">✕</button>
       </div>
       <p id="detailColDesc" style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;"></p>
       <div id="detailItemsGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;"></div>
@@ -1307,15 +1866,19 @@
     </div>
   </div>
 
+  <!-- ===================================================================
+       核心逻辑脚本
+       =================================================================== -->
   <script>
     // =========================================================================
-    // 全局状态与配置
+    // 全局状态管理
     // =========================================================================
     const state = {
       activeTab: 'tab-sticker16',
       sampleId: 'kiss_sample',
       uploadedFile: null,
-      style: 'wechat_sticker', // 统一为经典微信贴纸画风
+      selectedMaterialUrl: null,
+      style: 'wechat_sticker',
       comp: 'bust',
       bg: 'white',
       textPkg: 'worker',
@@ -1324,9 +1887,23 @@
       taskId: null,
       pollTimer: null,
       generatedFrames: [],
+      rawStickerImages: [],      // 16 张原始 Image 对象
+      activeCaptions: Array(16).fill(''), // 16 张当前台词
       selectedStickers: new Set(),
       zipUrl: null,
       memeResultGif: null,
+      // 实时文字排版引擎参数
+      typography: {
+        showText: true,
+        fontFamily: 'sans-serif',
+        fontSize: 26,
+        textColor: '#ffffff',
+        strokeColor: '#000000',
+        strokeWidth: 4,
+        position: 'bottom'
+      },
+      // 单张表情全屏沉浸式查看器 (Lightbox)
+      lightboxIndex: 0,
       // 动画播放器状态
       animTimer: null,
       animIndex: 0,
@@ -1335,13 +1912,14 @@
       // 文字气泡状态 (R-02)
       bubbleImg: null,
       bubbleStyle: 'wechat_green',
-      bubbleX: 200,
-      bubbleY: 300,
+      bubbleX: 240,
+      bubbleY: 360,
       isDraggingBubble: false,
-      dragStartX: 0,
-      dragStartY: 0,
-      // 素材库分类 (R-01)
+      // 素材库状态 (ChineseBQB)
       currentMatCat: 'all',
+      matSearchQuery: '',
+      matPage: 1,
+      matHasMore: true,
       // 用户凭证与合集
       token: null,
       openid: null,
@@ -1349,7 +1927,7 @@
       exploreCollections: []
     };
 
-    // 微信风格 Toast 辅助函数
+    // 微信原生风格 Toast
     function wxToast(title, icon = '✓', duration = 1800) {
       const toast = document.getElementById('wxToast');
       const iconEl = document.getElementById('wxToastIcon');
@@ -1384,21 +1962,33 @@
           localStorage.setItem('miniapp_web_auth', JSON.stringify(data));
         }
       } catch (err) {
-        console.warn('Init session fallback:', err);
+        console.warn('Session fallback:', err);
       }
     }
 
-    // 页面初始化
+    // 页面加载入口
     document.addEventListener('DOMContentLoaded', async () => {
       initEmpty16Grid();
       await initUserSession();
       await loadStickerPackages();
       await loadMaterialsCategories();
-      await loadMaterialsList('all');
+      await loadMaterialsList('all', 1, false);
       await loadExploreCollections();
       initBubbleDefaultImage();
       setupBubbleCanvasEvents();
+      setupKeyboardShortcuts();
     });
+
+    // 键盘快捷键 (支持左右键在 Lightbox 中切换)
+    function setupKeyboardShortcuts() {
+      window.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('stickerLightboxModal');
+        if (!modal.classList.contains('active')) return;
+        if (e.key === 'ArrowLeft') navigateLightbox(-1);
+        if (e.key === 'ArrowRight') navigateLightbox(1);
+        if (e.key === 'Escape') closeStickerLightbox();
+      });
+    }
 
     // 选项卡切换
     function switchMainTab(tabId) {
@@ -1409,7 +1999,7 @@
       const target = document.getElementById(tabId);
       if (target) target.classList.add('active');
 
-      const btn = Array.from(document.querySelectorAll('.nav-tab-item')).find(b => b.getAttribute('onclick').includes(tabId));
+      const btn = Array.from(document.querySelectorAll('.nav-tab-item')).find(b => b.getAttribute('onclick') && b.getAttribute('onclick').includes(tabId));
       if (btn) btn.classList.add('active');
 
       if (tabId === 'tab-bubble') {
@@ -1417,7 +2007,7 @@
       }
     }
 
-    // 初始化 16 格空占位
+    // 初始化 16 格空占位卡片
     function initEmpty16Grid() {
       const grid = document.getElementById('stickersGrid');
       grid.innerHTML = '';
@@ -1425,14 +2015,14 @@
         const cell = document.createElement('div');
         cell.className = 'sticker-cell';
         cell.innerHTML = `
-          <div style="color: #cbd5e1; font-size: 20px;">🎨</div>
+          <div style="color: #cbd5e1; font-size: 24px;">🎨</div>
           <span class="sticker-num-badge">${String(i).padStart(2, '0')}</span>
         `;
         grid.appendChild(cell);
       }
     }
 
-    // 加载场景文案包
+    // 加载文案场景模板包
     async function loadStickerPackages() {
       try {
         const resp = await fetch('/api/sticker16-packages');
@@ -1453,22 +2043,26 @@
         const inp = document.createElement('input');
         inp.className = 'form-input';
         inp.style.padding = '4px 6px';
-        inp.style.fontSize = '11px';
+        inp.style.fontSize = '11.5px';
         inp.style.textAlign = 'center';
         inp.placeholder = `格 ${i+1}`;
         inp.value = defaults[i] || '';
-        inp.oninput = (e) => { state.customTexts[i] = e.target.value.trim(); };
+        inp.oninput = (e) => { 
+          state.customTexts[i] = e.target.value.trim(); 
+          state.activeCaptions[i] = e.target.value.trim();
+        };
         state.customTexts[i] = inp.value;
         c.appendChild(inp);
       }
     }
 
-    // 上传与样本选择
+    // 参考图上传与选择
     function handleFileSelect(e) {
       const file = e.target.files[0];
       if (!file) return;
       state.uploadedFile = file;
       state.sampleId = null;
+      state.selectedMaterialUrl = null;
       document.querySelectorAll('.sample-thumb').forEach(t => t.classList.remove('selected'));
 
       const r = new FileReader();
@@ -1483,6 +2077,7 @@
     function clearFile(e) {
       if (e) e.stopPropagation();
       state.uploadedFile = null;
+      state.selectedMaterialUrl = null;
       document.getElementById('fileInput').value = '';
       document.getElementById('uploadPreview').style.display = 'none';
       document.getElementById('uploadPrompt').style.display = 'block';
@@ -1492,6 +2087,7 @@
     function selectSample(id, el) {
       state.sampleId = id;
       state.uploadedFile = null;
+      state.selectedMaterialUrl = null;
       document.getElementById('fileInput').value = '';
       document.getElementById('uploadPreview').style.display = 'none';
       document.getElementById('uploadPrompt').style.display = 'block';
@@ -1513,12 +2109,16 @@
           customBox.style.display = 'none';
           if (state.allPackages[val]) {
             renderCustomInputs(state.allPackages[val]);
+            state.activeCaptions = [...state.allPackages[val]];
+            rerenderAllStickerCanvases();
           }
         }
       }
     }
 
+    // =========================================================================
     // 启动 16 宫格制作流程
+    // =========================================================================
     async function startGeneration() {
       const btn = document.getElementById('btnGenerate');
       btn.disabled = true;
@@ -1531,6 +2131,8 @@
         const fd = new FormData();
         if (state.uploadedFile) {
           fd.append('image', state.uploadedFile);
+        } else if (state.selectedMaterialUrl) {
+          fd.append('material_url', state.selectedMaterialUrl);
         } else if (state.sampleId) {
           fd.append('sample_id', state.sampleId);
         }
@@ -1616,7 +2218,9 @@
       }
     }
 
-    // 渲染 16 宫格贴纸结果看板
+    // =========================================================================
+    // 渲染 16 宫格贴纸结果看板 (HTML5 Canvas 实时可调节排版引擎)
+    // =========================================================================
     function renderStickersResult(data) {
       const grid = document.getElementById('stickersGrid');
       grid.innerHTML = '';
@@ -1628,24 +2232,46 @@
       state.zipUrl = data.zip_url || data.stickers_pack_url || '#';
       state.memeResultGif = data.gif_url || null;
       state.selectedStickers.clear();
+      state.rawStickerImages = Array(16).fill(null);
+
+      // 初始化各格台词
+      const pkgDefaults = state.allPackages[state.textPkg] || [];
+      state.activeCaptions = state.generatedFrames.map((f, i) => {
+        return f.caption || f.text || (state.textPkg === 'custom' ? state.customTexts[i] : pkgDefaults[i]) || '';
+      });
 
       state.generatedFrames.forEach((frame, idx) => {
         state.selectedStickers.add(idx);
         const cell = document.createElement('div');
         cell.className = 'sticker-cell selected';
         cell.dataset.index = idx;
-        cell.onclick = () => toggleStickerSelection(idx, cell);
 
-        const caption = frame.caption || frame.text || '';
-        const emotion = frame.emotion ? `<span style="position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.6); color: #fff; font-size: 9px; padding: 1px 4px; border-radius: 4px;">${frame.emotion}</span>` : '';
+        // 点击卡片主体打开全屏单张查看
+        cell.onclick = (e) => {
+          if (e.target.closest('.sticker-checkbox') || e.target.closest('.cell-action-btn')) return;
+          openStickerLightbox(idx);
+        };
 
         cell.innerHTML = `
-          <img src="${frame.url}" alt="sticker ${idx+1}">
-          <div class="sticker-checkbox">✓</div>
-          ${emotion}
-          <span class="sticker-num-badge">${String(idx+1).padStart(2, '0')}${caption ? ' ' + caption : ''}</span>
+          <canvas id="stickerCanvas_${idx}" width="360" height="360"></canvas>
+          <div class="sticker-checkbox" onclick="event.stopPropagation(); toggleStickerSelection(${idx}, this.parentElement)">✓</div>
+          <span class="sticker-num-badge">${String(idx+1).padStart(2, '0')}</span>
+          <div class="cell-hover-bar">
+            <button type="button" class="cell-action-btn" onclick="event.stopPropagation(); openStickerLightbox(${idx})">🔍 查看大图</button>
+            <button type="button" class="cell-action-btn" onclick="event.stopPropagation(); downloadSingleSticker(${idx})">📥 保存</button>
+            <button type="button" class="cell-action-btn" onclick="event.stopPropagation(); promptEditCaption(${idx})">✏️ 改词</button>
+          </div>
         `;
         grid.appendChild(cell);
+
+        // 异步预加载原始贴纸切片并绘制
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          state.rawStickerImages[idx] = img;
+          renderSingleStickerCanvas(idx);
+        };
+        img.src = frame.url;
       });
 
       document.getElementById('selectedCount').textContent = state.selectedStickers.size;
@@ -1655,6 +2281,292 @@
       initGifLoopPlayer(data);
     }
 
+    // =========================================================================
+    // 实时排版绘制引擎 (HTML5 Canvas 2D)
+    // =========================================================================
+    function getFontFamilyCss(familyKey) {
+      switch (familyKey) {
+        case 'smiley': return '"Smiley Sans", "得意黑", -apple-system, sans-serif';
+        case 'kaiti': return '"STKaiti", "KaiTi", "楷体", serif';
+        case 'yuanti': return '"YouYuan", "幼圆", "PingFang SC", sans-serif';
+        case 'songti': return '"SimSun", "Songti SC", "宋体", serif';
+        default: return '-apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+      }
+    }
+
+    function renderSingleStickerCanvas(index) {
+      const canvas = document.getElementById(`stickerCanvas_${index}`);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const img = state.rawStickerImages[index];
+      const text = state.typography.showText ? (state.activeCaptions[index] || '') : '';
+
+      ctx.clearRect(0, 0, 360, 360);
+
+      // 背景色
+      if (state.bg === 'white') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 360, 360);
+      }
+
+      // 底图绘制
+      if (img && img.complete) {
+        ctx.drawImage(img, 0, 0, 360, 360);
+      }
+
+      // 文字排版绘制
+      if (text) {
+        ctx.save();
+        ctx.font = `bold ${state.typography.fontSize}px ${getFontFamilyCss(state.typography.fontFamily)}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const tx = 180;
+        let ty = 360 - state.typography.fontSize - 12;
+        if (state.typography.position === 'top') ty = state.typography.fontSize + 14;
+        if (state.typography.position === 'center') ty = 180;
+
+        // 粗描边
+        if (state.typography.strokeWidth > 0) {
+          ctx.strokeStyle = state.typography.strokeColor;
+          ctx.lineWidth = state.typography.strokeWidth * 2;
+          ctx.lineJoin = 'round';
+          ctx.miterLimit = 2;
+          ctx.strokeText(text, tx, ty);
+        }
+
+        // 主色文本
+        ctx.fillStyle = state.typography.textColor;
+        ctx.fillText(text, tx, ty);
+        ctx.restore();
+      }
+    }
+
+    function rerenderAllStickerCanvases() {
+      for (let i = 0; i < 16; i++) {
+        renderSingleStickerCanvas(i);
+      }
+      // 同步刷新 Lightbox
+      if (document.getElementById('stickerLightboxModal').classList.contains('active')) {
+        renderLightboxCanvas();
+      }
+    }
+
+    // 排版控件事件触发 (无需点击确定，即刻同步)
+    function onTypographyChange() {
+      state.typography.fontFamily = document.getElementById('typoFontFamily').value;
+      state.typography.fontSize = parseInt(document.getElementById('typoFontSize').value, 10);
+      document.getElementById('typoFontSizeVal').textContent = `${state.typography.fontSize}px`;
+
+      state.typography.strokeWidth = parseInt(document.getElementById('typoStrokeWidth').value, 10);
+      document.getElementById('typoStrokeVal').textContent = `${state.typography.strokeWidth}px`;
+      state.typography.strokeColor = document.getElementById('typoStrokeColor').value;
+
+      rerenderAllStickerCanvases();
+    }
+
+    function toggleStickerText() {
+      state.typography.showText = !state.typography.showText;
+      const btn = document.getElementById('btnToggleShowText');
+      if (state.typography.showText) {
+        btn.className = 'typo-toggle-btn active';
+        btn.textContent = '🔤 显示文字台词';
+        document.getElementById('typoDetailRows').style.opacity = '1';
+        document.getElementById('typoColorRows').style.opacity = '1';
+      } else {
+        btn.className = 'typo-toggle-btn';
+        btn.textContent = '🈳 纯表情无文字';
+        document.getElementById('typoDetailRows').style.opacity = '0.4';
+        document.getElementById('typoColorRows').style.opacity = '0.4';
+      }
+      rerenderAllStickerCanvases();
+      wxToast(state.typography.showText ? '已开启台词文字' : '已切换为纯表情', '✓', 1200);
+    }
+
+    function selectTextColor(color, el) {
+      state.typography.textColor = color;
+      document.querySelectorAll('#typoColorRows .color-dot').forEach(d => d.classList.remove('active'));
+      if (el) el.classList.add('active');
+      document.getElementById('typoTextColorNative').value = color;
+      rerenderAllStickerCanvases();
+    }
+
+    function onTypographyCustomColor(hex) {
+      state.typography.textColor = hex;
+      document.querySelectorAll('#typoColorRows .color-dot').forEach(d => d.classList.remove('active'));
+      rerenderAllStickerCanvases();
+    }
+
+    // 快捷编辑单个格子文字
+    function promptEditCaption(idx) {
+      const current = state.activeCaptions[idx] || '';
+      const newVal = prompt(`修改第 ${idx+1} 格表情台词：`, current);
+      if (newVal !== null) {
+        state.activeCaptions[idx] = newVal.trim();
+        renderSingleStickerCanvas(idx);
+        wxToast(`已更新第 ${idx+1} 格台词`, '✓');
+      }
+    }
+
+    // =========================================================================
+    // 单张表情全屏沉浸式 Lightbox (一张一张查看、下载保存、改词)
+    // =========================================================================
+    function openStickerLightbox(index) {
+      if (!state.generatedFrames.length) return;
+      state.lightboxIndex = Math.max(0, Math.min(state.generatedFrames.length - 1, index));
+      const modal = document.getElementById('stickerLightboxModal');
+      modal.classList.add('active');
+      renderLightboxFilmstrip();
+      renderLightboxView();
+    }
+
+    function closeStickerLightbox() {
+      document.getElementById('stickerLightboxModal').classList.remove('active');
+    }
+
+    function navigateLightbox(dir) {
+      const newIdx = state.lightboxIndex + dir;
+      if (newIdx >= 0 && newIdx < state.generatedFrames.length) {
+        state.lightboxIndex = newIdx;
+        renderLightboxView();
+        updateLightboxFilmstripActive();
+      }
+    }
+
+    function renderLightboxFilmstrip() {
+      const strip = document.getElementById('lightboxFilmstrip');
+      strip.innerHTML = '';
+      state.generatedFrames.forEach((frame, idx) => {
+        const thumb = document.createElement('div');
+        thumb.className = `filmstrip-thumb ${idx === state.lightboxIndex ? 'active' : ''}`;
+        thumb.id = `filmstrip_${idx}`;
+        thumb.onclick = () => {
+          state.lightboxIndex = idx;
+          renderLightboxView();
+          updateLightboxFilmstripActive();
+        };
+        thumb.innerHTML = `<img src="${frame.url}" alt="${idx+1}">`;
+        strip.appendChild(thumb);
+      });
+    }
+
+    function updateLightboxFilmstripActive() {
+      document.querySelectorAll('.filmstrip-thumb').forEach((t, i) => {
+        if (i === state.lightboxIndex) t.classList.add('active');
+        else t.classList.remove('active');
+      });
+      const activeThumb = document.getElementById(`filmstrip_${state.lightboxIndex}`);
+      if (activeThumb) activeThumb.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+
+    function renderLightboxView() {
+      const idx = state.lightboxIndex;
+      const total = state.generatedFrames.length;
+      document.getElementById('lightboxCounter').textContent = `第 ${String(idx+1).padStart(2, '0')} / ${total} 张`;
+      const caption = state.activeCaptions[idx] || '';
+      document.getElementById('lightboxTitle').textContent = caption ? `【${caption}】` : '无文字纯表情';
+      document.getElementById('lightboxCaptionInput').value = caption;
+
+      // 禁用边缘按钮
+      document.getElementById('btnLightboxPrev').style.opacity = (idx === 0) ? '0.3' : '1';
+      document.getElementById('btnLightboxNext').style.opacity = (idx === total - 1) ? '0.3' : '1';
+
+      renderLightboxCanvas();
+    }
+
+    function renderLightboxCanvas() {
+      const canvas = document.getElementById('lightboxCanvas');
+      const ctx = canvas.getContext('2d');
+      const idx = state.lightboxIndex;
+      const img = state.rawStickerImages[idx];
+      const text = state.typography.showText ? (state.activeCaptions[idx] || '') : '';
+
+      ctx.clearRect(0, 0, 400, 400);
+
+      if (state.bg === 'white') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 400, 400);
+      }
+
+      if (img && img.complete) {
+        ctx.drawImage(img, 0, 0, 400, 400);
+      }
+
+      if (text) {
+        ctx.save();
+        const scale = 400 / 360;
+        ctx.font = `bold ${Math.round(state.typography.fontSize * scale)}px ${getFontFamilyCss(state.typography.fontFamily)}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const tx = 200;
+        let ty = 400 - Math.round(state.typography.fontSize * scale) - 14;
+        if (state.typography.position === 'top') ty = Math.round(state.typography.fontSize * scale) + 16;
+        if (state.typography.position === 'center') ty = 200;
+
+        if (state.typography.strokeWidth > 0) {
+          ctx.strokeStyle = state.typography.strokeColor;
+          ctx.lineWidth = state.typography.strokeWidth * 2 * scale;
+          ctx.lineJoin = 'round';
+          ctx.miterLimit = 2;
+          ctx.strokeText(text, tx, ty);
+        }
+
+        ctx.fillStyle = state.typography.textColor;
+        ctx.fillText(text, tx, ty);
+        ctx.restore();
+      }
+    }
+
+    function onLightboxCaptionInput(newText) {
+      const idx = state.lightboxIndex;
+      state.activeCaptions[idx] = newText.trim();
+      document.getElementById('lightboxTitle').textContent = newText.trim() ? `【${newText.trim()}】` : '无文字纯表情';
+      renderLightboxCanvas();
+      renderSingleStickerCanvas(idx);
+    }
+
+    // 下载当前 Lightbox 查看的单张表情 (导出当前高清 Canvas)
+    function downloadCurrentLightboxSticker() {
+      const canvas = document.getElementById('lightboxCanvas');
+      const idx = state.lightboxIndex;
+      const filename = `sticker_${String(idx+1).padStart(2, '0')}.png`;
+      downloadCanvasAsImage(canvas, filename);
+      wxToast(`第 ${idx+1} 张表情已下载至本地/相册`, '✓');
+    }
+
+    // 下载 16 格子中的任意单张
+    function downloadSingleSticker(idx) {
+      const canvas = document.getElementById(`stickerCanvas_${idx}`);
+      if (!canvas) return;
+      const filename = `sticker_${String(idx+1).padStart(2, '0')}.png`;
+      downloadCanvasAsImage(canvas, filename);
+      wxToast(`第 ${idx+1} 张表情已下载至本地/相册`, '✓');
+    }
+
+    function downloadCanvasAsImage(canvas, filename) {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function useCurrentLightboxForBubble() {
+      const canvas = document.getElementById('lightboxCanvas');
+      const img = new Image();
+      img.onload = () => {
+        state.bubbleImg = img;
+        closeStickerLightbox();
+        switchMainTab('tab-bubble');
+        renderBubbleCanvas();
+        wxToast('已载入文字气泡工坊', '✓');
+      };
+      img.src = canvas.toDataURL('image/png');
+    }
+
+    // 选中勾选状态切换
     function toggleStickerSelection(idx, cell) {
       if (state.selectedStickers.has(idx)) {
         state.selectedStickers.delete(idx);
@@ -1678,38 +2590,61 @@
       document.getElementById('selectedCount').textContent = state.selectedStickers.size;
     }
 
-    // 下载 ZIP
-    function downloadZipPack() {
-      if (!state.zipUrl || state.zipUrl === '#') {
-        wxToast('暂未生成压缩包', '⚠️');
-        return;
-      }
-      const a = document.createElement('a');
-      a.href = state.zipUrl;
-      a.download = 'stickers_pack.zip';
-      a.click();
-      wxToast('开始下载表情压缩包', '✓');
-    }
-
-    // 选中保存 (下载选中的图片)
+    // 批量保存选中的表情
     function saveSelectedStickers() {
       if (state.selectedStickers.size === 0) {
         wxToast('请先勾选需要保存的表情', '⚠️');
         return;
       }
       state.selectedStickers.forEach(idx => {
-        const frame = state.generatedFrames[idx];
-        if (frame && frame.url) {
-          const a = document.createElement('a');
-          a.href = frame.url;
-          a.download = `sticker_${String(idx+1).padStart(2, '0')}.png`;
-          a.click();
+        const canvas = document.getElementById(`stickerCanvas_${idx}`);
+        if (canvas) {
+          downloadCanvasAsImage(canvas, `sticker_${String(idx+1).padStart(2, '0')}.png`);
         }
       });
-      wxToast(`已保存 ${state.selectedStickers.size} 张表情至相册 ✓`, '✓');
+      wxToast(`已保存 ${state.selectedStickers.size} 款高清表情至相册 ✓`, '✓');
     }
 
-    // 16 张连成动图 (GIF轮播动效) 播放器
+    // 打包整套表情为 ZIP (集成 JSZip 客户端即时高清打包)
+    async function downloadAllStickersZip() {
+      if (!state.generatedFrames.length) {
+        wxToast('暂未生成表情包', '⚠️');
+        return;
+      }
+
+      if (window.JSZip) {
+        wxToast('正在打包 16 款高清表情...', '⏳', 1500);
+        const zip = new JSZip();
+        for (let i = 0; i < 16; i++) {
+          const canvas = document.getElementById(`stickerCanvas_${i}`);
+          if (canvas) {
+            const dataUrl = canvas.toDataURL('image/png');
+            const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+            zip.file(`sticker_${String(i+1).padStart(2, '0')}.png`, base64Data, { base64: true });
+          }
+        }
+        const content = await zip.generateAsync({ type: 'blob' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(content);
+        a.download = 'stickers_pack_16.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        wxToast('整套表情 ZIP 下载已启动 ✓', '✓');
+      } else if (state.zipUrl && state.zipUrl !== '#') {
+        const a = document.createElement('a');
+        a.href = state.zipUrl;
+        a.download = 'stickers_pack.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        wxToast('开始下载表情压缩包', '✓');
+      } else {
+        wxToast('暂无压缩包链接', '⚠️');
+      }
+    }
+
+    // 16 张连成动图 (GIF轮播预览)
     function initGifLoopPlayer(data) {
       const card = document.getElementById('gifPlayerCard');
       card.style.display = 'block';
@@ -1781,6 +2716,11 @@
       r.readAsDataURL(file);
     }
 
+    function setBubbleText(txt) {
+      document.getElementById('bubbleTextInput').value = txt;
+      renderBubbleCanvas();
+    }
+
     function setBubbleStyle(styleKey, btn) {
       state.bubbleStyle = styleKey;
       document.querySelectorAll('.bubble-style-btn').forEach(b => b.classList.remove('active'));
@@ -1820,7 +2760,7 @@
       ctx.textBaseline = 'middle';
       const textMetrics = ctx.measureText(text);
       const textWidth = textMetrics.width;
-      const paddingX = 16;
+      const paddingX = 18;
       const paddingY = 12;
       const bubbleW = textWidth + paddingX * 2;
       const bubbleH = fontSize + paddingY * 2;
@@ -1830,12 +2770,11 @@
 
       // 2. 根据所选样式绘制气泡
       if (state.bubbleStyle === 'wechat_green') {
-        // 微信经典绿色对话气泡
         ctx.fillStyle = '#95ec69';
         ctx.beginPath();
         drawRoundRect(ctx, bx, by, bubbleW, bubbleH, 10);
         ctx.fill();
-        // 气泡尖角
+        // 气泡小尖角
         ctx.beginPath();
         ctx.moveTo(bx + 20, by + bubbleH);
         ctx.lineTo(bx + 14, by + bubbleH + 8);
@@ -1847,7 +2786,6 @@
         ctx.fillText(text, state.bubbleX, state.bubbleY);
 
       } else if (state.bubbleStyle === 'white_pill') {
-        // 简约白底圆角
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#222222';
         ctx.lineWidth = 3;
@@ -1861,7 +2799,6 @@
         ctx.fillText(text, state.bubbleX, state.bubbleY);
 
       } else if (state.bubbleStyle === 'comic_burst') {
-        // 漫画爆炸框
         ctx.fillStyle = '#fff000';
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 3.5;
@@ -1874,7 +2811,6 @@
         ctx.fillText(text, state.bubbleX, state.bubbleY);
 
       } else if (state.bubbleStyle === 'subtitle_bar') {
-        // 电影经典字幕条
         ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
         ctx.fillRect(0, canvas.height - bubbleH - 16, canvas.width, bubbleH + 16);
 
@@ -1883,7 +2819,6 @@
         ctx.fillText(text, canvas.width / 2, canvas.height - bubbleH / 2 - 8);
 
       } else if (state.bubbleStyle === 'stroke_only') {
-        // 纯黑白粗描边文字
         ctx.textAlign = 'center';
         ctx.lineJoin = 'round';
         ctx.lineWidth = 6;
@@ -1956,21 +2891,17 @@
 
     function saveBubbleSticker() {
       const canvas = document.getElementById('bubbleCanvas');
-      const dataUrl = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = 'custom_bubble_sticker.png';
-      a.click();
-      wxToast('已保存至相册 ✓', '✓');
+      downloadCanvasAsImage(canvas, 'custom_bubble_sticker.png');
+      wxToast('已保存气泡表情至相册 ✓', '✓');
     }
 
     function openMaterialPickerForBubble() {
       switchMainTab('tab-materials');
-      wxToast('请点击素材上的【添加气泡】', '💡', 2200);
+      wxToast('请在素材卡片上点击【加气泡】', '💡', 2200);
     }
 
     // =========================================================================
-    // TAB 3: 精选素材库 (R-01) 实现
+    // TAB 3: 精选素材库 (ChineseBQB 5,800+ 款开源素材与实时搜索)
     // =========================================================================
     async function loadMaterialsCategories() {
       try {
@@ -1979,15 +2910,17 @@
         if (res.code === 0) {
           const bar = document.getElementById('materialsCatBar');
           bar.innerHTML = '';
-          res.data.forEach((cat, idx) => {
+          res.data.forEach((cat) => {
             const pill = document.createElement('div');
             pill.className = `mat-cat-pill ${cat.id === state.currentMatCat ? 'active' : ''}`;
-            pill.textContent = `${cat.name} (${cat.count})`;
+            pill.textContent = `${cat.title} (${cat.count})`;
             pill.onclick = () => {
               state.currentMatCat = cat.id;
+              state.matSearchQuery = '';
+              document.getElementById('matSearchInput').value = '';
               document.querySelectorAll('.mat-cat-pill').forEach(p => p.classList.remove('active'));
               pill.classList.add('active');
-              loadMaterialsList(cat.id);
+              loadMaterialsList(cat.id, 1, false);
             };
             bar.appendChild(pill);
           });
@@ -1997,27 +2930,48 @@
       }
     }
 
-    async function loadMaterialsList(catId) {
+    async function loadMaterialsList(category = 'all', page = 1, append = false) {
       try {
-        const resp = await fetch(`/api/materials/list?category=${catId}&page=1&page_size=30`);
+        const url = state.matSearchQuery 
+          ? `/api/materials/search?q=${encodeURIComponent(state.matSearchQuery)}&category=${category}&page=${page}&page_size=28`
+          : `/api/materials/list?category=${category}&page=${page}&page_size=28`;
+
+        const resp = await fetch(url);
         const res = await resp.json();
         if (res.code === 0) {
           const grid = document.getElementById('materialsListGrid');
-          grid.innerHTML = '';
-          document.getElementById('materialsCountTag').textContent = `共 ${res.data.total} 款精选模板`;
+          if (!append) grid.innerHTML = '';
 
-          res.data.items.forEach(item => {
+          const data = res.data;
+          state.matPage = data.page;
+          state.matHasMore = data.has_more;
+          document.getElementById('materialsCountTag').textContent = `共 ${data.total} 款精选素材`;
+          document.getElementById('btnLoadMoreMat').style.display = data.has_more ? 'inline-block' : 'none';
+
+          if (!data.items || !data.items.length) {
+            grid.innerHTML = `
+              <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">
+                <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+                <p>未找到匹配的表情包素材，换个关键词试试吧</p>
+              </div>
+            `;
+            return;
+          }
+
+          data.items.forEach(item => {
             const card = document.createElement('div');
             card.className = 'mat-card';
             card.innerHTML = `
-              <div class="mat-img-wrap">
-                <img src="${item.url}" alt="${item.title}">
+              <div class="mat-img-wrap" onclick="openMaterialPreview('${item.url}', '${item.title.replace(/'/g, "\\'")}')">
+                <img src="${item.thumb_url || item.url}" alt="${item.title}" loading="lazy">
               </div>
               <div class="mat-info">
                 <div class="mat-title" title="${item.title}">${item.title}</div>
-                <div class="mat-actions">
-                  <button class="mat-btn-use" onclick="useMaterialForSticker16('${item.url}')">⚡ 做16张</button>
-                  <button class="mat-btn-bubble" onclick="useMaterialForBubble('${item.url}')">💬 加气泡</button>
+                <div class="mat-actions-grid">
+                  <button class="mat-btn-action mat-btn-make" onclick="useMaterialForSticker16('${item.url}')">⚡ 做16张</button>
+                  <button class="mat-btn-action mat-btn-bubble" onclick="useMaterialForBubble('${item.url}')">💬 加气泡</button>
+                  <button class="mat-btn-action mat-btn-view" onclick="openMaterialPreview('${item.url}', '${item.title.replace(/'/g, "\\'")}')">🔍 大图</button>
+                  <a class="mat-btn-action mat-btn-download" href="${item.url}" download="${item.title}.png" target="_blank">📥 保存</a>
                 </div>
               </div>
             `;
@@ -2029,29 +2983,73 @@
       }
     }
 
-    function useMaterialForSticker16(url) {
-      // 载入到 Tab 1 作为人设参考图
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        document.getElementById('previewImg').src = url;
-        document.getElementById('uploadPreview').style.display = 'block';
-        document.getElementById('uploadPrompt').style.display = 'none';
-
-        // 转化为 File 对象
-        fetch(url)
-          .then(res => res.blob())
-          .then(blob => {
-            state.uploadedFile = new File([blob], 'material_ref.png', { type: 'image/png' });
-            state.sampleId = null;
-            document.querySelectorAll('.sample-thumb').forEach(t => t.classList.remove('selected'));
-            switchMainTab('tab-sticker16');
-            wxToast('已载入素材，正在切换至16张制作', '✓');
-          });
-      };
-      img.src = url;
+    function loadMoreMaterials() {
+      if (state.matHasMore) {
+        loadMaterialsList(state.currentMatCat, state.matPage + 1, true);
+      }
     }
 
+    function doSearchMaterials() {
+      const q = document.getElementById('matSearchInput').value.trim();
+      state.matSearchQuery = q;
+      loadMaterialsList(state.currentMatCat, 1, false);
+      if (q) wxToast(`已搜索【${q}】相关素材`, '🔍', 1200);
+    }
+
+    function quickSearch(keyword) {
+      document.getElementById('matSearchInput').value = keyword;
+      state.matSearchQuery = keyword;
+      loadMaterialsList(state.currentMatCat, 1, false);
+      wxToast(`正在搜索：${keyword}`, '🔍', 1000);
+    }
+
+    function resetMaterialsFilter() {
+      state.matSearchQuery = '';
+      state.currentMatCat = 'all';
+      document.getElementById('matSearchInput').value = '';
+      document.querySelectorAll('.mat-cat-pill').forEach(p => p.classList.remove('active'));
+      const allPill = document.querySelector('.mat-cat-pill');
+      if (allPill) allPill.classList.add('active');
+      loadMaterialsList('all', 1, false);
+      wxToast('已重置素材列表', '✓', 1000);
+    }
+
+    // 素材查看大图弹窗
+    function openMaterialPreview(url, title) {
+      document.getElementById('matPreviewImg').src = url;
+      document.getElementById('matPreviewTitle').textContent = title || '表情大图查看';
+      document.getElementById('btnMatPreviewDownload').href = url;
+      document.getElementById('btnMatPreviewDownload').download = `${title || 'meme'}.png`;
+
+      document.getElementById('btnMatPreviewUse16').onclick = () => {
+        closeMaterialPreview();
+        useMaterialForSticker16(url);
+      };
+      document.getElementById('btnMatPreviewUseBubble').onclick = () => {
+        closeMaterialPreview();
+        useMaterialForBubble(url);
+      };
+
+      document.getElementById('materialPreviewModal').classList.add('active');
+    }
+
+    function closeMaterialPreview() {
+      document.getElementById('materialPreviewModal').classList.remove('active');
+    }
+
+    // 将素材载入到 Tab 1 制作 16 宫格表情
+    function useMaterialForSticker16(url) {
+      state.selectedMaterialUrl = url;
+      state.sampleId = null;
+      document.getElementById('previewImg').src = url;
+      document.getElementById('uploadPreview').style.display = 'block';
+      document.getElementById('uploadPrompt').style.display = 'none';
+      document.querySelectorAll('.sample-thumb').forEach(t => t.classList.remove('selected'));
+      switchMainTab('tab-sticker16');
+      wxToast('已载入素材，正在切换至16张制作', '✓');
+    }
+
+    // 将素材载入到 Tab 2 加文字气泡
     function useMaterialForBubble(url) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -2131,12 +3129,12 @@
           thumbsHtml += `<div class="col-thumb-item"><img src="${t.thumb_url || t.gif_url}" alt="thumb"></div>`;
         });
         for (let i = thumbs.length; i < 4; i++) {
-          thumbsHtml += `<div class="col-thumb-item" style="background: rgba(255,255,255,0.04); font-size: 16px;">✨</div>`;
+          thumbsHtml += `<div class="col-thumb-item" style="color: #cbd5e1; font-size: 16px;">✨</div>`;
         }
 
         card.innerHTML = `
           <div class="col-header">
-            <strong style="font-size: 14px; color: #fff;">${col.title}</strong>
+            <strong style="font-size: 14px; color: var(--text-main);">${col.title}</strong>
             <span class="col-badge">${col.item_count || 0} 款表情</span>
           </div>
           <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; min-height: 36px;">${col.description || '精选表情收集小抽屉'}</p>
@@ -2144,7 +3142,7 @@
             ${thumbsHtml}
           </div>
           <div style="display: flex; gap: 8px; margin-top: 12px;">
-            <button class="btn btn-secondary" style="flex: 1; padding: 6px; font-size: 11px;" onclick="viewCollectionDetail('${col.collection_id}')">🔍 查看合集</button>
+            <button class="btn btn-secondary" style="flex: 1; padding: 6px; font-size: 11.5px;" onclick="viewCollectionDetail('${col.collection_id}')">🔍 查看合集详情</button>
           </div>
         `;
         grid.appendChild(card);
@@ -2166,9 +3164,10 @@
           (col.items || []).forEach(item => {
             const div = document.createElement('div');
             div.style.aspectRatio = '1';
-            div.style.background = '#ffffff';
+            div.style.background = '#f8fafc';
             div.style.borderRadius = '8px';
             div.style.overflow = 'hidden';
+            div.style.border = '1px solid var(--border-color)';
             div.style.display = 'flex';
             div.style.alignItems = 'center';
             div.style.justifyContent = 'center';
@@ -2183,7 +3182,7 @@
       }
     }
 
-    // 存入表情合集弹窗
+    // 存入合集弹窗
     async function saveToMyCollectionModal() {
       if (!state.generatedFrames.length && !state.memeResultGif) {
         wxToast('暂无可保存的表情', '⚠️');
