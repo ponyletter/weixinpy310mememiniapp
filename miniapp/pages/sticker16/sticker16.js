@@ -10,26 +10,26 @@ Page({
     selectedStyle: 'wechat_sticker',
     customStyleText: '',
     characterDesc: '',
-    customTextsPlaceholder: '第1句: 收到\n第2句: 好的老板\n第3句: 疯狂搬砖\n第4句: 摸鱼中\n第5句: 头秃了\n第6句: 我太难了\n第7句: 别催了\n第8句: 下班溜了\n第9句: 血压上来了\n第10句: 需求是啥\n第11句: 搞定收工\n第12句: 夸得我脸红\n第13句: 跪求别催\n第14句: 吃瓜看戏\n第15句: 困到变形\n第16句: 告辞溜了',
+    customTextsPlaceholder: '收到\n好的老板\n疯狂搬砖\n摸鱼中\n头秃了\n我太难了\n别催了\n下班溜了\n血压上来了\n需求是啥\n搞定收工\n夸得我脸红\n跪求别催\n吃瓜看戏\n困到变形\n告辞溜了',
 
     themePackages: [
-      { id: 'worker', name: '💼 打工人日常', desc: '好的收到/改稿中/搬砖/谢老板', icon: '💼' },
-      { id: 'battle', name: '⚡ 群聊斗图', desc: '问号脸/退退退/头秃/就这', icon: '⚡' },
-      { id: 'cute', name: '💖 萌系可爱', desc: '笔芯/抱抱/委屈/萌萌哒', icon: '💖' },
-      { id: 'slack', name: '🍵 摆烂躺平', desc: '开摆/随便吧/无所谓/看热闹', icon: '🍵' },
-      { id: 'daily', name: '💬 日常高频', desc: 'OK/点赞/摸鱼中/干饭啦', icon: '💬' }
+      { id: 'worker', name: '打工人日常', desc: '好的收到/搬砖/谢老板', icon: '💼' },
+      { id: 'battle', name: '群聊斗图', desc: '问号脸/退退退/就这', icon: '⚡' },
+      { id: 'cute', name: '萌系可爱', desc: '比心/抱抱/委屈/卖萌', icon: '💖' },
+      { id: 'slack', name: '摆烂躺平', desc: '开摆/随缘/无所谓啦', icon: '🍵' },
+      { id: 'daily', name: '日常高频', desc: 'OK/点赞/摸鱼/干饭', icon: '💬' }
     ],
 
     stylePresets: [
-      { id: 'wechat_sticker', name: '✨ 经典手绘贴纸', desc: '2D Q版扁平手绘 · 微信原生质感' },
-      { id: 'real_person', name: '📸 写实真人表情', desc: '真实面孔质感 · 拍照真实神态还原' },
-      { id: 'cute_chibi', name: '🐱 Q版萌系大眼', desc: '超甜圆润萌化感 · 活泼可爱' },
-      { id: 'funny_line', name: '✏️ 魔性沙雕线描', desc: '黑白搞怪线稿 · 斗图神作' },
-      { id: '3d_toy', name: '🧸 3D 公仔潮玩', desc: '立体盲盒潮玩 · 饱满光泽' },
-      { id: 'custom', name: '🎨 自定义画风...', desc: '手动输入任何专属画风关键词' }
+      { id: 'wechat_sticker', icon: '✨', name: '经典手绘', desc: '2D扁平·原生贴纸感' },
+      { id: 'real_person', icon: '📸', name: '写实真人', desc: '真实摄影·生动还原' },
+      { id: 'cute_chibi', icon: '🐱', name: 'Q版萌系', desc: '圆润大眼·治愈可爱' },
+      { id: 'funny_line', icon: '✏️', name: '沙雕线描', desc: '黑白线稿·斗图神作' },
+      { id: '3d_toy', icon: '🧸', name: '3D公仔', desc: '立体潮玩·盲盒质感' },
+      { id: 'custom', icon: '🎨', name: '自定义画风', desc: '输入专属画风词' }
     ],
 
-    // 弹窗状态
+    // 运行与展示状态
     showModal: false,
     isGenerating: false,
     hasCompletedTask: false,
@@ -59,7 +59,10 @@ Page({
       this.setData({ refImagePath: url });
       wx.showToast({ title: '已载入素材图片', icon: 'none' });
     }
-    this.restoreCachedResult();
+  },
+
+  onShow() {
+    this.checkResumeActiveTask();
   },
 
   onUnload() {
@@ -74,6 +77,55 @@ Page({
     if (this._pollTimer) {
       clearInterval(this._pollTimer);
       this._pollTimer = null;
+    }
+  },
+
+  // 恢复正在进行中的任务或历史完成结果
+  checkResumeActiveTask() {
+    const activeTask = wx.getStorageSync('active_sticker16_task');
+    if (activeTask && activeTask.taskId) {
+      const now = Date.now();
+      // 15 分钟内的任务有效恢复
+      if (now - (activeTask.timestamp || 0) < 15 * 60 * 1000) {
+        if (!this.data.isGenerating) {
+          const elapsed = Math.max(1, Math.floor((now - activeTask.timestamp) / 1000));
+          const est = activeTask.estimatedSeconds || 60;
+          let calculatedProgress = 10;
+          if (elapsed < est) {
+            calculatedProgress = Math.min(92, Math.floor(10 + (elapsed / est) * 82));
+          } else {
+            calculatedProgress = Math.min(98, 92 + Math.floor((elapsed - est) / 8));
+          }
+
+          this.setData({
+            isGenerating: true,
+            taskId: activeTask.taskId,
+            refImagePath: activeTask.refImagePath || this.data.refImagePath,
+            textMode: activeTask.textMode || this.data.textMode,
+            estimatedSeconds: est,
+            elapsedSeconds: elapsed,
+            progress: calculatedProgress,
+            stageTitle: '正在恢复云端渲染进度...'
+          });
+
+          this.startProgressTicker(elapsed);
+          this.startPollingTask(activeTask.taskId);
+
+          setTimeout(() => {
+            wx.pageScrollTo({
+              selector: '#generation-section',
+              duration: 300
+            });
+          }, 250);
+        }
+        return;
+      } else {
+        wx.removeStorageSync('active_sticker16_task');
+      }
+    }
+
+    if (!this.data.isGenerating && (!this.data.stickersList || this.data.stickersList.length === 0)) {
+      this.restoreCachedResult();
     }
   },
 
@@ -231,9 +283,8 @@ Page({
       }
     }
 
-    // 打开弹窗，开启进度计时
+    // 开启进度计时并平滑滚动到制作区
     this.setData({
-      showModal: true,
       isGenerating: true,
       currentStep: 1,
       progress: 6,
@@ -241,7 +292,14 @@ Page({
       elapsedSeconds: 0
     });
 
-    this.startProgressTicker();
+    this.startProgressTicker(0);
+
+    setTimeout(() => {
+      wx.pageScrollTo({
+        selector: '#generation-section',
+        duration: 400
+      });
+    }, 150);
 
     // 组装参数
     let finalTheme = 'none';
@@ -253,7 +311,10 @@ Page({
       finalTheme = this.data.selectedTheme;
     } else if (this.data.textMode === 'custom') {
       finalTheme = 'custom';
-      const lines = (this.data.customTexts || '').split('\n').map(s => s.trim()).filter(Boolean);
+      const lines = (this.data.customTexts || '')
+        .split('\n')
+        .map(s => s.trim().replace(/^第\s*\d+\s*[句行号条][:：\s]*/i, ''))
+        .filter(Boolean);
       if (lines.length > 0) {
         customTextsParam = JSON.stringify(lines);
       }
@@ -296,6 +357,16 @@ Page({
         if (res.statusCode === 200 && respData && respData.code === 0) {
           const taskId = respData.data.task_id;
           const est = (respData.data && respData.data.estimated_duration) ? Math.max(20, Math.round(respData.data.estimated_duration)) : (this.data.estimatedSeconds || 60);
+
+          // 持久化存储活跃任务，退出后返回可无缝恢复
+          wx.setStorageSync('active_sticker16_task', {
+            taskId: taskId,
+            timestamp: Date.now(),
+            refImagePath: this.data.refImagePath,
+            textMode: this.data.textMode,
+            estimatedSeconds: est
+          });
+
           this.setData({ 
             taskId: taskId, 
             currentStep: 2,
@@ -314,10 +385,10 @@ Page({
     });
   },
 
-  // 平滑计时器 (结合数据库实际平均耗时)
-  startProgressTicker() {
+  // 平滑计时器 (支持断点恢复传入已耗时秒数)
+  startProgressTicker(initialSec = 0) {
     this.clearTimers();
-    let sec = 0;
+    let sec = initialSec;
 
     this._timer = setInterval(() => {
       sec++;
@@ -338,7 +409,7 @@ Page({
         stage = '阶段 2/4: 绘制 16 帧分镜生动表情...';
       } else if (sec >= 18) {
         step = 3;
-        stage = '阶段 3/4: 矩阵网格微调与对齐...';
+        stage = '阶段 3/4: 矩阵切片与超清对齐...';
       }
 
       this.setData({
@@ -421,6 +492,7 @@ Page({
       isAllSelected: true
     });
 
+    wx.removeStorageSync('active_sticker16_task');
     wx.setStorageSync('cache_sticker16_result', {
       taskId: this.data.taskId,
       stickersList: formattedList,
@@ -432,6 +504,7 @@ Page({
 
   handleGenerateFailed(errorMsg) {
     this.clearTimers();
+    wx.removeStorageSync('active_sticker16_task');
     this.setData({ isGenerating: false });
     wx.showModal({
       title: '制作未完成',
@@ -441,12 +514,11 @@ Page({
     });
   },
 
-  closeModal() {
-    this.setData({ showModal: false });
-  },
-
-  openResultModal() {
-    this.setData({ showModal: true });
+  scrollToResult() {
+    wx.pageScrollTo({
+      selector: '#generation-section',
+      duration: 350
+    });
   },
 
   // 勾选/取消单张表情

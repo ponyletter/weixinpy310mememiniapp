@@ -278,18 +278,23 @@ page {
 /* 主题网格 */
 .theme-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .theme-chip {
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 8px 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
   transition: all 0.2s ease;
 }
 
@@ -300,20 +305,26 @@ page {
 }
 
 .theme-icon {
-  font-size: 20px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
 .theme-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
 }
 
 .theme-name {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
   color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
 .theme-desc {
@@ -322,23 +333,29 @@ page {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
 /* 构图视角网格 */
 .composition-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .comp-chip {
   background: #f8fafc;
   border: 1.5px solid #e2e8f0;
   border-radius: 12px;
-  padding: 10px 10px;
+  padding: 10px 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
   transition: all 0.2s ease;
 }
 
@@ -349,42 +366,58 @@ page {
 }
 
 .comp-icon {
-  font-size: 22px;
+  font-size: 20px;
   flex-shrink: 0;
 }
 
 .comp-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .comp-name {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
   color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
 .comp-desc {
   font-size: 10px;
   color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   line-height: 1.3;
 }
 
 /* 画风网格 */
 .style-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .style-chip {
   background: #f8fafc;
   border: 1.5px solid #e2e8f0;
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 9px 8px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: all 0.2s ease;
 }
 
 .style-chip.active {
@@ -393,15 +426,35 @@ page {
   box-shadow: 0 2px 8px rgba(108, 92, 231, 0.15);
 }
 
+.style-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.style-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
 .style-name {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
 .style-desc {
-  font-size: 11px;
+  font-size: 10px;
   color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
 /* 描述输入框 */
@@ -455,6 +508,105 @@ button.btn-make {
 button.btn-make[disabled] {
   background: #94a3b8 !important;
   color: #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+/* ==================== 页面内嵌制作进度与结果看板 (对齐“制作”页) ==================== */
+.result-section-card {
+  margin-top: 18px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-title-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-badge-icon {
+  font-size: 17px;
+}
+
+.section-title-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.status-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+}
+
+.pill-processing {
+  background: #eff6ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+}
+
+.pill-done {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.result-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.btn-action-outline {
+  flex: 1;
+  background: #f8fafc;
+  color: #334155;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.4;
+}
+
+.btn-action-solid {
+  flex: 1.6;
+  background: linear-gradient(135deg, #6c5ce7 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.btn-action-solid[disabled] {
+  background: #cbd5e1 !important;
+  color: #94a3b8 !important;
   box-shadow: none !important;
 }
 

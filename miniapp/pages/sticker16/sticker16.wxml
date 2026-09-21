@@ -6,12 +6,12 @@
   </view>
 
   <!-- 历史完成提醒条 -->
-  <view wx:if="{{hasCompletedTask && !showModal}}" class="history-bar card" bindtap="openResultModal">
+  <view wx:if="{{hasCompletedTask && !isGenerating}}" class="history-bar card" bindtap="scrollToResult">
     <view class="history-left">
       <text class="history-icon">🎉</text>
       <text class="history-text">已为您生成好 16 款专属表情包</text>
     </view>
-    <text class="history-link">查看结果 ›</text>
+    <text class="history-link">去查看 ›</text>
   </view>
 
   <!-- ==================== 配置区 ==================== -->
@@ -118,8 +118,8 @@
       >
         <text class="comp-icon">👤</text>
         <view class="comp-info">
-          <text class="comp-name">半身手势 (默认推荐)</text>
-          <text class="comp-desc">呈现丰富双手手势与夸张肢体动作</text>
+          <text class="comp-name">半身动作 (推荐)</text>
+          <text class="comp-desc">生动手势与肢体</text>
         </view>
       </view>
       <view 
@@ -129,8 +129,8 @@
       >
         <text class="comp-icon">🔍</text>
         <view class="comp-info">
-          <text class="comp-name">大头微表情</text>
-          <text class="comp-desc">聚焦面部五官表情与搞怪神态</text>
+          <text class="comp-name">大头表情</text>
+          <text class="comp-desc">聚焦五官与特写</text>
         </view>
       </view>
     </view>
@@ -149,7 +149,10 @@
         bindtap="selectStyle"
         data-id="{{item.id}}"
       >
-        <text class="style-name">{{item.name}}</text>
+        <view class="style-header">
+          <text class="style-icon">{{item.icon}}</text>
+          <text class="style-name">{{item.name}}</text>
+        </view>
         <text class="style-desc">{{item.desc}}</text>
       </view>
     </view>
@@ -192,123 +195,110 @@
     </button>
   </view>
 
-  <!-- ==================== 制作结果弹窗 (风格完全匹配原生主调) ==================== -->
-  <view wx:if="{{showModal}}" class="modal-mask" catchtouchmove="preventScroll">
-    <view class="modal-dialog">
-      <!-- 弹窗顶部栏 -->
-      <view class="modal-header">
-        <view class="modal-title-row">
-          <text class="modal-icon">✨</text>
-          <text class="modal-title">16 宫格表情包制作</text>
-          <text class="modal-badge {{isGenerating ? 'badge-processing' : 'badge-done'}}">
-            {{isGenerating ? '正在逐帧渲染' : '制作完成'}}
-          </text>
-        </view>
-        <view class="modal-close" bindtap="closeModal">✕</view>
+  <!-- ==================== 制作进度与 16 宫格结果展示区 (内嵌展示，风格完全与“制作”主页对齐) ==================== -->
+  <view id="generation-section" wx:if="{{isGenerating || (stickersList && stickersList.length > 0)}}" class="result-section-card card">
+    <!-- 头部状态栏 -->
+    <view class="section-title-row">
+      <view class="section-title-left">
+        <text class="section-badge-icon">✨</text>
+        <text class="section-title-text">{{isGenerating ? '正在逐帧渲染 16 款表情' : '16 款专属表情贴纸已就绪'}}</text>
+      </view>
+      <text class="status-pill {{isGenerating ? 'pill-processing' : 'pill-done'}}">
+        {{isGenerating ? '云端渲染中' : '制作成功'}}
+      </text>
+    </view>
+
+    <!-- 流程指示器 (1 分析原型 -> 2 绘制分镜 -> 3 矩阵切片 -> 4 制作完成) -->
+    <view class="step-flow-bar">
+      <view class="flow-item {{currentStep >= 1 ? 'active' : ''}}">
+        <text class="flow-dot">1</text>
+        <text class="flow-text">分析原型</text>
+      </view>
+      <text class="flow-arrow">➔</text>
+      <view class="flow-item {{currentStep >= 2 ? 'active' : ''}}">
+        <text class="flow-dot">2</text>
+        <text class="flow-text">绘制分镜</text>
+      </view>
+      <text class="flow-arrow">➔</text>
+      <view class="flow-item {{currentStep >= 3 ? 'active' : ''}}">
+        <text class="flow-dot">3</text>
+        <text class="flow-text">矩阵切片</text>
+      </view>
+      <text class="flow-arrow">➔</text>
+      <view class="flow-item {{currentStep >= 4 ? 'active' : ''}}">
+        <text class="flow-dot">4</text>
+        <text class="flow-text">制作完成</text>
+      </view>
+    </view>
+
+    <!-- 状态 1: 渲染中进度条 (与“制作”主页一致) -->
+    <view wx:if="{{isGenerating}}" class="generating-wrap">
+      <view class="loading-spinner"></view>
+      <view class="progress-box">
+        <progress percent="{{progress}}" stroke-width="7" border-radius="5" activeColor="#4f46e5" backgroundColor="#f1f5f9" />
+      </view>
+      <view class="stage-text">{{stageTitle}} ({{progress}}%)</view>
+      <view class="time-elapsed-tag">已耗时 {{elapsedSeconds}} 秒 · 预计共 {{estimatedSeconds}} 秒</view>
+      <view class="stage-tip">
+        <text>根据近期生成平均速度智能预估，请耐心等待或稍后回来查看</text>
       </view>
 
-      <!-- 步骤流程指示条 -->
-      <view class="step-flow-bar">
-        <view class="flow-item {{currentStep >= 1 ? 'active' : ''}}">
-          <text class="flow-dot">1</text>
-          <text class="flow-text">分析原型</text>
+      <!-- 离开小程序不影响后台生成温馨提醒 -->
+      <view class="bg-running-notice-card">
+        <view class="bg-notice-head">
+          <text class="bg-notice-badge">⚡ 云端渲染中</text>
+          <text class="bg-notice-title">离开小程序不影响生成</text>
         </view>
-        <text class="flow-arrow">➔</text>
-        <view class="flow-item {{currentStep >= 2 ? 'active' : ''}}">
-          <text class="flow-dot">2</text>
-          <text class="flow-text">绘制分镜</text>
-        </view>
-        <text class="flow-arrow">➔</text>
-        <view class="flow-item {{currentStep >= 3 ? 'active' : ''}}">
-          <text class="flow-dot">3</text>
-          <text class="flow-text">矩阵切割</text>
-        </view>
-        <text class="flow-arrow">➔</text>
-        <view class="flow-item {{currentStep >= 4 ? 'active' : ''}}">
-          <text class="flow-dot">4</text>
-          <text class="flow-text">制作完成</text>
-        </view>
+        <text class="bg-notice-desc">
+          正在进行画面渲染与 16 帧切片对齐。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，完成后重新进入本页即可查看与保存！
+        </text>
+      </view>
+    </view>
+
+    <!-- 状态 2: 制作完成，展示 16 宫格表情切片 -->
+    <view wx:else class="result-container">
+      <view class="result-header-row">
+        <text class="result-tip">共 16 张贴纸，点击单张可大图放大查看：</text>
+        <text class="select-all-link" bindtap="toggleSelectAll">
+          {{isAllSelected ? '取消全选' : '全选所有'}}
+        </text>
       </view>
 
-      <!-- 弹窗主体内容区 -->
-      <scroll-view scroll-y class="modal-body">
-        <!-- 阶段 1: 制作中进度条 (风格匹配原生科技蓝紫) -->
-        <view wx:if="{{isGenerating}}" class="generating-wrap">
-          <view class="loading-spinner"></view>
-          <view class="progress-box">
-            <progress percent="{{progress}}" stroke-width="7" border-radius="5" activeColor="#4f46e5" backgroundColor="#f1f5f9" />
-          </view>
-          <view class="stage-text">{{stageTitle}} ({{progress}}%)</view>
-          <view class="time-elapsed-tag">已耗时 {{elapsedSeconds}} 秒 · 预计共 {{estimatedSeconds}} 秒</view>
-          <view class="stage-tip">
-            <text>根据近期生成平均速度智能预估，请耐心等待或稍后回来查看</text>
-          </view>
-
-          <!-- 离开小程序不影响后台生成温馨提醒 -->
-          <view class="bg-running-notice-card">
-            <view class="bg-notice-head">
-              <text class="bg-notice-badge">⚡ 云端渲染中</text>
-              <text class="bg-notice-title">离开小程序不影响生成</text>
-            </view>
-            <text class="bg-notice-desc">
-              正在进行画面渲染与 16 帧切片对齐。您可以放心收起弹窗、切换微信聊天或锁屏，系统会在后台持续运算，完成后重新进入即可查看与保存！
-            </text>
-          </view>
-        </view>
-
-        <!-- 阶段 2: 制作完成，展示 16 宫格表情切片 (画面纯净，杜绝重复文字) -->
-        <view wx:else class="result-container">
-          <view class="result-header-row">
-            <text class="result-tip">共生成 16 张表情贴纸，点击可单张大图查看：</text>
-            <text class="select-all-link" bindtap="toggleSelectAll">
-              {{isAllSelected ? '取消全选' : '全选'}}
-            </text>
-          </view>
-
-          <!-- 4x4 网格 (完美 1:1 纯白卡片，无外部重复文字气泡) -->
-          <view class="stickers-grid">
-            <view 
-              wx:for="{{stickersList}}" 
-              wx:key="index" 
-              class="sticker-card {{item.selected ? 'selected' : ''}}"
-              bindtap="toggleSelectSticker"
+      <!-- 4x4 网格 -->
+      <view class="stickers-grid">
+        <view 
+          wx:for="{{stickersList}}" 
+          wx:key="index" 
+          class="sticker-card {{item.selected ? 'selected' : ''}}"
+          bindtap="toggleSelectSticker"
+          data-index="{{index}}"
+        >
+          <view class="sticker-card-inner">
+            <image 
+              class="sticker-img" 
+              src="{{item.displayUrl}}" 
+              mode="aspectFit" 
+              lazy-load="true"
+              catchtap="viewStickerLarge"
               data-index="{{index}}"
-            >
-              <view class="sticker-card-inner">
-                <image 
-                  class="sticker-img" 
-                  src="{{item.displayUrl}}" 
-                  mode="aspectFit" 
-                  lazy-load="true"
-                  catchtap="viewStickerLarge"
-                  data-index="{{index}}"
-                  binderror="onStickerImageError"
-                ></image>
-                <view class="sticker-check {{item.selected ? 'checked' : ''}}">
-                  {{item.selected ? '✓' : ''}}
-                </view>
-                <view class="sticker-index-tag">{{index + 1}}</view>
-              </view>
+              binderror="onStickerImageError"
+            ></image>
+            <view class="sticker-check {{item.selected ? 'checked' : ''}}">
+              {{item.selected ? '✓' : ''}}
             </view>
+            <view class="sticker-index-tag">{{index + 1}}</view>
           </view>
         </view>
-      </scroll-view>
+      </view>
 
-      <!-- 弹窗底部操作栏 -->
-      <view class="modal-footer">
-        <block wx:if="{{!isGenerating && stickersList.length > 0}}">
-          <button class="btn-modal-sub" bindtap="saveToMyCollection">
-            📁 存入合集
-          </button>
-          <button class="btn-modal-main" bindtap="saveSelectedStickersToAlbum" disabled="{{selectedCount === 0}}">
-            📥 保存到手机相册 ({{selectedCount}})
-          </button>
-        </block>
-        <block wx:else>
-          <button class="btn-modal-sub" style="width: 100%;" bindtap="closeModal">
-            收起弹窗 (后台继续渲染)
-          </button>
-        </block>
+      <!-- 结果操作按钮组 -->
+      <view class="result-action-bar">
+        <button class="btn-action-outline" bindtap="saveToMyCollection">
+          📁 存入合集
+        </button>
+        <button class="btn-action-solid" bindtap="saveSelectedStickersToAlbum" disabled="{{selectedCount === 0}}">
+          📥 保存到相册 ({{selectedCount}}张)
+        </button>
       </view>
     </view>
   </view>
