@@ -4,7 +4,7 @@ import zipfile
 from typing import List, Optional
 import numpy as np
 import cv2
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 class SpriteProcessor:
     @staticmethod
@@ -257,3 +257,88 @@ class SpriteProcessor:
                 f.save(buf, format="PNG")
                 zf.writestr(f"frame_{idx:02d}.png", buf.getvalue())
         return output_path
+
+    @classmethod
+    def overlay_text_to_frames(
+        cls,
+        frames: List[Image.Image],
+        texts: List[str],
+        font_path: Optional[str] = None,
+        style: str = "stroke",
+        make_transparent: bool = False
+    ) -> List[Image.Image]:
+        """
+        在切片后的各帧上叠加规整清晰的汉字文案。
+        - 自动根据字数自适应字号
+        - 黑色粗描边或圆角胶囊衬底，保证在任何复杂角色和背景上清晰可辨
+        - 居中对齐于画面底部
+        """
+        if not texts:
+            return [cls.remove_white_bg(f) if make_transparent else f for f in frames]
+
+        candidate_fonts = [
+            font_path,
+            os.path.join(os.path.dirname(__file__), "..", "..", "static", "fonts", "SmileySans-Oblique.ttf"),
+            os.path.join(os.path.dirname(__file__), "..", "..", "static", "fonts", "NotoSansSC-Bold.ttf"),
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
+        ]
+        chosen_font_path = None
+        for p in candidate_fonts:
+            if p and os.path.exists(p):
+                chosen_font_path = p
+                break
+
+        res_frames = []
+        for idx, frame in enumerate(frames):
+            base_frame = cls.remove_white_bg(frame) if make_transparent else frame
+            text = texts[idx].strip() if idx < len(texts) else ""
+            if not text:
+                res_frames.append(base_frame)
+                continue
+
+            frame_rgba = base_frame.convert("RGBA")
+            w, h = frame_rgba.size
+
+            base_size = int(w * 0.155)
+            if len(text) > 4:
+                base_size = max(16, int(base_size * (4.2 / len(text))))
+
+            font = None
+            if chosen_font_path:
+                try:
+                    font = ImageFont.truetype(chosen_font_path, base_size)
+                except Exception:
+                    font = ImageFont.load_default()
+            else:
+                font = ImageFont.load_default()
+
+            draw = ImageDraw.Draw(frame_rgba)
+            bbox = draw.textbbox((0, 0), text, font=font)
+            tw = bbox[2] - bbox[0]
+            th = bbox[3] - bbox[1]
+
+            tx = (w - tw) // 2
+            ty = int(h * 0.83) - (th // 2)
+
+            if style == "pill":
+                pad_x = max(10, int(w * 0.04))
+                pad_y = max(4, int(h * 0.015))
+                pill_box = [tx - pad_x, ty - pad_y, tx + tw + pad_x, ty + th + pad_y]
+                draw.rounded_rectangle(pill_box, radius=8, fill=(15, 23, 42, 215))
+                draw.text((tx, ty), text, font=font, fill=(255, 255, 255, 255))
+            else:
+                stroke_w = max(2, int(w * 0.016))
+                draw.text(
+                    (tx, ty),
+                    text,
+                    font=font,
+                    fill=(255, 255, 255, 255),
+                    stroke_width=stroke_w,
+                    stroke_fill=(20, 20, 25, 255)
+                )
+
+            res_frames.append(frame_rgba)
+
+        return res_frames
+

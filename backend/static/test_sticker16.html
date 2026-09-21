@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>一张图片变16张静态表情包 - Sticker16 实验室</title>
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-card: #151c2c;
+      --bg-card-hover: #1e293b;
+      --border-color: #2a374f;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-purple: #8b5cf6;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --accent-orange: #f59e0b;
+      --accent-red: #ef4444;
+      --gradient-brand: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-badge {
+      width: 52px;
+      height: 52px;
+      background: var(--gradient-brand);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+    }
+
+    .header-title h1 {
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(to right, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .header-title p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-btn {
+      padding: 8px 14px;
+      font-size: 13px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: #1e293b;
+      color: var(--text-main);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-btn:hover {
+      background: #334155;
+      border-color: var(--accent-purple);
+    }
+
+    .audit-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .audit-badge.normal {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .audit-badge.active {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    /* Layout Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 960px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      color: #e2e8f0;
+    }
+
+    .step-tag {
+      background: rgba(139, 92, 246, 0.2);
+      color: #c084fc;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    /* Upload Zone */
+    .upload-box {
+      border: 2px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      background: rgba(15, 23, 42, 0.5);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .upload-box:hover {
+      border-color: var(--accent-purple);
+      background: rgba(139, 92, 246, 0.05);
+    }
+
+    .upload-preview {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .upload-preview img {
+      max-width: 140px;
+      max-height: 140px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 2px solid var(--accent-purple);
+    }
+
+    .btn-clear-img {
+      position: absolute;
+      top: -8px;
+      right: calc(50% - 78px);
+      width: 24px;
+      height: 24px;
+      background: #ef4444;
+      color: white;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sample-strip {
+      margin-top: 14px;
+    }
+
+    .sample-strip p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .sample-items {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .sample-thumb {
+      flex: 0 0 54px;
+      height: 54px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      background: #1e293b;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .sample-thumb:hover {
+      transform: scale(1.05);
+      border-color: var(--accent-purple);
+    }
+
+    .sample-thumb.selected {
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
+    }
+
+    .sample-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Option Pill Groups */
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .option-card {
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+      cursor: pointer;
+      background: #1a2234;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .option-card:hover {
+      border-color: #475569;
+      background: #232d42;
+    }
+
+    .option-card.active {
+      border-color: var(--accent-purple);
+      background: rgba(139, 92, 246, 0.15);
+      color: #ffffff;
+      box-shadow: 0 0 0 1px var(--accent-purple);
+    }
+
+    .option-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .option-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Text package selection */
+    .package-select {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pkg-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #1a2234;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pkg-item:hover {
+      background: #232d42;
+    }
+
+    .pkg-item.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: #6366f1;
+    }
+
+    .pkg-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .pkg-preview {
+      font-size: 11px;
+      color: var(--text-muted);
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Custom texts editor */
+    #customTextPanel {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      background: #0f172a;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    #customTextPanel textarea {
+      width: 100%;
+      height: 90px;
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: white;
+      padding: 8px;
+      font-size: 12px;
+      resize: vertical;
+    }
+
+    /* Character description input */
+    .text-input {
+      width: 100%;
+      background: #1a2234;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: #ffffff;
+      padding: 10px 14px;
+      font-size: 13px;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    .text-input:focus {
+      border-color: var(--accent-purple);
+    }
+
+    /* Generate Button */
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background: var(--gradient-brand);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+      transition: all 0.2s;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(139, 92, 246, 0.6);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Prompt inspector */
+    .prompt-box {
+      margin-top: 12px;
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #94a3b8;
+      font-family: monospace;
+      border: 1px solid #1e293b;
+      max-height: 100px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Right column: Progress & Output */
+    .progress-card {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--accent-purple);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 10px;
+      background: #1e293b;
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 5%;
+      background: var(--gradient-brand);
+      transition: width 0.4s ease;
+    }
+
+    .progress-status {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+
+    .progress-timer {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Results Showcase */
+    .results-section {
+      display: none;
+    }
+
+    .results-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 18px 24px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .results-summary h2 {
+      font-size: 18px;
+      color: #ffffff;
+      margin-bottom: 2px;
+    }
+
+    .results-summary p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .download-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-download-zip {
+      padding: 10px 18px;
+      background: #10b981;
+      color: white;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-download-zip:hover {
+      background: #059669;
+    }
+
+    .btn-secondary {
+      padding: 10px 16px;
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+    }
+
+    /* 4x4 Grid */
+    .sticker-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .sticker-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .sticker-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .sticker-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent-purple);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .sticker-img-wrap {
+      width: 100%;
+      padding-top: 100%;
+      position: relative;
+      background: #0f172a;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .sticker-img-wrap img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .sticker-idx {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .sticker-caption {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sticker-emotion {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .btn-save-single {
+      display: inline-block;
+      width: 100%;
+      padding: 6px 0;
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .btn-save-single:hover {
+      background: var(--accent-purple);
+      color: white;
+      border-color: var(--accent-purple);
+    }
+
+    /* Modal for preview GIF */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      position: relative;
+    }
+
+    .modal-content img {
+      max-width: 100%;
+      max-height: 380px;
+      border-radius: 8px;
+      margin: 16px 0;
+    }
+
+    .btn-close-modal {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: #334155;
+      color: white;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-badge">🎨</div>
+        <div class="header-title">
+          <h1>一张图片变出 16 张静态表情包</h1>
+          <p>单次调用 CPA 绘图模型生成 4x4 矩阵 · 本地精准排版汉字台词 · 双轨微信合规支持</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="audit-badge normal" id="auditBadge" title="点击可切换审核模式">
+          <span id="auditDot">●</span>
+          <span id="auditText">CPA 生图模式 (运行中)</span>
+        </div>
+        <a href="/" class="nav-btn">🎞️ GIF 动图版</a>
+        <a href="/docs" target="_blank" class="nav-btn">📖 Swagger API</a>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-grid">
+      <!-- Left: Form Controls -->
+      <div class="form-col">
+        <!-- 1. 人设图片参考 -->
+        <div class="card">
+          <div class="card-title">
+            <span>1. 上传人设照片 / 选择预置角色</span>
+            <span class="step-tag">必选其一</span>
+          </div>
+
+          <div class="upload-box" id="dropBox" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="handleFileSelect(event)">
+            <div id="uploadPrompt">
+              <div style="font-size: 32px; margin-bottom: 8px;">📷</div>
+              <p style="font-size: 13px; font-weight: 600; margin-bottom: 2px;">点击或拖拽上传人物/宠物照片</p>
+              <span style="font-size: 11px; color: var(--text-muted);">支持 JPG / PNG / 微信头像</span>
+            </div>
+            <div class="upload-preview" id="uploadPreview">
+              <img id="previewImg" src="" alt="预览">
+              <button type="button" class="btn-clear-img" onclick="clearFile(event)">✕</button>
+            </div>
+          </div>
+
+          <!-- Sample strip -->
+          <div class="sample-strip">
+            <p>或快速选择内置参考样本：</p>
+            <div class="sample-items" id="sampleContainer">
+              <div class="sample-thumb selected" data-id="kiss_sample" title="接吻卡通" onclick="selectSample('kiss_sample', this)">
+                <img src="/samples/kiss_sample.png" alt="kiss" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'54\' height=\'54\' fill=\'%2364748b\'><rect width=\'54\' height=\'54\' fill=\'%231e293b\'/><text x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%2394a3b8\' font-size=\'10\'>Kiss</text></svg>'">
+              </div>
+              <div class="sample-thumb" data-id="ref_worker" title="打工人" onclick="selectSample('ref_worker', this)">
+                <img src="/samples/ref_worker.png" alt="worker" onerror="this.parentElement.style.display='none'">
+              </div>
+              <div class="sample-thumb" data-id="ref_pet" title="萌宠" onclick="selectSample('ref_pet', this)">
+                <img src="/samples/ref_pet.png" alt="pet" onerror="this.parentElement.style.display='none'">
+              </div>
+              <div class="sample-thumb" data-id="ref_battle" title="Q版战斗" onclick="selectSample('ref_battle', this)">
+                <img src="/samples/ref_battle.png" alt="battle" onerror="this.parentElement.style.display='none'">
+              </div>
+              <div class="sample-thumb" data-id="ref_dance" title="摇摆比心" onclick="selectSample('ref_dance', this)">
+                <img src="/samples/ref_dance.png" alt="dance" onerror="this.parentElement.style.display='none'">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 风格与版型 -->
+        <div class="card">
+          <div class="card-title">
+            <span>2. 画风风格选择</span>
+            <span class="step-tag">3种精选风格</span>
+          </div>
+          <div class="option-grid" id="styleOptions">
+            <div class="option-card active" data-value="chibi_3d" onclick="selectOption('style', 'chibi_3d', this)">
+              <div class="option-title">🧸 3D Q版粘土</div>
+              <div class="option-desc">泡泡玛特盲盒感</div>
+            </div>
+            <div class="option-card" data-value="anime" onclick="selectOption('style', 'anime', this)">
+              <div class="option-title">🎨 日漫二次元</div>
+              <div class="option-desc">神情生动灵动</div>
+            </div>
+            <div class="option-card" data-value="funny_line" onclick="selectOption('style', 'funny_line', this)">
+              <div class="option-title">✏️ 沙雕简笔画</div>
+              <div class="option-desc">魔性斗图蘑菇头</div>
+            </div>
+          </div>
+
+          <div class="card-title" style="margin-top: 18px;">
+            <span>3. 构图与底色</span>
+            <span class="step-tag">版型定制</span>
+          </div>
+          <div class="option-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 10px;">
+            <div class="option-card active" data-value="bust" onclick="selectOption('comp', 'bust', this)">
+              <div class="option-title">👤 半身手势 (推荐)</div>
+              <div class="option-desc">含丰富肢体与手势</div>
+            </div>
+            <div class="option-card" data-value="closeup" onclick="selectOption('comp', 'closeup', this)">
+              <div class="option-title">🔍 头部微表情</div>
+              <div class="option-desc">聚焦五官面部神态</div>
+            </div>
+          </div>
+          <div class="option-grid" style="grid-template-columns: repeat(2, 1fr);">
+            <div class="option-card active" data-value="white" onclick="selectOption('bg', 'white', this)">
+              <div class="option-title">⬜ 经典白底</div>
+              <div class="option-desc">规整纯白背景</div>
+            </div>
+            <div class="option-card" data-value="transparent" onclick="selectOption('bg', 'transparent', this)">
+              <div class="option-title">🏁 纯净透明</div>
+              <div class="option-desc">自动泛洪抠图去底</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 场景台词包 -->
+        <div class="card">
+          <div class="card-title">
+            <span>4. 场景台词文案包</span>
+            <span class="step-tag">16款表情精准匹配</span>
+          </div>
+          <div class="package-select" id="pkgSelect">
+            <div class="pkg-item active" data-value="worker" onclick="selectPackage('worker', this)">
+              <div class="pkg-title">💼 打工人日常</div>
+              <div class="pkg-preview">收到、好的老板、疯狂搬砖、摸鱼中...</div>
+            </div>
+            <div class="pkg-item" data-value="battle" onclick="selectPackage('battle', this)">
+              <div class="pkg-title">⚔️ 群聊社交斗图</div>
+              <div class="pkg-preview">点赞666、得瑟拿捏、疯狂输出、裂开崩溃...</div>
+            </div>
+            <div class="pkg-item" data-value="cute" onclick="selectPackage('cute', this)">
+              <div class="pkg-title">💖 萌系可爱撒娇</div>
+              <div class="pkg-preview">谢谢你、么么哒、加油鸭、求抱抱...</div>
+            </div>
+            <div class="pkg-item" data-value="slack" onclick="selectPackage('slack', this)">
+              <div class="pkg-title">🛋️ 躺平摆烂日常</div>
+              <div class="pkg-preview">随缘吧、我装的、看神仙打架、毁灭吧...</div>
+            </div>
+            <div class="pkg-item" data-value="custom" onclick="selectPackage('custom', this)">
+              <div class="pkg-title">✍️ 自定义台词</div>
+              <div class="pkg-preview">按逗号或换行自定义16句文案</div>
+            </div>
+            <div class="pkg-item" data-value="none" onclick="selectPackage('none', this)">
+              <div class="pkg-title">🚫 纯无字表情包</div>
+              <div class="pkg-preview">仅保留生动人物动作与神态</div>
+            </div>
+          </div>
+
+          <div id="customTextPanel">
+            <p style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">请输入 16 句文案（每行一句，或用英文逗号分隔）：</p>
+            <textarea id="customTextInput" placeholder="收到&#10;好的老板&#10;疯狂搬砖&#10;摸鱼中&#10;..."></textarea>
+          </div>
+        </div>
+
+        <!-- 4. 补充人设描述 & 提示词预览 -->
+        <div class="card">
+          <div class="card-title">
+            <span>5. 角色特征补充 (可选)</span>
+          </div>
+          <input type="text" class="text-input" id="charDescInput" placeholder="例如：戴黑框眼镜的短发青年、系红色蝴蝶结的三花猫" oninput="updatePromptPreview()">
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
+            <span style="font-size: 12px; color: var(--text-muted);">CPA 绘图提示词实时预览：</span>
+            <button type="button" class="nav-btn" style="padding: 2px 8px; font-size: 11px;" onclick="copyPrompt()">复制提示词</button>
+          </div>
+          <div class="prompt-box" id="promptPreview">正在加载提示词...</div>
+        </div>
+
+        <!-- Generate Button -->
+        <button type="button" class="btn-submit" id="btnGenerate" onclick="startGeneration()">
+          <span>🚀 立即生成 16 张表情包</span>
+        </button>
+      </div>
+
+      <!-- Right: Progress & Results -->
+      <div class="preview-col">
+        <!-- Progress Card -->
+        <div class="progress-card" id="progressCard">
+          <div style="font-size: 36px; margin-bottom: 8px;">⚡</div>
+          <div class="progress-status" id="progressStatus">阶段 1/4: 正在初始化生图流水线...</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-timer" id="progressTimer">耗时: 0s · 预计 25-35s</div>
+        </div>
+
+        <!-- Empty Placeholder -->
+        <div class="card" id="emptyPlaceholder" style="text-align: center; padding: 60px 20px;">
+          <div style="font-size: 54px; margin-bottom: 16px;">✨</div>
+          <h3 style="font-size: 18px; margin-bottom: 8px; color: #cbd5e1;">准备就绪</h3>
+          <p style="font-size: 13px; color: var(--text-muted); max-width: 400px; margin: 0 auto;">
+            在左侧上传图片并挑选喜爱的画风与场景台词包，点击“立即生成”，即可单次产出 16 张高清静态表情包！
+          </p>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection">
+          <div class="results-header">
+            <div class="results-summary">
+              <h2>🎉 16 款表情贴纸制作成功！</h2>
+              <p id="resultMeta">共 16 张贴纸 · 耗时 24.8s · 分辨率 256x256 · 白底切片</p>
+            </div>
+            <div class="download-group">
+              <a href="#" class="btn-download-zip" id="btnDownloadZip" download="stickers_16.zip">
+                <span>📦 下载全部 (ZIP)</span>
+              </a>
+              <button type="button" class="btn-secondary" onclick="openPreviewModal()">
+                <span>🎞️ 动效轮播预览</span>
+              </button>
+              <a href="#" target="_blank" class="btn-secondary" id="btnViewSprite">
+                <span>🖼️ 原生雪碧大图</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- 4x4 Grid Cards -->
+          <div class="sticker-grid" id="stickerGrid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div class="modal-overlay" id="previewModal" onclick="closePreviewModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <button type="button" class="btn-close-modal" onclick="closePreviewModal()">✕</button>
+      <h3 style="font-size: 16px; margin-bottom: 4px;">16 帧整体动效预览轮播</h3>
+      <p style="font-size: 12px; color: var(--text-muted);">每帧循环展示，可直观检查各情绪神态衔接</p>
+      <img id="modalGifImg" src="" alt="预览动图">
+      <br>
+      <a href="#" class="btn-download-zip" id="btnDownloadModalGif" download="stickers_preview.gif">保存此 GIF 动图</a>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let selectedFile = null;
+    let selectedSampleId = "kiss_sample";
+    let selectedStyle = "chibi_3d";
+    let selectedComp = "bust";
+    let selectedBg = "white";
+    let selectedPkg = "worker";
+    let isAuditMode = false;
+    let currentTaskData = null;
+    let timerInterval = null;
+    let pollInterval = null;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      await fetchAuditMode();
+      updatePromptPreview();
+    });
+
+    // Check Audit Mode
+    async function fetchAuditMode() {
+      try {
+        const res = await fetch("/api/admin/audit-mode");
+        const json = await res.json();
+        isAuditMode = !!json.audit_mode;
+        renderAuditBadge();
+      } catch (e) {
+        console.warn("fetch audit mode error:", e);
+      }
+    }
+
+    function renderAuditBadge() {
+      const badge = document.getElementById("auditBadge");
+      const dot = document.getElementById("auditDot");
+      const text = document.getElementById("auditText");
+      if (isAuditMode) {
+        badge.className = "audit-badge active";
+        text.textContent = "微信审核模式 (纯本地秒出)";
+      } else {
+        badge.className = "audit-badge normal";
+        text.textContent = "CPA 生图模式 (运行中)";
+      }
+    }
+
+    // Toggle Audit Mode
+    document.getElementById("auditBadge").addEventListener("click", async () => {
+      const target = !isAuditMode;
+      try {
+        const res = await fetch("/api/admin/audit-mode", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ audit_mode: target })
+        });
+        const json = await res.json();
+        isAuditMode = !!json.audit_mode;
+        renderAuditBadge();
+        alert(`已成功切换为：${isAuditMode ? '微信审核模式 (纯本地PIL秒出)' : '全量 CPA AI 生图模式'}`);
+      } catch (e) {
+        alert("切换失败: " + e.message);
+      }
+    });
+
+    // File Upload
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      selectedFile = file;
+      selectedSampleId = null;
+      document.querySelectorAll(".sample-thumb").forEach(el => el.classList.remove("selected"));
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById("previewImg").src = e.target.result;
+        document.getElementById("uploadPrompt").style.display = "none";
+        document.getElementById("uploadPreview").style.display = "flex";
+      };
+      reader.readAsDataURL(file);
+      updatePromptPreview();
+    }
+
+    function clearFile(event) {
+      event.stopPropagation();
+      selectedFile = null;
+      document.getElementById("fileInput").value = "";
+      document.getElementById("uploadPrompt").style.display = "block";
+      document.getElementById("uploadPreview").style.display = "none";
+      // Fallback to sample
+      const firstSample = document.querySelector(".sample-thumb");
+      if (firstSample) {
+        firstSample.classList.add("selected");
+        selectedSampleId = firstSample.getAttribute("data-id");
+      }
+      updatePromptPreview();
+    }
+
+    function selectSample(id, element) {
+      selectedSampleId = id;
+      selectedFile = null;
+      document.getElementById("fileInput").value = "";
+      document.getElementById("uploadPrompt").style.display = "block";
+      document.getElementById("uploadPreview").style.display = "none";
+
+      document.querySelectorAll(".sample-thumb").forEach(el => el.classList.remove("selected"));
+      element.classList.add("selected");
+      updatePromptPreview();
+    }
+
+    // Option Selectors
+    function selectOption(type, value, el) {
+      const parent = el.parentElement;
+      parent.querySelectorAll(".option-card").forEach(card => card.classList.remove("active"));
+      el.classList.add("active");
+
+      if (type === "style") selectedStyle = value;
+      if (type === "comp") selectedComp = value;
+      if (type === "bg") selectedBg = value;
+
+      updatePromptPreview();
+    }
+
+    function selectPackage(pkg, el) {
+      document.querySelectorAll(".pkg-item").forEach(item => item.classList.remove("active"));
+      el.classList.add("active");
+      selectedPkg = pkg;
+
+      const customPanel = document.getElementById("customTextPanel");
+      if (pkg === "custom") {
+        customPanel.style.display = "block";
+      } else {
+        customPanel.style.display = "none";
+      }
+    }
+
+    // Prompt Preview
+    async function updatePromptPreview() {
+      const charDesc = document.getElementById("charDescInput").value.trim();
+      const hasImage = !!selectedFile || !!selectedSampleId;
+
+      const fd = new FormData();
+      fd.append("character_desc", charDesc);
+      fd.append("style_preset", selectedStyle);
+      fd.append("composition_preset", selectedComp);
+      fd.append("bg_preset", selectedBg);
+      fd.append("has_image", hasImage);
+
+      try {
+        const res = await fetch("/api/debug/preview-prompt", {
+          method: "POST",
+          body: fd
+        });
+        const json = await res.json();
+        if (json.code === 0 && json.data) {
+          document.getElementById("promptPreview").textContent = json.data.prompt;
+        }
+      } catch (e) {
+        console.warn("preview prompt error", e);
+      }
+    }
+
+    function copyPrompt() {
+      const text = document.getElementById("promptPreview").textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("提示词已复制到剪贴板！");
+      });
+    }
+
+    // Start Generation
+    async function startGeneration() {
+      const btn = document.getElementById("btnGenerate");
+      btn.disabled = true;
+
+      const progressCard = document.getElementById("progressCard");
+      const emptyPlaceholder = document.getElementById("emptyPlaceholder");
+      const resultsSection = document.getElementById("resultsSection");
+
+      emptyPlaceholder.style.display = "none";
+      resultsSection.style.display = "none";
+      progressCard.style.display = "block";
+
+      const progressStatus = document.getElementById("progressStatus");
+      const progressFill = document.getElementById("progressFill");
+      const progressTimer = document.getElementById("progressTimer");
+
+      progressFill.style.width = "10%";
+      progressStatus.textContent = "阶段 1/4: 正在准备人设特征与组装 16 宫格专业提示词...";
+
+      const startTime = Date.now();
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        const sec = Math.floor((Date.now() - startTime) / 1000);
+        progressTimer.textContent = `耗时: ${sec}s · 预计 25-35s`;
+      }, 1000);
+
+      // Build Form
+      const fd = new FormData();
+      if (selectedFile) {
+        fd.append("ref_image", selectedFile);
+      } else if (selectedSampleId) {
+        fd.append("sample_id", selectedSampleId);
+      }
+
+      fd.append("character_desc", document.getElementById("charDescInput").value.trim());
+      fd.append("style_preset", selectedStyle);
+      fd.append("composition_preset", selectedComp);
+      fd.append("bg_preset", selectedBg);
+      fd.append("text_package", selectedPkg);
+
+      if (selectedPkg === "custom") {
+        const customTxt = document.getElementById("customTextInput").value.trim();
+        fd.append("custom_texts", customTxt);
+      }
+
+      try {
+        const res = await fetch("/api/debug/test-sticker16", {
+          method: "POST",
+          body: fd
+        });
+        const json = await res.json();
+        if (json.code !== 0 || !json.data || !json.data.task_id) {
+          throw new Error(json.message || "创建任务失败");
+        }
+
+        const taskId = json.data.task_id;
+        pollTask(taskId, startTime);
+      } catch (err) {
+        clearInterval(timerInterval);
+        btn.disabled = false;
+        progressCard.style.display = "none";
+        alert("启动生图任务失败: " + err.message);
+      }
+    }
+
+    function pollTask(taskId, startTime) {
+      const progressStatus = document.getElementById("progressStatus");
+      const progressFill = document.getElementById("progressFill");
+      const progressCard = document.getElementById("progressCard");
+      const resultsSection = document.getElementById("resultsSection");
+      const btn = document.getElementById("btnGenerate");
+
+      clearInterval(pollInterval);
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/debug/task-status/${taskId}?t=${Date.now()}`);
+          if (!res.ok) return;
+          const json = await res.json();
+          if (json.code !== 0 || !json.data) return;
+
+          const task = json.data;
+          if (task.status === "processing") {
+            if (task.progress) {
+              progressFill.style.width = `${task.progress}%`;
+            }
+            if (task.stage_text) {
+              progressStatus.textContent = task.stage_text;
+            }
+          } else if (task.status === "completed") {
+            clearInterval(pollInterval);
+            clearInterval(timerInterval);
+            progressFill.style.width = "100%";
+            progressStatus.textContent = "🎉 16 款表情贴纸渲染打包完成！";
+
+            setTimeout(() => {
+              progressCard.style.display = "none";
+              btn.disabled = false;
+              displayResults(task.data);
+            }, 600);
+          } else if (task.status === "failed") {
+            clearInterval(pollInterval);
+            clearInterval(timerInterval);
+            btn.disabled = false;
+            progressCard.style.display = "none";
+            alert("生成失败: " + (task.error || "未知异常"));
+          }
+        } catch (e) {
+          console.warn("polling error", e);
+        }
+      }, 1500);
+    }
+
+    // Display Results
+    function displayResults(data) {
+      currentTaskData = data;
+      const resultsSection = document.getElementById("resultsSection");
+      resultsSection.style.display = "block";
+
+      const stats = data.stats || {};
+      document.getElementById("resultMeta").textContent = 
+        `共 ${stats.frame_count || 16} 张贴纸 · 耗时 ${data.duration_seconds || stats.duration_seconds || 0}s · 分辨率 ${stats.resolution || '256x256'} · 风格: ${data.style_preset || selectedStyle}`;
+
+      document.getElementById("btnDownloadZip").href = data.zip_url || data.stickers_pack_url;
+      document.getElementById("btnViewSprite").href = data.input_url || "#";
+      document.getElementById("modalGifImg").src = data.gif_url || "";
+      document.getElementById("btnDownloadModalGif").href = data.gif_url || "#";
+
+      const grid = document.getElementById("stickerGrid");
+      grid.innerHTML = "";
+
+      const stickers = data.stickers || [];
+      stickers.forEach((stk, idx) => {
+        const card = document.createElement("div");
+        card.className = "sticker-card";
+        const num = String(stk.index || idx + 1).padStart(2, "0");
+        const url = stk.url || stk.frame_url || stk;
+        const text = stk.text || stk.caption || "";
+        const emotion = stk.emotion || "";
+
+        card.innerHTML = `
+          <div class="sticker-idx">#${num}</div>
+          <div class="sticker-img-wrap">
+            <img src="${url}" alt="sticker-${num}" loading="lazy">
+          </div>
+          <div class="sticker-caption">${text || '（无字贴纸）'}</div>
+          <div class="sticker-emotion">${emotion}</div>
+          <a href="${url}" download="sticker_${num}.png" class="btn-save-single">⬇️ 保存单张</a>
+        `;
+        grid.appendChild(card);
+      });
+
+      // Smooth scroll to results
+      resultsSection.scrollIntoView({ behavior: "smooth" });
+    }
+
+    // Modal
+    function openPreviewModal() {
+      if (currentTaskData && currentTaskData.gif_url) {
+        document.getElementById("modalGifImg").src = currentTaskData.gif_url;
+        document.getElementById("btnDownloadModalGif").href = currentTaskData.gif_url;
+      }
+      document.getElementById("previewModal").style.display = "flex";
+    }
+
+    function closePreviewModal(e) {
+      if (!e || e.target.id === "previewModal" || e.target.className === "btn-close-modal") {
+        document.getElementById("previewModal").style.display = "none";
+      }
+    }
+  </script>
+</body>
+</html>

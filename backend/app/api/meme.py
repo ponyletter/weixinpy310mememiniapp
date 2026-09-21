@@ -10,9 +10,17 @@ from PIL import Image
 
 from app.config import settings
 from app.core.sprite_processor import SpriteProcessor
-from app.core.prompt_templates import PROMPT_TEMPLATES, get_active_templates
+from app.core.prompt_templates import (
+    PROMPT_TEMPLATES,
+    get_active_templates,
+    SCENE_TEXT_PACKAGES,
+    SCENE_TEXT_TITLES,
+    EMOTION_TAGS_16,
+    build_sticker16_prompt,
+)
 from app.core.wechat_service import WeChatService
 from app.services.audit_meme_generator import create_audit_meme_gif
+from app.services.audit_sticker_generator import create_audit_stickers
 from app.database import (
     check_and_deduct_quota,
     refund_quota,
@@ -433,8 +441,14 @@ async def run_generate_pipeline(
     deducted_from: str = "free",
     frame_count: int = 16,
     resolution: str = "240x240",
+    output_mode: str = "gif",
+    style_preset: str = "chibi_3d",
+    composition_preset: str = "bust",
+    bg_preset: str = "white",
+    text_package: str = "worker",
+    custom_texts: Optional[list[str]] = None,
 ):
-    """后台异步执行完整的生图、切割与动图合成流水线"""
+    """后台异步执行完整的生图、切割与动图/表情包流水线"""
     import io
     import time
     import base64
@@ -457,6 +471,322 @@ async def run_generate_pipeline(
         target_size_px = 256
 
     try:
+        # === 16 款静态独立表情包生成专属流水线 ===
+        if output_mode == "sticker16":
+            task_dir = settings.OUTPUT_DIR / task_id
+            task_dir.mkdir(parents=True, exist_ok=True)
+            has_image = ref_image_bytes is not None and len(ref_image_bytes) > 0
+            if has_image:
+                try:
+                    (task_dir / "original_image.png").write_bytes(ref_image_bytes)
+                except Exception:
+                    pass
+
+            # 1. 审核模式动态分支 (纯本地 PIL 生成，100% 微信合规，0% 深度合成)
+            if is_audit_mode_active():
+                _set_task_progress(task_id, openid, 25, "processing", "阶段 1/3: 正在读取图片并应用合规微调滤镜...")
+                await asyncio.sleep(0.5)
+
+                _set_task_progress(task_id, openid, 70, "rendering", "阶段 2/3: 正在排版渲染 16 款静态表情贴纸...")
+                result_data = await asyncio.to_thread(
+                    create_audit_stickers,
+                    task_id=task_id,
+                    task_dir=task_dir,
+                    ref_image_bytes=ref_image_bytes,
+                    text_package=text_package,
+                    custom_texts=custom_texts,
+                    target_size_px=target_size_px,
+                )
+
+                # 组装 16 帧预览轮播 GIF
+                frames_dir = task_dir / "frames"
+                preview_frames = [
+                    Image.open(frames_dir / f"frame_{i:02d}.png").convert("RGBA")
+                    for i in range(1, 17)
+                    if (frames_dir / f"frame_{i:02d}.png").exists()
+                ]
+                if preview_frames:
+                    gif_path = task_dir / "meme_result.gif"
+                    preview_frames[0].save(
+                        gif_path,
+                        save_all=True,
+                        append_images=preview_frames[1:],
+                        duration=1000,
+                        loop=0,
+                        format="GIF",
+                    )
+                    result_data["gif_url"] = f"/outputs/{task_id}/meme_result.gif"
+                    result_data["thumb_url"] = f"/outputs/{task_id}/frames/frame_01.png"
+
+                if (task_dir / "frames_pack.zip").exists() and not (task_dir / "stickers_pack.zip").exists():
+                    shutil.copyfile(task_dir / "frames_pack.zip", task_dir / "stickers_pack.zip")
+                result_data["stickers_pack_url"] = f"/outputs/{task_id}/stickers_pack.zip"
+                result_data["zip_url"] = f"/outputs/{task_id}/stickers_pack.zip"
+                result_data["stickers"] = result_data.get("frames", [])
+
+                _set_task_progress(task_id, openid, 92, "syncing", "阶段 3/3: 正在同步表情贴纸资源...")
+                await sync_task_outputs_with_retry(task_id, task_dir)
+
+                duration_seconds = round(time.time() - start_time, 1)
+                result_data["duration_seconds"] = duration_seconds
+                result_data["stats"]["duration_seconds"] = duration_seconds
+
+                result_data = await publish_and_rewrite(task_id, task_dir, result_data)
+
+                TASK_STORE[task_id] = {
+                    "openid": openid,
+                    "status": "completed",
+                    "progress": 100,
+                    "stage": "done",
+                    "stage_text": "🎉 16 款表情贴纸制作完成！",
+                    "data": result_data,
+                }
+
+                if openid:
+                    try:
+                        with get_db() as conn:
+                            conn.execute('''
+                                UPDATE meme_tasks
+                                SET prompt = ?, preset_key = ?, text_bottom = ?, fps = 1, status = 'completed',
+                                    progress = 100, gif_url = ?, sprite_url = ?, error_message = '',
+                                    duration_seconds = ?, frame_count = 16, resolution = ?, output_mode = 'sticker16'
+                                WHERE task_id = ? AND openid = ?
+                            ''', (
+                                f"audit_sticker16:{text_package}", f"sticker16:{text_package}", text_package,
+                                result_data.get("gif_url", ""), result_data.get("sprite_url", ""),
+                                duration_seconds, f"{target_size_px}x{target_size_px}", task_id, openid
+                            ))
+                            conn.commit()
+                    except Exception:
+                        pass
+                return
+
+            # 2. 全量 AI 模式：调用 CPA 出图并本地切片叠加台词
+            _set_task_progress(task_id, openid, 10, "prompt", "阶段 1/4: 组装 4x4 矩阵 16 种无字表情提示词...")
+            prompt = build_sticker16_prompt(
+                character_desc=character_desc.strip(),
+                style=style_preset,
+                composition=composition_preset,
+                background=bg_preset,
+                has_image=has_image,
+                is_sketch=is_sketch,
+                custom_action=custom_action.strip(),
+            )
+
+            _set_task_progress(
+                task_id,
+                openid,
+                25,
+                "drawing",
+                "阶段 2/4: 正在调用 CPA 绘图引擎绘制 4x4 矩阵 (16 款表情原画)...",
+            )
+
+            headers = {
+                "Authorization": f"Bearer {settings.CPA_API_KEY}"
+            }
+
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                if has_image:
+                    ref_img_pil = Image.open(io.BytesIO(ref_image_bytes)).convert("RGBA")
+                    buf = io.BytesIO()
+                    ref_img_pil.save(buf, format="PNG")
+                    buf.seek(0)
+                    files = {
+                        "image": ("character.png", buf.getvalue(), "image/png")
+                    }
+                    data = {
+                        "model": settings.CPA_IMAGE_MODEL,
+                        "prompt": prompt,
+                        "n": "1",
+                        "size": "1024x1024"
+                    }
+                    resp = await client.post(
+                        f"{settings.CPA_API_BASE}/images/edits",
+                        headers=headers,
+                        data=data,
+                        files=files
+                    )
+                else:
+                    payload = {
+                        "model": settings.CPA_IMAGE_MODEL,
+                        "prompt": prompt,
+                        "n": 1,
+                        "size": "1024x1024"
+                    }
+                    resp = await client.post(
+                        f"{settings.CPA_API_BASE}/images/generations",
+                        headers={**headers, "Content-Type": "application/json"},
+                        json=payload
+                    )
+
+                if resp.status_code != 200:
+                    raise RuntimeError(f"表情包生成服务异常 ({resp.status_code}): {resp.text}")
+                resp_data = resp.json()
+
+            item = resp_data.get("data", [{}])[0]
+            if "b64_json" in item:
+                img_bytes = base64.b64decode(item["b64_json"])
+                source_image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+            elif "url" in item:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    img_res = await client.get(item["url"])
+                    source_image = Image.open(io.BytesIO(img_res.content)).convert("RGB")
+            else:
+                raise RuntimeError("未能从响应中解析出图片数据")
+
+            # 阶段 3：多尺度网格切片
+            _set_task_progress(
+                task_id,
+                openid,
+                75,
+                "slicing",
+                f"阶段 3/4: 4×4 物理间隙网格切片 (16 款表情, {target_size_px}px)...",
+            )
+
+            input_path = task_dir / "input_sprite.png"
+            source_image.save(input_path, format="PNG")
+
+            frames = await asyncio.to_thread(
+                SpriteProcessor.slice_grid,
+                source_image,
+                rows=4,
+                cols=4,
+                padding_percent=padding_percent,
+                target_size_px=target_size_px,
+            )
+
+            # 阶段 4：排版渲染场景台词并生成表情包合辑
+            _set_task_progress(
+                task_id,
+                openid,
+                88,
+                "annotating",
+                "阶段 4/4: 排版渲染场景台词并打包 16 款表情贴纸...",
+            )
+
+            if custom_texts and len(custom_texts) >= 16:
+                texts = [t.strip() for t in custom_texts[:16]]
+            else:
+                texts = SCENE_TEXT_PACKAGES.get(text_package, SCENE_TEXT_PACKAGES.get("worker", [""] * 16))
+
+            make_trans = (bg_preset == "transparent") or make_transparent
+            annotated_frames = await asyncio.to_thread(
+                SpriteProcessor.overlay_text_to_frames,
+                frames=frames,
+                texts=texts,
+                style="stroke",
+                make_transparent=make_trans
+            )
+
+            stickers_dir = task_dir / "stickers"
+            stickers_dir.mkdir(exist_ok=True)
+            frames_dir = task_dir / "frames"
+            frames_dir.mkdir(exist_ok=True)
+
+            sticker_items = []
+            for idx, (af, txt) in enumerate(zip(annotated_frames, texts), 1):
+                s_path = stickers_dir / f"sticker_{idx:02d}.png"
+                f_path = frames_dir / f"frame_{idx:02d}.png"
+                af.save(s_path, format="PNG")
+                af.save(f_path, format="PNG")
+                emotion = EMOTION_TAGS_16[idx - 1] if idx - 1 < len(EMOTION_TAGS_16) else ""
+                sticker_items.append({
+                    "index": idx,
+                    "url": f"/outputs/{task_id}/stickers/sticker_{idx:02d}.png",
+                    "frame_url": f"/outputs/{task_id}/frames/frame_{idx:02d}.png",
+                    "text": txt,
+                    "caption": txt,
+                    "emotion": emotion
+                })
+
+            # 打包 ZIP
+            zip_path = task_dir / "stickers_pack.zip"
+            await asyncio.to_thread(
+                SpriteProcessor.package_zip,
+                frames=annotated_frames,
+                output_path=str(zip_path),
+                make_transparent=make_trans
+            )
+            shutil.copyfile(zip_path, task_dir / "frames_pack.zip")
+
+            # 生成整体预览动图 (每张展示 1 秒)
+            gif_path = task_dir / "meme_result.gif"
+            await asyncio.to_thread(
+                SpriteProcessor.assemble_gif,
+                frames=annotated_frames,
+                output_path=str(gif_path),
+                fps=1,
+                make_transparent=make_trans,
+                max_file_size_bytes=settings.WECHAT_GIF_MAX_BYTES
+            )
+
+            _set_task_progress(task_id, openid, 96, "syncing", "正在同步表情包产物到国内节点与云存储...")
+            if not await sync_task_outputs_with_retry(task_id, task_dir):
+                raise RuntimeError("表情包已生成，但同步到国内节点失败")
+
+            duration_seconds = round(time.time() - start_time, 1)
+            has_orig = has_image and (task_dir / "original_image.png").exists()
+
+            stats = {
+                "frame_count": 16,
+                "sticker_count": 16,
+                "duration_seconds": duration_seconds,
+                "resolution": f"{target_size_px}x{target_size_px}",
+                "style_preset": style_preset,
+                "composition_preset": composition_preset,
+                "bg_preset": bg_preset,
+                "text_package": text_package,
+            }
+
+            result_data = {
+                "task_id": task_id,
+                "output_mode": "sticker16",
+                "style_preset": style_preset,
+                "composition_preset": composition_preset,
+                "bg_preset": bg_preset,
+                "text_package": text_package,
+                "stickers": sticker_items,
+                "frames": [s["url"] for s in sticker_items],
+                "gif_url": f"/outputs/{task_id}/meme_result.gif",
+                "thumb_url": f"/outputs/{task_id}/stickers/sticker_01.png",
+                "zip_url": f"/outputs/{task_id}/stickers_pack.zip",
+                "stickers_pack_url": f"/outputs/{task_id}/stickers_pack.zip",
+                "input_url": f"/outputs/{task_id}/input_sprite.png",
+                "original_image_url": f"/outputs/{task_id}/original_image.png" if has_orig else "",
+                "prompt_used": prompt,
+                "stats": stats,
+                "duration_seconds": duration_seconds
+            }
+
+            result_data = await publish_and_rewrite(task_id, task_dir, result_data)
+
+            TASK_STORE[task_id] = {
+                "openid": openid,
+                "status": "completed",
+                "progress": 100,
+                "stage": "done",
+                "stage_text": "🎉 16 款表情贴纸全部制作完成！",
+                "data": result_data
+            }
+
+            if openid:
+                try:
+                    with get_db() as conn:
+                        conn.execute('''
+                            UPDATE meme_tasks
+                            SET prompt = ?, preset_key = ?, text_bottom = ?, fps = 1, status = 'completed',
+                                progress = 100, gif_url = ?, sprite_url = ?, error_message = '',
+                                duration_seconds = ?, frame_count = 16, resolution = ?, output_mode = 'sticker16'
+                            WHERE task_id = ? AND openid = ?
+                        ''', (
+                            prompt, f"sticker16:{style_preset}:{text_package}", text_package,
+                            result_data["gif_url"], result_data["input_url"], duration_seconds,
+                            f"{target_size_px}x{target_size_px}", task_id, openid
+                        ))
+                        conn.commit()
+                except Exception:
+                    pass
+            return
         # === 审核模式动态分支 (策略 A: 降级为本地纯 PIL 图像微动效处理，秒级出图，0% 深度合成) ===
         if is_audit_mode_active():
             task_dir = settings.OUTPUT_DIR / task_id
@@ -801,6 +1131,12 @@ async def generate_async(
     frame_count: int = Form(16),
     fast_mode: Optional[str] = Form("1"),
     loop_count: Optional[int] = Form(0),
+    output_mode: Optional[str] = Form("gif"),
+    style_preset: Optional[str] = Form("chibi_3d"),
+    composition_preset: Optional[str] = Form("bust"),
+    bg_preset: Optional[str] = Form("white"),
+    text_package: Optional[str] = Form("worker"),
+    custom_texts: Optional[str] = Form(None),
 ):
     """【推荐】异步启动动图生图任务，前端通过轮询获取实时进度与结果，绝无 HTTP 超时问题"""
     authenticated_openid = require_same_user(openid, current_openid)
@@ -816,8 +1152,20 @@ async def generate_async(
         ref_image_bytes = await read_limited_upload(ref_image, settings.MAX_IMAGE_UPLOAD_MB)
         open_validated_image(ref_image_bytes, allow_animation=False)
 
+    custom_texts_list = None
+    if custom_texts and custom_texts.strip():
+        try:
+            parsed = json.loads(custom_texts)
+            if isinstance(parsed, list):
+                custom_texts_list = [str(x).strip() for x in parsed]
+        except Exception:
+            custom_texts_list = [line.strip() for line in custom_texts.splitlines() if line.strip()]
+
     # 微信内容安全审查 (检测用户自定义台词、角色描述与上传参考图)
-    for txt in (custom_caption, character_desc, custom_action or ""):
+    texts_to_check = [custom_caption, character_desc, custom_action or ""]
+    if custom_texts_list:
+        texts_to_check.extend(custom_texts_list)
+    for txt in texts_to_check:
         if txt and txt.strip():
             is_safe, tip = await WeChatService.check_text_security(txt, authenticated_openid)
             if not is_safe:
@@ -849,12 +1197,14 @@ async def generate_async(
                 TASK_STORE.pop(old_task_id, None)
                 break
 
+    preset_key_val = f"sticker16:{style_preset}:{text_package}" if output_mode == "sticker16" else action_type
+    caption_val = (custom_texts_list[0] if custom_texts_list else text_package) if output_mode == "sticker16" else custom_caption
     try:
         with get_db() as conn:
             conn.execute('''
-                INSERT INTO meme_tasks (task_id, openid, preset_key, text_bottom, fps, status, progress, frame_count, resolution)
-                VALUES (?, ?, ?, ?, ?, 'processing', 5, ?, ?)
-            ''', (task_id, authenticated_openid, action_type, custom_caption, fps, frame_count, resolution))
+                INSERT INTO meme_tasks (task_id, openid, preset_key, text_bottom, fps, status, progress, frame_count, resolution, output_mode)
+                VALUES (?, ?, ?, ?, ?, 'processing', 5, ?, ?, ?)
+            ''', (task_id, authenticated_openid, preset_key_val, caption_val, fps, frame_count, resolution, output_mode or "gif"))
             conn.commit()
     except Exception:
         refund_quota(authenticated_openid, quota_res.get("deducted_from", "free"))
@@ -877,6 +1227,12 @@ async def generate_async(
         deducted_from=quota_res.get("deducted_from", "free"),
         frame_count=frame_count,
         resolution=resolution or "240x240",
+        output_mode=output_mode or "gif",
+        style_preset=style_preset or "chibi_3d",
+        composition_preset=composition_preset or "bust",
+        bg_preset=bg_preset or "white",
+        text_package=text_package or "worker",
+        custom_texts=custom_texts_list,
     ))
 
     return {
@@ -888,6 +1244,188 @@ async def generate_async(
             "estimated_duration": estimated_duration
         }
     }
+
+@router.get("/sticker16-packages")
+@router.get("/meme/sticker16-packages")
+def get_sticker16_packages():
+    """获取 16 款表情贴纸预设场景文案包、风格与版型配置"""
+    packages = []
+    for pkg_id, texts in SCENE_TEXT_PACKAGES.items():
+        packages.append({
+            "id": pkg_id,
+            "title": SCENE_TEXT_TITLES.get(pkg_id, pkg_id),
+            "texts": texts,
+            "count": len(texts)
+        })
+    return {
+        "code": 0,
+        "data": {
+            "packages": packages,
+            "emotions": EMOTION_TAGS_16,
+            "styles": [
+                {"id": "chibi_3d", "title": "3D Q版粘土 (推荐)", "desc": "泡泡玛特盲盒质感，饱满圆润，色彩鲜亮"},
+                {"id": "anime", "title": "日漫二次元", "desc": "精美动漫画风，神情夸张生动"},
+                {"id": "funny_line", "title": "恶搞沙雕简笔画", "desc": "蘑菇头/熊猫头风味，魔性搞笑斗图必备"}
+            ],
+            "compositions": [
+                {"id": "bust", "title": "半身动作 (推荐)", "desc": "包含丰富手势与肢体互动，表现力强"},
+                {"id": "closeup", "title": "头部特写", "desc": "聚焦面部神态细节与五官情绪"},
+                {"id": "fullbody", "title": "全身动态", "desc": "包含全身奔跑、翻滚、瘫倒动作"}
+            ],
+            "backgrounds": [
+                {"id": "white", "title": "纯白背景 (经典)", "desc": "标准表情包白色实底"},
+                {"id": "transparent", "title": "透明去底", "desc": "自动抠除白底，生成纯净透明贴纸"}
+            ]
+        }
+    }
+
+
+@router.post("/debug/preview-prompt")
+def preview_prompt(
+    character_desc: str = Form(""),
+    style_preset: str = Form("chibi_3d"),
+    composition_preset: str = Form("bust"),
+    bg_preset: str = Form("white"),
+    has_image: bool = Form(True),
+    is_sketch: bool = Form(False),
+    custom_action: str = Form(""),
+):
+    """【调试辅助】预览将发送给 CPA 模型的 16 宫格专业英文提示词"""
+    prompt = build_sticker16_prompt(
+        character_desc=character_desc.strip(),
+        style=style_preset,
+        composition=composition_preset,
+        background=bg_preset,
+        has_image=has_image,
+        is_sketch=is_sketch,
+        custom_action=custom_action.strip(),
+    )
+    return {
+        "code": 0,
+        "data": {
+            "prompt": prompt,
+            "model": settings.CPA_IMAGE_MODEL,
+            "cpa_api_base": settings.CPA_API_BASE
+        }
+    }
+
+
+@router.post("/debug/test-sticker16")
+async def debug_test_sticker16(
+    ref_image: Optional[UploadFile] = File(None),
+    sample_id: Optional[str] = Form(None),
+    character_desc: str = Form(""),
+    style_preset: str = Form("chibi_3d"),
+    composition_preset: str = Form("bust"),
+    bg_preset: str = Form("white"),
+    text_package: str = Form("worker"),
+    custom_texts: Optional[str] = Form(None),
+    resolution: str = Form("256x256"),
+    force_audit: bool = Form(False),
+):
+    """【Web调试台专用】直接测试 16 静态表情包生成，免去小程序鉴权，快速联调"""
+    task_id = uuid.uuid4().hex
+    ref_image_bytes = None
+
+    if ref_image and getattr(ref_image, "filename", None):
+        ref_image_bytes = await read_limited_upload(ref_image, settings.MAX_IMAGE_UPLOAD_MB)
+    elif sample_id:
+        sample_path = settings.SAMPLES_DIR / f"{sample_id}.png"
+        if not sample_path.exists():
+            png_list = list(settings.SAMPLES_DIR.glob("*.png"))
+            if png_list:
+                sample_path = png_list[0]
+        if sample_path.exists():
+            ref_image_bytes = sample_path.read_bytes()
+
+    custom_texts_list = None
+    if custom_texts and custom_texts.strip():
+        try:
+            parsed = json.loads(custom_texts)
+            if isinstance(parsed, list):
+                custom_texts_list = [str(x).strip() for x in parsed]
+        except Exception:
+            custom_texts_list = [line.strip() for line in custom_texts.splitlines() if line.strip()]
+
+    openid = "user_mock_h5_console"
+    TASK_STORE[task_id] = {
+        "openid": openid,
+        "status": "processing",
+        "progress": 5,
+        "stage": "init",
+        "stage_text": "正在初始化 16 宫格表情包流水线...",
+        "estimated_duration": 30
+    }
+
+    # 启动异步生图流水线
+    asyncio.create_task(run_generate_pipeline(
+        task_id=task_id,
+        ref_image_bytes=ref_image_bytes,
+        action_type="sticker16",
+        custom_caption="",
+        character_desc=character_desc,
+        fps=1,
+        make_transparent=(bg_preset == "transparent"),
+        padding_percent=2.5,
+        is_sketch=False,
+        openid=openid,
+        custom_action="",
+        deducted_from="free",
+        frame_count=16,
+        resolution=resolution,
+        output_mode="sticker16",
+        style_preset=style_preset,
+        composition_preset=composition_preset,
+        bg_preset=bg_preset,
+        text_package=text_package,
+        custom_texts=custom_texts_list,
+    ))
+
+    return {
+        "code": 0,
+        "message": "task_started",
+        "data": {
+            "task_id": task_id,
+            "status": "processing",
+            "estimated_duration": 30
+        }
+    }
+
+
+@router.get("/debug/task-status/{task_id}")
+def debug_get_task_status(task_id: str):
+    """【调试专用】无鉴权查询任务状态与进度"""
+    if task_id in TASK_STORE:
+        task_info = TASK_STORE[task_id]
+        public_info = {k: v for k, v in task_info.items() if k != "openid"}
+        return {"code": 0, "data": public_info}
+
+    task_dir = settings.OUTPUT_DIR / task_id
+    if (task_dir / "stickers_pack.zip").exists() or (task_dir / "meme_result.gif").exists():
+        frames_dir = task_dir / "frames"
+        stickers_dir = task_dir / "stickers"
+        frame_urls = [f"/outputs/{task_id}/frames/{f.name}" for f in sorted(frames_dir.glob("*.png"))] if frames_dir.exists() else []
+        sticker_urls = [f"/outputs/{task_id}/stickers/{f.name}" for f in sorted(stickers_dir.glob("*.png"))] if stickers_dir.exists() else []
+
+        return {
+            "code": 0,
+            "data": {
+                "status": "completed",
+                "progress": 100,
+                "data": {
+                    "task_id": task_id,
+                    "output_mode": "sticker16",
+                    "stickers": sticker_urls or frame_urls,
+                    "frames": frame_urls,
+                    "gif_url": f"/outputs/{task_id}/meme_result.gif",
+                    "zip_url": f"/outputs/{task_id}/stickers_pack.zip",
+                    "stickers_pack_url": f"/outputs/{task_id}/stickers_pack.zip",
+                    "input_url": f"/outputs/{task_id}/input_sprite.png",
+                }
+            }
+        }
+    return {"code": 404, "message": "task_not_found"}
+
 
 @router.get("/task-status/{task_id}")
 def get_task_status(task_id: str, current_openid: CurrentOpenid):

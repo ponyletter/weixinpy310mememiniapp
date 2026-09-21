@@ -156,6 +156,14 @@ def read_root():
         return FileResponse(index_path)
     return {"message": f"Welcome to {settings.PROJECT_NAME}"}
 
+@app.get("/sticker16")
+def read_sticker16():
+    page_path = settings.STATIC_DIR / "test_sticker16.html"
+    if page_path.exists():
+        return FileResponse(page_path)
+    return {"message": "test_sticker16.html not found"}
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "project": settings.PROJECT_NAME}
+

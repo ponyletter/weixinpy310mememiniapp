@@ -220,3 +220,163 @@ def get_active_templates():
     return PROMPT_TEMPLATES
 
 
+# =========================================================================
+# 16 款静态表情包专用场景文案包与提示词生成器
+# =========================================================================
+
+SCENE_TEXT_PACKAGES = {
+    "none": [""] * 16,
+    "worker": [
+        "收到", "好的老板", "疯狂搬砖", "摸鱼中",
+        "头秃了", "我太难了", "方案又改了", "震惊老铁",
+        "血压上来了", "需求是什么", "搞定收工", "夸得我脸红",
+        "跪求别催", "吃瓜看戏", "困到变形", "我下班啦溜了"
+    ],
+    "battle": [
+        "点赞666", "得瑟拿捏", "疯狂输出", "暗中观察",
+        "裂开崩溃", "猛男落泪", "出来挨打", "惊呆了",
+        "无语翻白眼", "满头问号", "帅气登场", "害羞掩面",
+        "抱拳感谢", "现场吃瓜", "睡了别艾特", "告辞溜了"
+    ],
+    "cute": [
+        "谢谢你", "么么哒", "加油鸭", "喝杯奶茶",
+        "委屈巴巴", "求抱抱", "生气气了", "星星眼哇塞",
+        "叹气气", "疑惑脸??", "酷酷的哦", "爱你哟",
+        "拜托拜托", "干杯耶", "呼呼大睡", "飞奔向你"
+    ],
+    "slack": [
+        "好的(假装积极)", "随缘吧", "我装的", "看神仙打架",
+        "毁灭吧", "哭死扎心", "勿扰已死", "还能这样",
+        "累了退下吧", "听不懂不想懂", "佛系看淡", "算了吧",
+        "放过我吧", "毫无波澜", "躺平中", "彻底告辞"
+    ]
+}
+
+SCENE_TEXT_TITLES = {
+    "none": "无字纯表情 (自由斗图)",
+    "worker": "打工人日常 (职场生存必备)",
+    "battle": "群聊斗图 (轻松拿捏全场)",
+    "cute": "萌系可爱回应 (聊天更甜)",
+    "slack": "摆烂躺平 (佛系佛系佛系)",
+    "custom": "自定义填词"
+}
+
+EMOTION_TAGS_16 = [
+    "大笑点赞", "俏皮比耶", "狂敲键盘", "托腮喝茶",
+    "抱头抓狂", "大哭流泪", "愤怒喷火", "震惊捂嘴",
+    "叹气白眼", "歪头问号", "墨镜自信", "害羞脸红",
+    "合十拜托", "吃瓜看戏", "犯困打哈欠", "下班奔跑"
+]
+
+
+def build_sticker16_prompt(
+    character_desc: str = "",
+    style: str = "keep_orig",         # keep_orig | cute_chibi | 3d_toy
+    composition: str = "bust",        # closeup | bust | full_body
+    background: str = "white",        # white | transparent
+    has_image: bool = True,
+    is_sketch: bool = False,
+    custom_action: str = ""
+) -> str:
+    """
+    组装 16 款静态独立表情包雪碧图专用 Prompt：
+    固定 4×4 共 16 个格子的差异化情绪姿态，严禁绘制文字，保证纯净画面与高表现力。
+    """
+    char_desc = (character_desc or "").strip()
+    custom_action = (custom_action or "").strip()
+
+    # 别名规范化
+    style_map = {
+        "3d_toy": "3d_toy",
+        "chibi_3d": "3d_toy",
+        "cute_chibi": "cute_chibi",
+        "anime": "cute_chibi",
+        "keep_orig": "keep_orig",
+        "funny_line": "funny_line",
+    }
+    comp_map = {
+        "bust": "bust",
+        "closeup": "closeup",
+        "fullbody": "full_body",
+        "full_body": "full_body",
+    }
+    style_key = style_map.get(style, "3d_toy")
+    comp_key = comp_map.get(composition, "bust")
+
+    # 1. 人设与身份来源
+    if is_sketch:
+        if char_desc:
+            char_id = f"the character from my uploaded sketch drawing combined with description '{char_desc}'"
+        else:
+            char_id = "the cute cartoon character from my uploaded sketch drawing"
+    elif has_image:
+        if char_desc:
+            char_id = f"the person/character in the reference image, preserving facial identity, haircut and core features ({char_desc})"
+        else:
+            char_id = "the person/character in the reference image, keeping consistent facial identity and signature look"
+    else:
+        if char_desc:
+            char_id = f"a charismatic original character based on '{char_desc}'"
+        else:
+            char_id = "an adorable expressive anime cartoon avatar character"
+
+    # 2. 风格定义
+    style_prompts = {
+        "keep_orig": "maintain original character identity, modern 2D flat avatar sticker art style, clean bold outlines, consistent color palette",
+        "cute_chibi": "chibi kawaii anime sticker style, super cute rounded facial features, big expressive eyes, bold sticker cut outline, soft pastel lighting",
+        "3d_toy": "3D vinyl collectible toy figure style, PopMart blind box aesthetic, smooth claymation shading, soft ambient occlusion lighting, premium cute",
+        "funny_line": "hilarious funny comic sticker style, simplified expressive doodle lineart, exaggerated comical meme reactions, clean white paper background",
+    }
+
+    # 3. 构图定义
+    comp_prompts = {
+        "closeup": "extreme close-up portraits focusing heavily on vivid facial expressions in each cell",
+        "bust": "bust portraits clearly showing head, expressive hands and funny gestures",
+        "full_body": "full body dynamic chibi poses with energetic gestures and action silhouettes"
+    }
+
+    # 4. 背景定义
+    bg_prompts = {
+        "white": "solid clean pure white background (#FFFFFF) with ample uniform empty margins between cells",
+        "transparent": "isolated white background cutout, crisp clean borders around character silhouette"
+    }
+
+    # 5. 16 格固定动作与情绪指令（严禁绘制任何文字）
+    grid_actions = (
+        "4x4 uniform sprite sheet grid layout consisting of exactly 16 distinct square panels. "
+        "Each cell MUST show a UNIQUE, HIGHLY EXPRESSIVE mood or gesture in exact order: "
+        "1. laughing warmly with double thumbs-up; "
+        "2. winking playfully with a peace V-sign gesture; "
+        "3. sweating furiously typing at a mini laptop; "
+        "4. resting chin on hand sipping a hot coffee cup; "
+        "5. clutching head pulling hair in comical panic/meltdown; "
+        "6. bawling tears streaming down like waterfalls; "
+        "7. angry steam erupting from head with cute red face; "
+        "8. shocked hands on cheeks with jaw dropped wide; "
+        "9. weary sighing with slight humorous eye-roll; "
+        "10. tilted head scratching ear with cartoon question marks; "
+        "11. confident smirk wearing cool black sunglasses; "
+        "12. blushing cute shy smile poking cheek with one finger; "
+        "13. pleading with hands clasped together begging puppy eyes; "
+        "14. eating a big slice of watermelon with spoon enjoying drama; "
+        "15. sleepy yawning with big snot bubble drifting; "
+        "16. dashing away with backpack waving goodbye. "
+    )
+
+    action_extra = f" Additional custom nuance: {custom_action}." if custom_action else ""
+
+    prompt = (
+        f"A master emoji sticker sheet depicting {char_id}. "
+        f"Art style: {style_prompts.get(style_key, style_prompts['keep_orig'])}. "
+        f"Framing: {comp_prompts.get(comp_key, comp_prompts['bust'])}. "
+        f"Background: {bg_prompts.get(background, bg_prompts['white'])}. "
+        f"{grid_actions}"
+        f"{action_extra} "
+        "CRITICAL RULES: NO text, NO typography, NO watermark, NO Chinese characters, NO English letters, "
+        "uniform cell size across 4 rows and 4 columns, clean white separation gutters between all panels, "
+        "total resolution 1024x1024 pixels."
+    )
+    return prompt
+
+
+

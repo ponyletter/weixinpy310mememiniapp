@@ -186,6 +186,7 @@ def init_db():
             ("custom_title", "TEXT DEFAULT ''"),
             ("frame_count", "INTEGER DEFAULT 16"),
             ("resolution", "TEXT DEFAULT '240x240'"),
+            ("output_mode", "TEXT DEFAULT 'gif'"),
         ]:
             try:
                 cursor.execute(f"ALTER TABLE meme_tasks ADD COLUMN {col} {col_def};")

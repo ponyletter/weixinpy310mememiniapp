@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 # deliberately excluded so a shared bucket is not filled by intermediates.
 R2_FINAL_ARTIFACT_NAMES = frozenset({
     "meme_result.gif",
+    "stickers_preview.gif",
+    "stickers_pack.zip",
+    "frames_pack.zip",
     "compressed.gif",
     "compressed.jpg",
     "compressed.png",
@@ -98,10 +101,14 @@ def _upload_file(client, path: Path, bucket: str, key: str) -> None:
     )
 
 
+def _is_durable_artifact(name: str) -> bool:
+    return name in (R2_FINAL_ARTIFACT_NAMES | R2_SOURCE_ARTIFACT_NAMES) or (name.startswith("sticker_") and name.endswith(".png"))
+
+
 def cleanup_local_intermediates(task_dir: Path) -> None:
     """Remove non-durable processing files after a successful R2 publish."""
     for path in sorted(task_dir.rglob("*"), key=lambda item: len(item.parts), reverse=True):
-        if path.is_file() and path.name not in R2_FINAL_ARTIFACT_NAMES | R2_SOURCE_ARTIFACT_NAMES:
+        if path.is_file() and not _is_durable_artifact(path.name):
             path.unlink(missing_ok=True)
         elif path.is_dir():
             try:
@@ -124,7 +131,7 @@ async def publish_task_directory(task_id: str, task_dir: Path) -> dict[str, str]
     files = sorted(
         path for path in task_dir.rglob("*")
         if path.is_file()
-        and path.name in R2_FINAL_ARTIFACT_NAMES | R2_SOURCE_ARTIFACT_NAMES
+        and _is_durable_artifact(path.name)
     )
     if not files:
         raise RuntimeError(f"R2 发布失败：任务目录为空 ({task_id})")
