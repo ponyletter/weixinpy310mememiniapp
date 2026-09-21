@@ -291,6 +291,9 @@ def build_sticker16_prompt(
         "wechat_sticker": "wechat_sticker",
         "line_sticker": "wechat_sticker",
         "keep_orig": "wechat_sticker",
+        "real_person": "real_person",
+        "real": "real_person",
+        "photo": "real_person",
         "cute_chibi": "cute_chibi",
         "anime": "cute_chibi",
         "funny_line": "funny_line",
@@ -313,7 +316,9 @@ def build_sticker16_prompt(
         else:
             char_id = "the cute cartoon character from my uploaded sketch drawing"
     elif has_image:
-        if char_desc:
+        if style_key == "real_person":
+            char_id = f"the real person in the reference photo, accurately preserving realistic human facial likeness, real skin texture, hair and photographic appearance ({char_desc})" if char_desc else "the real person in the reference photo, strictly preserving authentic photographic likeness and natural human features"
+        elif char_desc:
             char_id = f"the person/character in the reference image, preserving facial identity, haircut and core features ({char_desc})"
         else:
             char_id = "the person/character in the reference image, strictly keeping consistent facial identity and signature look"
@@ -326,6 +331,7 @@ def build_sticker16_prompt(
     # 2. 风格定义 (与原有小程序动图风格保持高度统一：经典微信2D手绘贴纸/Line表情包画风)
     style_prompts = {
         "wechat_sticker": "classic WeChat & Line cute emoji sticker style, 2D flat vector cartoon character, bold clean dark sticker contour lines, flat bright cel-shading, Japanese Line sticker aesthetic, white paper cutout sticker border, cute chibi proportions",
+        "real_person": "authentic photorealistic human portrait emoji stickers, authentic photography of real person, realistic human facial likeness, real skin texture and natural lighting, funny expressive live-action meme reactions, clean cutout silhouette on solid pure white background, ultra-realistic photography",
         "cute_chibi": "ultra-cute kawaii chibi sticker, big expressive sparkling anime eyes, soft rounded face, adorable pastel colors, thick sticker cut outline",
         "funny_line": "funny hilarious comic meme sticker, doodle cartoon lineart, exaggerated comical meme reactions, clean black and white with minimal color accents",
         "3d_toy": "3D vinyl collectible toy figure style, PopMart blind box aesthetic, smooth claymation shading, soft ambient occlusion lighting",

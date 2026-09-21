@@ -1192,11 +1192,12 @@ async def generate_async(
         raise HTTPException(status_code=403, detail=quota_res.get("error", "制作次数已耗尽，请签到或开通尝鲜包！"))
 
     task_id = uuid.uuid4().hex
-    estimated_duration = get_estimated_generation_duration()
+    estimated_duration = get_estimated_generation_duration(output_mode=output_mode)
 
     TASK_STORE[task_id] = {
         "openid": authenticated_openid,
         "status": "processing",
+        "output_mode": output_mode,
         "progress": 5,
         "stage": "init",
         "stage_text": "正在初始化任务...",

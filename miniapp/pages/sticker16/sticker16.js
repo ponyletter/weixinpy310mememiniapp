@@ -21,6 +21,7 @@ Page({
 
     stylePresets: [
       { id: 'wechat_sticker', name: '✨ 经典手绘贴纸', desc: '2D Q版扁平手绘 · 微信原生质感' },
+      { id: 'real_person', name: '📸 写实真人表情', desc: '真实面孔质感 · 拍照真实神态还原' },
       { id: 'cute_chibi', name: '🐱 Q版萌系大眼', desc: '超甜圆润萌化感 · 活泼可爱' },
       { id: 'funny_line', name: '✏️ 魔性沙雕线描', desc: '黑白搞怪线稿 · 斗图神作' },
       { id: '3d_toy', name: '🧸 3D 公仔潮玩', desc: '立体盲盒潮玩 · 饱满光泽' },
@@ -33,9 +34,9 @@ Page({
     hasCompletedTask: false,
     currentStep: 1,
     progress: 5,
-    stageTitle: '阶段 1/4: 分析角色视觉特征...',
+    stageTitle: '阶段 1/4: 提取角色视觉特征...',
     elapsedSeconds: 0,
-    estimatedTotalSeconds: 32,
+    estimatedSeconds: 60,
 
     // 16 宫格结果
     taskId: '',
@@ -183,7 +184,7 @@ Page({
         content: '请先上传一张参考图片（可自拍、生活照、萌宠或从素材库保存的表情）',
         showCancel: false,
         confirmText: '去上传',
-        confirmColor: '#07c160'
+        confirmColor: '#6c5ce7'
       });
       return;
     }
@@ -234,7 +235,7 @@ Page({
       showModal: true,
       isGenerating: true,
       currentStep: 1,
-      progress: 8,
+      progress: 6,
       stageTitle: '阶段 1/4: 提取角色视觉特征...',
       elapsedSeconds: 0
     });
@@ -293,7 +294,12 @@ Page({
 
         if (res.statusCode === 200 && respData && respData.code === 0) {
           const taskId = respData.data.task_id;
-          this.setData({ taskId: taskId, currentStep: 2 });
+          const est = (respData.data && respData.data.estimated_duration) ? Math.max(20, Math.round(respData.data.estimated_duration)) : (this.data.estimatedSeconds || 60);
+          this.setData({ 
+            taskId: taskId, 
+            currentStep: 2,
+            estimatedSeconds: est
+          });
           this.startPollingTask(taskId);
         } else {
           let msg = (respData && respData.detail) || '服务开小差了，请稍后重试';
@@ -307,19 +313,26 @@ Page({
     });
   },
 
-  // 平滑计时器
+  // 平滑计时器 (结合数据库实际平均耗时)
   startProgressTicker() {
     this.clearTimers();
     let sec = 0;
-    const estimated = 32;
 
     this._timer = setInterval(() => {
       sec++;
-      let pct = Math.min(94, Math.floor(8 + (sec / estimated) * 86));
+      const targetSeconds = Math.max(20, this.data.estimatedSeconds || 60);
+      let pct = 6;
+      if (sec < targetSeconds) {
+        pct = Math.min(92, Math.floor(6 + (sec / targetSeconds) * 86));
+      } else {
+        // 超出预估时间后，平滑爬升到 98%，不冻结
+        pct = Math.min(98, 92 + Math.floor((sec - targetSeconds) / 8));
+      }
+
       let step = 1;
       let stage = '阶段 1/4: 提取角色视觉特征...';
 
-      if (sec >= 5 && sec < 18) {
+      if (sec >= 4 && sec < 18) {
         step = 2;
         stage = '阶段 2/4: 绘制 16 帧分镜生动表情...';
       } else if (sec >= 18) {
@@ -347,6 +360,12 @@ Page({
         success: (res) => {
           if (res.statusCode === 200 && res.data && res.data.code === 0) {
             const task = res.data.data;
+            if (task.estimated_duration && !this.data.estimatedSeconds) {
+              this.setData({ estimatedSeconds: Math.max(20, Math.round(task.estimated_duration)) });
+            }
+            if (task.stage_text) {
+              this.setData({ stageTitle: task.stage_text });
+            }
             if (task.status === 'completed' || task.status === 'success') {
               this.handleGenerateSuccess(task);
             } else if (task.status === 'failed') {
@@ -537,7 +556,7 @@ Page({
         title: '需要相册权限',
         content: '保存表情需要允许保存到系统相册，请前往设置开启权限。',
         confirmText: '去开启',
-        confirmColor: '#07c160',
+        confirmColor: '#6c5ce7',
         success: (m) => {
           if (m.confirm) wx.openSetting();
         }

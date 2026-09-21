@@ -886,7 +886,7 @@ def is_audit_mode_active() -> bool:
         pass
     return bool(getattr(settings, "AUDIT_MODE", True))
 
-def get_estimated_generation_duration() -> float:
+def get_estimated_generation_duration(output_mode: Optional[str] = None) -> float:
     """根据近期已完成任务的实际耗时，从数据库取最近 10 次的真实平均值（平滑估计）"""
     # 审核模式下固定返回 2.5 秒预估，秒级出图过审
     if is_audit_mode_active():
@@ -894,6 +894,20 @@ def get_estimated_generation_duration() -> float:
 
     with get_db() as conn:
         cursor = conn.cursor()
+        if output_mode == "sticker16":
+            cursor.execute('''
+                SELECT AVG(duration_seconds) FROM (
+                    SELECT duration_seconds FROM meme_tasks
+                    WHERE status = 'completed' AND output_mode = 'sticker16' AND duration_seconds IS NOT NULL AND duration_seconds > 0
+                    ORDER BY created_at DESC LIMIT 10
+                )
+            ''')
+            row = cursor.fetchone()
+            if row and row[0] is not None and float(row[0]) > 0:
+                avg_sec = float(row[0])
+                return max(20.0, min(360.0, round(avg_sec, 1)))
+            return 60.0
+
         cursor.execute('''
             SELECT AVG(duration_seconds) FROM (
                 SELECT duration_seconds FROM meme_tasks
@@ -904,9 +918,9 @@ def get_estimated_generation_duration() -> float:
         row = cursor.fetchone()
         if row and row[0] is not None and float(row[0]) > 0:
             avg_sec = float(row[0])
-            # 真实反映近期平均耗时，合理范围设为 15s ~ 360s，不再人为卡死在 90s
+            # 真实反映近期平均耗时，合理范围设为 15s ~ 360s
             return max(15.0, min(360.0, round(avg_sec, 1)))
-    return 120.0
+    return 60.0
 
 def move_collection_item(item_id: int, target_collection_id: str, openid: str = "") -> bool:
     """将指定表情从原合集移动至新的合集"""

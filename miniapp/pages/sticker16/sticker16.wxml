@@ -1,5 +1,5 @@
 <view class="container">
-  <!-- 顶部标题引导区 (去除敏感宣传词) -->
+  <!-- 顶部标题引导区 -->
   <view class="page-heading">
     <view class="heading-badge">🔥 热门表情贴纸工坊</view>
     <text class="page-title">一张照片变出 16 张表情包</text>
@@ -179,7 +179,7 @@
     />
   </view>
 
-  <!-- ==================== 底部固定操作栏 (安全区适配，杜绝挤压) ==================== -->
+  <!-- ==================== 底部固定操作栏 (安全区适配，全屏按钮永不裁切) ==================== -->
   <view class="bottom-dock">
     <button 
       class="btn-primary btn-make" 
@@ -187,11 +187,11 @@
       disabled="{{isGenerating}}"
     >
       <text wx:if="{{!isGenerating}}">🚀 开始制作 16 款表情贴纸 (消耗1次额度)</text>
-      <text wx:else>⏳ 正在排队绘制中...</text>
+      <text wx:else>⏳ 正在制作中 ({{progress}}%)...</text>
     </button>
   </view>
 
-  <!-- ==================== 制作结果弹窗 (新界面) ==================== -->
+  <!-- ==================== 制作结果弹窗 (风格完全匹配原生主调) ==================== -->
   <view wx:if="{{showModal}}" class="modal-mask" catchtouchmove="preventScroll">
     <view class="modal-dialog">
       <!-- 弹窗顶部栏 -->
@@ -200,7 +200,7 @@
           <text class="modal-icon">✨</text>
           <text class="modal-title">16 宫格表情包制作</text>
           <text class="modal-badge {{isGenerating ? 'badge-processing' : 'badge-done'}}">
-            {{isGenerating ? '处理中' : '制作完成'}}
+            {{isGenerating ? '正在逐帧渲染' : '制作完成'}}
           </text>
         </view>
         <view class="modal-close" bindtap="closeModal">✕</view>
@@ -231,26 +231,31 @@
 
       <!-- 弹窗主体内容区 -->
       <scroll-view scroll-y class="modal-body">
-        <!-- 阶段 1: 制作中进度条 (平滑倒计时 + 阶段文字) -->
-        <view wx:if="{{isGenerating}}" class="loading-container">
-          <view class="loading-header">
-            <text class="loading-stage-title">{{stageTitle}}</text>
-            <text class="loading-percent">{{progress}}%</text>
+        <!-- 阶段 1: 制作中进度条 (风格匹配原生科技蓝紫) -->
+        <view wx:if="{{isGenerating}}" class="generating-wrap">
+          <view class="loading-spinner"></view>
+          <view class="progress-box">
+            <progress percent="{{progress}}" stroke-width="7" border-radius="5" activeColor="#4f46e5" backgroundColor="#f1f5f9" />
           </view>
-          <view class="progress-track">
-            <view class="progress-fill" style="width: {{progress}}%;"></view>
+          <view class="stage-text">{{stageTitle}} ({{progress}}%)</view>
+          <view class="time-elapsed-tag">已耗时 {{elapsedSeconds}} 秒 · 预计共 {{estimatedSeconds}} 秒</view>
+          <view class="stage-tip">
+            <text>根据近期生成平均速度智能预估，请耐心等待或稍后回来查看</text>
           </view>
-          <view class="loading-meta">
-            <text class="loading-time">已耗时: {{elapsedSeconds}}s / 预计 32s</text>
-            <text class="loading-hint">✨ 预计 25~35 秒完成，默认纯净无字直接可用</text>
-          </view>
-          <view class="loading-spinner-box">
-            <view class="loading-spinner"></view>
-            <text class="spinner-tip">正在后台渲染 4x4 矩阵切片，请稍候...</text>
+
+          <!-- 离开小程序不影响后台生成温馨提醒 -->
+          <view class="bg-running-notice-card">
+            <view class="bg-notice-head">
+              <text class="bg-notice-badge">⚡ 云端渲染中</text>
+              <text class="bg-notice-title">离开小程序不影响生成</text>
+            </view>
+            <text class="bg-notice-desc">
+              正在进行画面渲染与 16 帧切片对齐。您可以放心收起弹窗、切换微信聊天或锁屏，系统会在后台持续运算，完成后重新进入即可查看与保存！
+            </text>
           </view>
         </view>
 
-        <!-- 阶段 2: 制作完成，展示 16 宫格表情切片 (无字纯净版) -->
+        <!-- 阶段 2: 制作完成，展示 16 宫格表情切片 (画面纯净，杜绝重复文字) -->
         <view wx:else class="result-container">
           <view class="result-header-row">
             <text class="result-tip">共生成 16 张表情贴纸，点击可单张大图查看：</text>
@@ -259,7 +264,7 @@
             </text>
           </view>
 
-          <!-- 4x4 网格 (完美 1:1 比例与防空白加载) -->
+          <!-- 4x4 网格 (完美 1:1 纯白卡片，无外部重复文字气泡) -->
           <view class="stickers-grid">
             <view 
               wx:for="{{stickersList}}" 
@@ -282,7 +287,6 @@
                   {{item.selected ? '✓' : ''}}
                 </view>
                 <view class="sticker-index-tag">{{index + 1}}</view>
-                <view wx:if="{{item.text}}" class="sticker-caption-pill">{{item.text}}</view>
               </view>
             </view>
           </view>
@@ -301,7 +305,7 @@
         </block>
         <block wx:else>
           <button class="btn-modal-sub" style="width: 100%;" bindtap="closeModal">
-            收起弹窗 (后台继续绘制)
+            收起弹窗 (后台继续渲染)
           </button>
         </block>
       </view>
