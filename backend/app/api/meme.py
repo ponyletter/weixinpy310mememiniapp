@@ -1624,11 +1624,64 @@ def list_history(current_openid: CurrentOpenid, openid: Optional[str] = None):
         # 格式化展示时间为中国标准时间 (CST UTC+8)，杜绝 UTC 导致的时间前移或未来时间错觉
         row["created_at"] = format_datetime_china(row.get("created_at"))
 
-        # R2 模式不再发布 thumb.jpg，相册缩略图直接使用最终 GIF。
+        # 检测并挂载 16 款静态表情切片集合
         task_id = row.get("task_id")
+        task_dir = settings.OUTPUT_DIR / task_id if task_id else None
+        stickers_dir = task_dir / "stickers" if task_dir else None
+        raw_stickers_dir = task_dir / "raw_stickers" if task_dir else None
+        frames_dir = task_dir / "frames" if task_dir else None
+
+        preset_key_str = (row.get("preset_key") or "")
+        is_sticker16 = (
+            (row.get("frame_count") == 16)
+            or preset_key_str.startswith("sticker16")
+            or bool(stickers_dir and stickers_dir.exists())
+            or bool(frames_dir and frames_dir.exists() and len(list(frames_dir.glob("*.png"))) == 16)
+        )
+
+        sticker_items = []
+        if stickers_dir and stickers_dir.exists():
+            for f in sorted(stickers_dir.glob("*.png")):
+                raw_f = raw_stickers_dir / f.name if (raw_stickers_dir and raw_stickers_dir.exists()) else f
+                sticker_items.append({
+                    "url": f"/outputs/{task_id}/stickers/{f.name}",
+                    "raw_url": f"/outputs/{task_id}/raw_stickers/{raw_f.name}" if (raw_stickers_dir and raw_f.exists()) else f"/outputs/{task_id}/stickers/{f.name}",
+                    "caption": ""
+                })
+        elif frames_dir and frames_dir.exists():
+            flist = sorted(frames_dir.glob("*.png"))
+            if len(flist) == 16:
+                for f in flist:
+                    sticker_items.append({
+                        "url": f"/outputs/{task_id}/frames/{f.name}",
+                        "raw_url": f"/outputs/{task_id}/frames/{f.name}",
+                        "caption": ""
+                    })
+        elif is_sticker16 and task_id:
+            gif_url_val = row.get("gif_url") or ""
+            if is_public_r2_url(gif_url_val):
+                base = gif_url_val.rsplit("/", 1)[0]
+                sticker_items = [{
+                    "url": f"{base}/stickers/sticker_{i:02d}.png",
+                    "raw_url": f"{base}/stickers/sticker_{i:02d}.png",
+                    "caption": ""
+                } for i in range(1, 17)]
+            else:
+                sticker_items = [{
+                    "url": f"/outputs/{task_id}/stickers/sticker_{i:02d}.png",
+                    "raw_url": f"/outputs/{task_id}/stickers/sticker_{i:02d}.png",
+                    "caption": ""
+                } for i in range(1, 17)]
+
+        row["is_sticker16"] = is_sticker16
+        row["stickers"] = sticker_items
+
+        # 封面缩略图逻辑：16款静态表情优先展示首张高清贴纸
         if task_id:
             thumb_path = settings.OUTPUT_DIR / task_id / "thumb.jpg"
-            if is_public_r2_url(row.get("gif_url") or ""):
+            if sticker_items:
+                row["thumb_url"] = sticker_items[0]["url"]
+            elif is_public_r2_url(row.get("gif_url") or ""):
                 row["thumb_url"] = row.get("gif_url")
             elif thumb_path.exists():
                 row["thumb_url"] = f"/outputs/{task_id}/thumb.jpg"

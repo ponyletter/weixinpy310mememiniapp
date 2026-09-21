@@ -386,8 +386,19 @@ Page({
               if (thumbUrl && !thumbUrl.startsWith('http')) {
                 thumbUrl = app.toAbsoluteUrl(thumbUrl);
               }
+
+              let formattedStickers = (item.stickers || []).map((s, sIdx) => {
+                const sUrl = typeof s === 'string' ? s : (s.url || s.raw_url || '');
+                return {
+                  url: app.toAbsoluteUrl(sUrl),
+                  caption: (typeof s === 'object' && s.caption) ? s.caption : `${item.display_title || '表情'}_${sIdx + 1}`
+                };
+              });
+
               return {
                 ...item,
+                is_sticker16: !!item.is_sticker16,
+                stickers: formattedStickers,
                 full_gif_url: fullUrl,
                 thumb_url: thumbUrl,
                 display_title: item.display_title || item.text_bottom || '精选动图',
@@ -406,7 +417,16 @@ Page({
   },
 
   previewHistoryGif(e) {
-    const url = e.currentTarget.dataset.url;
+    const item = e.currentTarget.dataset.item;
+    if (item && item.is_sticker16 && item.stickers && item.stickers.length > 0) {
+      const urls = item.stickers.map(s => s.url);
+      wx.previewImage({
+        urls: urls,
+        current: urls[0]
+      });
+      return;
+    }
+    const url = (item && item.full_gif_url) || e.currentTarget.dataset.url;
     if (url) {
       wx.previewImage({
         urls: [url],
@@ -518,6 +538,43 @@ Page({
       return;
     }
 
+    const openid = this.data.user.openid || app.globalData.openid || wx.getStorageSync('openid') || '';
+
+    // 如果是 16 款静态表情作品，将 16 张切片独立批量存入该合集！
+    if (item.is_sticker16 && item.stickers && item.stickers.length > 0) {
+      const items = item.stickers.map((s, idx) => ({
+        gif_url: s.url,
+        title: s.caption || `${item.display_title || '表情'}_${idx + 1}`
+      }));
+
+      wx.showLoading({ title: `正在存入 ${items.length} 张表情...`, mask: true });
+      app.request({
+        url: `${app.globalData.baseURL}/api/collection/add-items-batch`,
+        method: 'POST',
+        data: {
+          collection_id: colId,
+          openid: openid,
+          items: items
+        },
+        success: (res) => {
+          wx.hideLoading();
+          if (res.data && res.data.success) {
+            this.setData({ showHistoryColModal: false });
+            const addedCount = (res.data.data && res.data.data.added_count) !== undefined ? res.data.data.added_count : items.length;
+            wx.showToast({ title: `成功存入 ${addedCount} 张表情！`, icon: 'success', duration: 2200 });
+          } else {
+            wx.showToast({ title: (res.data && (res.data.detail || res.data.error)) || '存入失败', icon: 'none' });
+          }
+        },
+        fail: () => {
+          wx.hideLoading();
+          wx.showToast({ title: '网络超时', icon: 'none' });
+        }
+      });
+      return;
+    }
+
+    // 普通单个动图存入
     wx.showLoading({ title: '正在存入...' });
     app.request({
       url: `${app.globalData.baseURL}/api/collection/add-item`,

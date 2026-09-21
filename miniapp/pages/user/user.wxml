@@ -492,24 +492,23 @@
             wx:key="task_id" 
             class="history-card"
           >
-            <view class="history-thumb-wrap" bindtap="previewHistoryGif" data-url="{{item.full_gif_url}}">
+            <view class="history-thumb-wrap" bindtap="previewHistoryGif" data-item="{{item}}" data-url="{{item.full_gif_url}}">
               <image 
                 class="history-thumb" 
                 src="{{item.thumb_url || item.full_gif_url}}" 
                 mode="aspectFit" 
                 lazy-load="true"
               ></image>
-              <view class="history-play-tag">{{item.frame_count || 16}}帧</view>
+              <view class="history-play-tag">{{item.is_sticker16 ? '16张静态' : (item.frame_count || 16) + '帧'}}</view>
+              <view class="history-del-tag" catchtap="deleteHistoryItem" data-id="{{item.task_id}}">✕</view>
             </view>
             <view class="history-meta">
               <view class="history-caption text-ellipsis">{{item.display_title || item.text_bottom || '精选动图'}}</view>
               <view class="history-date">{{item.created_at}}</view>
             </view>
             <view class="history-btns">
-              <button class="btn-xs-history btn-rename-history" bindtap="openRenameHistoryModal" data-item="{{item}}">改名/备注</button>
-              <button class="btn-xs-history btn-save-album" bindtap="saveHistoryToAlbum" data-url="{{item.full_gif_url}}">保存相册</button>
-              <button class="btn-xs-history btn-add-col" bindtap="openHistorySaveColModal" data-item="{{item}}">存入合集</button>
-              <button class="btn-xs-history btn-del-history" bindtap="deleteHistoryItem" data-id="{{item.task_id}}">删除</button>
+              <button class="btn-xs-history btn-rename-history" bindtap="openRenameHistoryModal" data-item="{{item}}">✏️ 改名</button>
+              <button class="btn-xs-history btn-add-col" bindtap="openHistorySaveColModal" data-item="{{item}}">📁 存入合集</button>
             </view>
           </view>
         </view>
@@ -547,7 +546,10 @@
   <view wx:if="{{showHistoryColModal}}" class="modal-mask" bindtap="closeHistoryColModal">
     <view class="modal-card card col-select-card" catchtap="stopBubble">
       <view class="modal-header">
-        <text class="modal-title">📁 存入表情合集</text>
+        <view class="history-col-head">
+          <text class="modal-title">📁 存入表情合集</text>
+          <text class="history-col-sub" wx:if="{{selectedHistoryItem.is_sticker16}}">将 16 张静态表情独立批量存入</text>
+        </view>
         <text class="btn-close-icon" bindtap="closeHistoryColModal">✕</text>
       </view>
       <view class="modal-tip">选择要收入的表情合集目录：</view>
@@ -570,7 +572,9 @@
 
       <view class="modal-actions" style="margin-top: 24rpx;">
         <button class="btn-secondary" style="flex: 1;" bindtap="closeHistoryColModal">取消</button>
-        <button class="btn-primary" style="flex: 1;" bindtap="confirmSaveHistoryToCol">确定存入</button>
+        <button class="btn-primary" style="flex: 1;" bindtap="confirmSaveHistoryToCol">
+          {{selectedHistoryItem.is_sticker16 ? '批量存入 (16张)' : '确定存入'}}
+        </button>
       </view>
     </view>
   </view>

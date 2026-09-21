@@ -46,6 +46,12 @@ Page({
     newColTitle: '',
     showAdvDesc: false,
 
+    // 16 款静态表情成品支持
+    isSticker16: false,
+    stickersList: [],
+    selectedStickerCount: 0,
+    resultViewMode: 'stickers',
+
     // 动态生成规格控制
     currentFrameCount: 16,
     currentResolution: '240x240',
@@ -1020,6 +1026,25 @@ Page({
               const fullGifUrl = app.toAbsoluteUrl(gifPath);
               const durationSec = Math.round((tInfo.data && tInfo.data.duration_seconds) || (stats && stats.duration_seconds) || this.data.elapsedSeconds || 0);
 
+              const rawStickers = tInfo.data.stickers || [];
+              const isSticker16 = (tInfo.data.output_mode === 'sticker16') || (rawStickers.length === 16) || (this.data.currentFrameCount === 16 && rawStickers.length > 0);
+
+              let formattedStickers = [];
+              if (rawStickers && rawStickers.length > 0) {
+                formattedStickers = rawStickers.map((s, idx) => {
+                  const sUrl = typeof s === 'string' ? s : (s.url || s.raw_url || '');
+                  const text = typeof s === 'object' ? (s.caption || s.text || '') : '';
+                  return {
+                    id: `stk_${idx + 1}`,
+                    index: idx,
+                    url: app.toAbsoluteUrl(sUrl),
+                    displayUrl: app.toAbsoluteUrl(sUrl),
+                    text: text,
+                    selected: true
+                  };
+                });
+              }
+
               // 一次性渲染完成状态，进入图片加载阶段，待正常展示后再发提示通知
               this.setData({
                 isGenerating: false,
@@ -1028,7 +1053,11 @@ Page({
                 gifWarning: stats.warning || '',
                 progress: 100,
                 completedSeconds: durationSec,
-                stageText: '动图渲染就绪，正在呈现...'
+                stageText: isSticker16 ? '16 款静态表情制作完成！' : '动图渲染就绪，正在呈现...',
+                isSticker16: isSticker16,
+                stickersList: formattedStickers,
+                selectedStickerCount: formattedStickers.length,
+                resultViewMode: isSticker16 ? 'stickers' : 'gif'
               });
               return;
             } else if (tInfo.status === 'failed') {
@@ -1122,6 +1151,59 @@ Page({
     });
   },
 
+  setResultViewMode(e) {
+    const mode = e.currentTarget.dataset.mode;
+    if (mode) this.setData({ resultViewMode: mode });
+  },
+
+  previewStickerSingle(e) {
+    const idx = e.currentTarget.dataset.index;
+    const list = this.data.stickersList;
+    if (!list || !list.length) return;
+    const urls = list.map(s => s.displayUrl);
+    wx.previewImage({
+      urls: urls,
+      current: urls[idx] || urls[0]
+    });
+  },
+
+  async saveAllStickersToAlbum() {
+    const list = this.data.stickersList;
+    if (!list || !list.length) return;
+    wx.showLoading({ title: `正在保存 16 张表情...`, mask: true });
+    let saved = 0;
+    for (const s of list) {
+      try {
+        await this.downloadAndSavePhoto(s.displayUrl);
+        saved++;
+      } catch (err) {
+        console.warn('Save sticker failed:', err);
+      }
+    }
+    wx.hideLoading();
+    wx.showToast({ title: `已保存 ${saved} 张静态表情！`, icon: 'success', duration: 2200 });
+  },
+
+  downloadAndSavePhoto(url) {
+    return new Promise((resolve, reject) => {
+      wx.downloadFile({
+        url: url,
+        success: (res) => {
+          if (res.statusCode === 200 && res.tempFilePath) {
+            wx.saveImageToPhotosAlbum({
+              filePath: res.tempFilePath,
+              success: resolve,
+              fail: reject
+            });
+          } else {
+            reject(new Error('下载失败'));
+          }
+        },
+        fail: reject
+      });
+    });
+  },
+
   previewGifResult(e) {
     const url = e.currentTarget.dataset.url || this.data.gifResultUrl;
     if (!url) return;
@@ -1157,7 +1239,7 @@ Page({
 
   // --- 存入表情合集 (支持自动建默认合集与秒级存入) ---
   openAddToCollection() {
-    if (!this.data.gifResultUrl) return;
+    if (!this.data.gifResultUrl && (!this.data.isSticker16 || !this.data.stickersList.length)) return;
     const openid = app.globalData.openid || wx.getStorageSync('openid');
     if (!openid) {
       wx.showToast({ title: '请先登录', icon: 'none' });
@@ -1167,6 +1249,37 @@ Page({
     wx.showLoading({ title: '正在存入合集...' });
 
     const doSave = (colId, colTitle) => {
+      if (this.data.isSticker16 && this.data.stickersList && this.data.stickersList.length > 0) {
+        const items = this.data.stickersList.map((s, idx) => ({
+          gif_url: s.displayUrl || s.url,
+          title: s.text || `${this.data.caption || '表情'}_${idx + 1}`
+        }));
+        app.request({
+          url: `${app.globalData.baseURL}/api/collection/add-items-batch`,
+          method: 'POST',
+          data: {
+            collection_id: colId,
+            openid: openid,
+            items: items
+          },
+          success: (sRes) => {
+            wx.hideLoading();
+            if (sRes.data && sRes.data.success) {
+              this.setData({ showCollectionModal: false });
+              const addedCount = (sRes.data.data && sRes.data.data.added_count) !== undefined ? sRes.data.data.added_count : items.length;
+              wx.showToast({ title: `成功存入 ${addedCount} 张表情！`, icon: 'success', duration: 2200 });
+            } else {
+              wx.showToast({ title: (sRes.data && sRes.data.detail) || '存入失败', icon: 'none' });
+            }
+          },
+          fail: () => {
+            wx.hideLoading();
+            wx.showToast({ title: '网络异常，存入失败', icon: 'none' });
+          }
+        });
+        return;
+      }
+
       app.request({
         url: `${app.globalData.baseURL}/api/collection/add-item`,
         method: 'POST',
@@ -1179,17 +1292,7 @@ Page({
           wx.hideLoading();
           if (sRes.data && sRes.data.success) {
             this.setData({ showCollectionModal: false });
-            wx.showModal({
-              title: '存入成功 🎉',
-              content: `已成功存入表情合集【${colTitle}】！\n随时可在底栏【表情合集】或【个人中心】中查看。`,
-              confirmText: '前往查看',
-              cancelText: '留在本页',
-              success: (mRes) => {
-                if (mRes.confirm) {
-                  wx.switchTab({ url: '/pages/collection/collection' });
-                }
-              }
-            });
+            wx.showToast({ title: '存入合集成功！', icon: 'success' });
           } else {
             wx.showToast({ title: (sRes.data && sRes.data.detail) || '存入失败', icon: 'none' });
           }
@@ -1312,6 +1415,41 @@ Page({
       wx.showToast({ title: '请选择或新建一个合集', icon: 'none' });
       return;
     }
+    const openid = app.globalData.openid || wx.getStorageSync('openid') || '';
+
+    // 若当前是 16 款静态表情，批量存入 16 张独立表情
+    if (this.data.isSticker16 && this.data.stickersList && this.data.stickersList.length > 0) {
+      const items = this.data.stickersList.map((s, idx) => ({
+        gif_url: s.displayUrl || s.url,
+        title: s.text || `${this.data.caption || '表情'}_${idx + 1}`
+      }));
+      wx.showLoading({ title: `正在存入 ${items.length} 张表情...`, mask: true });
+      app.request({
+        url: `${app.globalData.baseURL}/api/collection/add-items-batch`,
+        method: 'POST',
+        data: {
+          collection_id: colId,
+          openid: openid,
+          items: items
+        },
+        success: (res) => {
+          wx.hideLoading();
+          if (res.data && res.data.success) {
+            this.setData({ showCollectionModal: false });
+            const addedCount = (res.data.data && res.data.data.added_count) !== undefined ? res.data.data.added_count : items.length;
+            wx.showToast({ title: `成功存入 ${addedCount} 张表情！`, icon: 'success', duration: 2200 });
+          } else {
+            wx.showToast({ title: (res.data && res.data.detail) || '存入失败', icon: 'none' });
+          }
+        },
+        fail: () => {
+          wx.hideLoading();
+          wx.showToast({ title: '网络超时', icon: 'none' });
+        }
+      });
+      return;
+    }
+
     wx.showLoading({ title: '正在存入...' });
     app.request({
       url: `${app.globalData.baseURL}/api/collection/add-item`,
@@ -1325,19 +1463,7 @@ Page({
         wx.hideLoading();
         if (res.data && res.data.success) {
           this.setData({ showCollectionModal: false });
-          const targetCol = this.data.userCollections.find(c => c.collection_id === colId);
-          const colName = targetCol ? targetCol.title : '合集';
-          wx.showModal({
-            title: '存入成功 🎉',
-            content: `已成功收入【${colName}】！可在底栏【表情合集】中查看。`,
-            confirmText: '前往查看',
-            cancelText: '留在本页',
-            success: (mRes) => {
-              if (mRes.confirm) {
-                wx.switchTab({ url: '/pages/collection/collection' });
-              }
-            }
-          });
+          wx.showToast({ title: '存入合集成功！', icon: 'success' });
         } else {
           wx.showToast({ title: (res.data && res.data.detail) || '存入失败', icon: 'none' });
         }
