@@ -38,63 +38,63 @@
       </view>
     </view>
 
-    <!-- 2. 台词文字模式选择 -->
-    <view class="section-title" style="margin-top: 24px;">
+    <!-- 2. 贴纸画风选择器 (紧凑胶囊卡片，点击底部抽屉弹窗选择) -->
+    <view class="section-title" style="margin-top: 20px;">
       <text class="section-step">2</text>
-      <text class="section-name">台词文字模式</text>
-      <text class="section-tag">默认纯表情更自由</text>
+      <text class="section-name">贴纸画风</text>
+      <text class="section-tag">点击可弹窗更换</text>
     </view>
-
-    <view class="pill-group">
-      <view 
-        class="pill-item {{textMode === 'none' ? 'active' : ''}}" 
-        bindtap="selectTextMode" 
-        data-mode="none"
-      >
-        <text class="pill-title">🈳 纯表情无文字</text>
-        <text class="pill-sub">默认推荐 · 画面纯净自由斗图</text>
-      </view>
-      <view 
-        class="pill-item {{textMode === 'auto' ? 'active' : ''}}" 
-        bindtap="selectTextMode" 
-        data-mode="auto"
-      >
-        <text class="pill-title">💬 场景主题配字</text>
-        <text class="pill-sub">职场生存/群聊斗图高频短句</text>
-      </view>
-      <view 
-        class="pill-item {{textMode === 'custom' ? 'active' : ''}}" 
-        bindtap="selectTextMode" 
-        data-mode="custom"
-      >
-        <text class="pill-title">✏️ 自定义16格台词</text>
-        <text class="pill-sub">自由输入每一帧说话台词</text>
-      </view>
-    </view>
-
-    <!-- 2.1 场景主题选择 (仅在 auto 模式显示) -->
-    <view wx:if="{{textMode === 'auto'}}" class="sub-panel">
-      <text class="sub-panel-label">选择场景主题预设：</text>
-      <view class="theme-grid">
-        <view 
-          wx:for="{{themePackages}}" 
-          wx:key="id" 
-          class="theme-chip {{selectedTheme === item.id ? 'active' : ''}}"
-          bindtap="selectTheme"
-          data-id="{{item.id}}"
-        >
-          <text class="theme-icon">{{item.icon}}</text>
-          <view class="theme-info">
-            <text class="theme-name">{{item.name}}</text>
-            <text class="theme-desc">{{item.desc}}</text>
+    <view class="compact-selector-bar" bindtap="openStyleDrawer">
+      <view class="compact-selector-left">
+        <text class="compact-selector-icon">{{currentStyleObj.icon || '🎨'}}</text>
+        <view class="compact-selector-info">
+          <view class="compact-selector-title">
+            <text class="cs-name">{{currentStyleObj.name || '经典手绘'}}</text>
+            <text class="cs-badge">{{currentStyleObj.tag || '推荐'}}</text>
           </view>
+          <text class="compact-selector-desc">{{selectedStyle === 'custom' && customStyleText ? customStyleText : (currentStyleObj.desc || '2D扁平·原生贴纸感')}}</text>
         </view>
       </view>
+      <view class="compact-selector-btn">更换画风 ›</view>
     </view>
 
-    <!-- 2.2 自定义台词输入框 (仅在 custom 模式显示) -->
-    <view wx:if="{{textMode === 'custom'}}" class="sub-panel">
-      <text class="sub-panel-label">输入16格台词 (每行一句，自动对齐16款表情)：</text>
+    <!-- 若选择自定义画风，支持直接在此内联微调 -->
+    <view wx:if="{{selectedStyle === 'custom'}}" class="sub-panel" style="margin-top: 10px;">
+      <input 
+        class="desc-input" 
+        placeholder="输入自定义画风：复古美式插画、赛博朋克像素风..." 
+        placeholder-style="color: #94a3b8; font-size: 13px;"
+        value="{{customStyleText}}"
+        bindinput="onInputCustomStyle"
+      />
+    </view>
+
+    <!-- 3. 场景主题与台词选择器 (紧凑胶囊卡片，点击抽屉选择并支持查看16句台词) -->
+    <view class="section-title" style="margin-top: 20px;">
+      <text class="section-step">3</text>
+      <text class="section-name">场景主题与台词</text>
+      <text class="section-tag">多主题预设 · 实时查看台词</text>
+    </view>
+    <view class="compact-selector-bar" bindtap="openThemeDrawer">
+      <view class="compact-selector-left">
+        <text class="compact-selector-icon">{{currentThemeObj.icon || '💬'}}</text>
+        <view class="compact-selector-info">
+          <view class="compact-selector-title">
+            <text class="cs-name">{{currentThemeObj.name || '无字纯表情'}}</text>
+            <text class="cs-badge {{textMode === 'none' ? 'badge-gray' : 'badge-theme'}}">{{currentThemeObj.tag || (textMode === 'none' ? '纯净斗图' : '16款台词')}}</text>
+          </view>
+          <text class="compact-selector-desc">{{textMode === 'custom' ? (customTexts ? '已自定义 ' + customTexts.split('\n').length + ' 句台词' : '自定义编辑16格台词') : (currentThemeObj.desc || '画面纯净自由斗图')}}</text>
+        </view>
+      </view>
+      <view class="compact-selector-btn">更换场景 ›</view>
+    </view>
+
+    <!-- 场景台词快速查看 / 自定义输入区 -->
+    <view wx:if="{{textMode === 'custom'}}" class="sub-panel" style="margin-top: 10px;">
+      <view class="custom-panel-head">
+        <text class="sub-panel-label">每行一句，自动对齐 16 款表情：</text>
+        <text class="btn-clean-text" bindtap="openThemeDrawer">从场景套用 ➔</text>
+      </view>
       <textarea 
         class="custom-texts-textarea" 
         placeholder="{{customTextsPlaceholder}}"
@@ -103,84 +103,69 @@
         maxlength="400"
       ></textarea>
     </view>
+    <view wx:elif="{{textMode === 'auto' && currentThemeObj.texts && currentThemeObj.texts.length > 0}}" class="inline-texts-box">
+      <view class="inline-texts-head" bindtap="toggleInlineTextsPreview">
+        <view class="inline-texts-left">
+          <text class="inline-texts-icon">📝</text>
+          <text class="inline-texts-title">已包含 16 款精选台词</text>
+          <text class="inline-texts-sub">({{showInlineTextsPreview ? '点击收起' : '点击展开查看'}})</text>
+        </view>
+        <view class="inline-texts-action-wrap">
+          <text class="btn-micro-edit" catchtap="switchToCustomFromTheme">自定义编辑 ✏️</text>
+          <text class="inline-arrow">{{showInlineTextsPreview ? '▴' : '▾'}}</text>
+        </view>
+      </view>
+      <!-- 展开查看 16 句台词清单 -->
+      <view wx:if="{{showInlineTextsPreview}}" class="inline-texts-grid">
+        <view wx:for="{{currentThemeObj.texts}}" wx:key="index" class="inline-text-pill">
+          <text class="pill-num">{{index + 1}}</text>
+          <text class="pill-str">{{item}}</text>
+        </view>
+      </view>
+    </view>
 
-    <!-- 3. 构图视角选择 -->
-    <view class="section-title" style="margin-top: 24px;">
-      <text class="section-step">3</text>
+    <!-- 4. 构图视角 (高度压缩为单行极简控制条) -->
+    <view class="section-title" style="margin-top: 20px;">
+      <text class="section-step">4</text>
       <text class="section-name">构图视角</text>
       <text class="section-tag">手势动作更生动</text>
     </view>
-    <view class="composition-grid">
+    <view class="compact-comp-row">
       <view 
-        class="comp-chip {{composition === 'bust' ? 'active' : ''}}"
+        class="comp-segment {{composition === 'bust' ? 'active' : ''}}"
         bindtap="selectComposition"
         data-comp="bust"
       >
-        <text class="comp-icon">👤</text>
-        <view class="comp-info">
-          <text class="comp-name">半身动作 (推荐)</text>
-          <text class="comp-desc">生动手势与肢体</text>
-        </view>
+        <text class="comp-seg-icon">👤</text>
+        <text class="comp-seg-name">半身动作 (推荐)</text>
       </view>
       <view 
-        class="comp-chip {{composition === 'closeup' ? 'active' : ''}}"
+        class="comp-segment {{composition === 'closeup' ? 'active' : ''}}"
         bindtap="selectComposition"
         data-comp="closeup"
       >
-        <text class="comp-icon">🔍</text>
-        <view class="comp-info">
-          <text class="comp-name">大头表情</text>
-          <text class="comp-desc">聚焦五官与特写</text>
-        </view>
+        <text class="comp-seg-icon">🔍</text>
+        <text class="comp-seg-name">大头特写</text>
       </view>
     </view>
 
-    <!-- 4. 贴纸画风选择 -->
-    <view class="section-title" style="margin-top: 24px;">
-      <text class="section-step">4</text>
-      <text class="section-name">贴纸画风</text>
-      <text class="section-tag">规范统一</text>
-    </view>
-    <view class="style-grid">
-      <view 
-        wx:for="{{stylePresets}}" 
-        wx:key="id" 
-        class="style-chip {{selectedStyle === item.id ? 'active' : ''}}"
-        bindtap="selectStyle"
-        data-id="{{item.id}}"
-      >
-        <view class="style-header">
-          <text class="style-icon">{{item.icon}}</text>
-          <text class="style-name">{{item.name}}</text>
-        </view>
-        <text class="style-desc">{{item.desc}}</text>
+    <!-- 5. 补充外貌特征 (折叠式，点击展开，完全不占首页空间) -->
+    <view class="desc-fold-box">
+      <view class="desc-fold-toggle" bindtap="toggleDescInput">
+        <text class="desc-fold-arrow">{{showDescInput ? '▾' : '▸'}}</text>
+        <text class="desc-fold-text">补充角色细节特征（选填）</text>
+        <text class="desc-fold-badge" wx:if="{{characterDesc}}">已填写</text>
+      </view>
+      <view wx:if="{{showDescInput}}" class="desc-fold-content">
+        <input 
+          class="desc-input" 
+          placeholder="例如：戴圆框眼镜的青年、白色带橘斑小猫、穿黄色卫衣..." 
+          placeholder-style="color: #94a3b8; font-size: 13px;"
+          value="{{characterDesc}}"
+          bindinput="onInputDesc"
+        />
       </view>
     </view>
-
-    <!-- 4.1 自定义画风输入框 (仅选自定义画风时显示) -->
-    <view wx:if="{{selectedStyle === 'custom'}}" class="sub-panel">
-      <input 
-        class="desc-input" 
-        placeholder="例如：复古美式插画、赛博朋克像素风、蜡笔手绘..." 
-        placeholder-style="color: #94a3b8; font-size: 13px;"
-        value="{{customStyleText}}"
-        bindinput="onInputCustomStyle"
-      />
-    </view>
-
-    <!-- 5. 补充外貌或动作特征 (可选) -->
-    <view class="section-title" style="margin-top: 24px;">
-      <text class="section-step">5</text>
-      <text class="section-name">补充外貌特征 (可选)</text>
-      <text class="section-tag">提升角色还原度</text>
-    </view>
-    <input 
-      class="desc-input" 
-      placeholder="例如：戴圆框眼镜的青年、白色带橘斑小猫、穿黄色卫衣..." 
-      placeholder-style="color: #94a3b8; font-size: 13px;"
-      value="{{characterDesc}}"
-      bindinput="onInputDesc"
-    />
   </view>
 
   <!-- ==================== 底部固定操作栏 (安全区适配，全屏按钮永不裁切) ==================== -->
@@ -383,6 +368,135 @@
             <button class="btn-col-submit" size="mini" bindtap="submitCreateAndSave" loading="{{isSavingBatch}}">创建并存入</button>
           </view>
         </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 贴纸画风模版抽屉 (底部滑出) -->
+  <view wx:if="{{showStyleDrawer}}" class="drawer-mask" bindtap="closeStyleDrawer">
+    <view class="drawer-panel" catchtap="preventBubble" style="animation: slideUp 0.25s ease-out;">
+      <view class="drawer-header">
+        <view class="drawer-title-wrap">
+          <text class="drawer-title">🎨 选择贴纸画风模版</text>
+          <text class="drawer-subtitle">16款表情将统一遵循所选视觉风格</text>
+        </view>
+        <view class="drawer-close-btn" bindtap="closeStyleDrawer">✕</view>
+      </view>
+
+      <scroll-view scroll-y="true" class="drawer-scroll">
+        <view class="drawer-style-grid">
+          <view 
+            wx:for="{{stylePresets}}" 
+            wx:key="id"
+            class="drawer-style-card {{selectedStyle === item.id ? 'active' : ''}}"
+            bindtap="selectStyleFromDrawer"
+            data-id="{{item.id}}"
+          >
+            <view class="dsc-top">
+              <text class="dsc-icon">{{item.icon}}</text>
+              <text class="dsc-name">{{item.name}}</text>
+              <text class="dsc-tag">{{item.tag}}</text>
+              <view class="dsc-check" wx:if="{{selectedStyle === item.id}}">✓</view>
+            </view>
+            <text class="dsc-desc">{{item.desc}}</text>
+          </view>
+        </view>
+
+        <!-- 自定义画风专属输入 -->
+        <view wx:if="{{selectedStyle === 'custom'}}" class="drawer-custom-box">
+          <text class="dcb-label">输入你的专属画风：</text>
+          <input 
+            class="desc-input" 
+            placeholder="例如：复古美式插画、赛博朋克像素风、水彩手绘..." 
+            placeholder-style="color: #94a3b8; font-size: 13px;"
+            value="{{customStyleText}}"
+            bindinput="onInputCustomStyle"
+          />
+        </view>
+      </scroll-view>
+
+      <view class="drawer-footer">
+        <button class="btn-drawer-confirm" bindtap="confirmStyleDrawer">确认选择</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 场景主题与台词选择抽屉 (底部滑出，支持实时查询16句台词) -->
+  <view wx:if="{{showThemeDrawer}}" class="drawer-mask" bindtap="closeThemeDrawer">
+    <view class="drawer-panel drawer-theme-panel" catchtap="preventBubble" style="animation: slideUp 0.25s ease-out;">
+      <view class="drawer-header">
+        <view class="drawer-title-wrap">
+          <text class="drawer-title">💬 选择场景主题与台词</text>
+          <text class="drawer-subtitle">点击场景主题，可实时查看对应的 16 款台词</text>
+        </view>
+        <view class="drawer-close-btn" bindtap="closeThemeDrawer">✕</view>
+      </view>
+
+      <scroll-view scroll-y="true" class="drawer-scroll">
+        <!-- 主题预设分类网格 -->
+        <view class="drawer-themes-grid">
+          <view 
+            wx:for="{{themePackages}}" 
+            wx:key="id"
+            class="drawer-theme-chip {{activeDrawerThemeId === item.id ? 'active' : ''}}"
+            bindtap="selectThemeInDrawer"
+            data-id="{{item.id}}"
+          >
+            <view class="dtc-header">
+              <text class="dtc-icon">{{item.icon}}</text>
+              <text class="dtc-name">{{item.name}}</text>
+              <text class="dtc-tag">{{item.tag}}</text>
+            </view>
+            <text class="dtc-desc">{{item.desc}}</text>
+          </view>
+        </view>
+
+        <!-- 选定场景对应的 16 句台词实时质检预览卡片 (核心用户诉求：点击具体场景查询对应台词) -->
+        <view class="drawer-lines-preview-card">
+          <view class="dlp-header">
+            <view class="dlp-title-row">
+              <text class="dlp-icon">{{activeDrawerThemeObj.icon || '📝'}}</text>
+              <text class="dlp-title">【{{activeDrawerThemeObj.name || '当前场景'}}】16 句台词清单</text>
+            </view>
+            <text class="dlp-count" wx:if="{{activeDrawerThemeObj.texts && activeDrawerThemeObj.texts.length > 0}}">共 16 句</text>
+          </view>
+
+          <!-- 若为纯表情无文字 -->
+          <view wx:if="{{activeDrawerThemeId === 'none'}}" class="dlp-empty-tip">
+            <text class="dlp-empty-icon">🈳</text>
+            <text class="dlp-empty-text">画面纯净，不印任何台词，保留原生神态，适合自由斗图自由发挥！</text>
+          </view>
+
+          <!-- 若为自定义输入 -->
+          <view wx:elif="{{activeDrawerThemeId === 'custom'}}" class="dlp-custom-tip">
+            <text class="dlp-custom-text">您可以在主页自由逐行编辑 16 句台词，或者点击下方以其它场景为蓝本快速修改。</text>
+          </view>
+
+          <!-- 展示 16 句台词列表 -->
+          <view wx:else class="dlp-lines-grid">
+            <view wx:for="{{activeDrawerThemeObj.texts}}" wx:key="index" class="dlp-line-cell">
+              <text class="dlp-num">{{index + 1}}</text>
+              <text class="dlp-text">{{item}}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="drawer-footer drawer-theme-footer">
+        <button 
+          wx:if="{{activeDrawerThemeId !== 'none' && activeDrawerThemeId !== 'custom'}}"
+          class="btn-drawer-outline" 
+          bindtap="switchToCustomFromTheme"
+        >
+          以此为模板微调 ✏️
+        </button>
+        <button 
+          class="btn-drawer-confirm" 
+          style="flex: 1;"
+          bindtap="confirmThemeChoice"
+        >
+          确定选用【{{activeDrawerThemeObj.name}}】
+        </button>
       </view>
     </view>
   </view>

@@ -13,21 +13,114 @@ Page({
     customTextsPlaceholder: '收到\n好的老板\n疯狂搬砖\n摸鱼中\n头秃了\n我太难了\n别催了\n下班溜了\n血压上来了\n需求是啥\n搞定收工\n夸得我脸红\n跪求别催\n吃瓜看戏\n困到变形\n告辞溜了',
 
     themePackages: [
-      { id: 'worker', name: '打工人日常', desc: '好的收到/搬砖/谢老板', icon: '💼' },
-      { id: 'battle', name: '群聊斗图', desc: '问号脸/退退退/就这', icon: '⚡' },
-      { id: 'cute', name: '萌系可爱', desc: '比心/抱抱/委屈/卖萌', icon: '💖' },
-      { id: 'slack', name: '摆烂躺平', desc: '开摆/随缘/无所谓啦', icon: '🍵' },
-      { id: 'daily', name: '日常高频', desc: 'OK/点赞/摸鱼/干饭', icon: '💬' }
+      {
+        id: 'none',
+        name: '无字纯表情',
+        desc: '纯净无字·自由发挥自由斗图',
+        icon: '🈳',
+        tag: '推荐',
+        texts: []
+      },
+      {
+        id: 'worker',
+        name: '打工人日常',
+        desc: '职场生存必备·好的收到/疯狂搬砖',
+        icon: '💼',
+        tag: '热门',
+        texts: ['收到', '好的老板', '疯狂搬砖', '摸鱼中', '头秃了', '我太难了', '方案又改了', '震惊老铁', '血压上来了', '需求是什么', '搞定收工', '夸得我脸红', '跪求别催', '吃瓜看戏', '困到变形', '我下班啦溜了']
+      },
+      {
+        id: 'battle',
+        name: '群聊斗图',
+        desc: '轻松拿捏全场·点赞666/问号脸/吃瓜',
+        icon: '⚡',
+        tag: '斗图神作',
+        texts: ['点赞666', '得瑟拿捏', '疯狂输出', '暗中观察', '裂开崩溃', '猛男落泪', '出来挨打', '惊呆了', '无语翻白眼', '满头问号', '帅气登场', '害羞掩面', '抱拳感谢', '现场吃瓜', '睡了别艾特', '告辞溜了']
+      },
+      {
+        id: 'cute',
+        name: '萌系可爱',
+        desc: '聊天更甜·谢谢你/么么哒/求抱抱',
+        icon: '💖',
+        tag: '治愈甜系',
+        texts: ['谢谢你', '么么哒', '加油鸭', '喝杯奶茶', '委屈巴巴', '求抱抱', '生气气了', '星星眼哇塞', '叹气气', '疑惑脸??', '酷酷的哦', '爱你哟', '拜托拜托', '干杯耶', '呼呼大睡', '飞奔向你']
+      },
+      {
+        id: 'slack',
+        name: '摆烂躺平',
+        desc: '佛系佛系·随缘吧/我装的/毫无波澜',
+        icon: '🍵',
+        tag: '佛系',
+        texts: ['好的(假装积极)', '随缘吧', '我装的', '看神仙打架', '毁灭吧', '哭死扎心', '勿扰已死', '还能这样', '累了退下吧', '听不懂不想懂', '佛系看淡', '算了吧', '放过我吧', '毫无波澜', '躺平中', '彻底告辞']
+      },
+      {
+        id: 'daily',
+        name: '日常高频',
+        desc: '社交通用·OK没问题/比心心/冲鸭',
+        icon: '💬',
+        tag: '常用',
+        texts: ['OK没问题', '比心心', '冲鸭', '干饭干饭', '自闭了', '抱头痛哭', '气死我了', '吓我一跳', '无所谓', '你认真的吗', '暗中自嗨', '不好意思啦', '求求了', '坐等好戏', '好困啊', '撤退撤退']
+      },
+      {
+        id: 'couple',
+        name: '情侣撒娇',
+        desc: '甜宠日常·想你啦/亲亲/哼生气了',
+        icon: '👩‍❤️‍👨',
+        tag: '情侣互动',
+        texts: ['想你啦', '亲亲一个', '在忙什么呀', '给你送爱心', '哼不理你了', '委屈哭唧唧', '气鼓鼓', '哇你好帅', '叹气想抱抱', '又在想谁呢', '今天超酷', '脸红害羞', '求抱抱嘛', '监督你干饭', '想和你贴贴', '飞奔奔向你']
+      },
+      {
+        id: 'memes',
+        name: '网络热梗',
+        desc: '魔性搞笑·泰裤辣/尊嘟假嘟/退退退',
+        icon: '🔥',
+        tag: '爆笑魔性',
+        texts: ['泰裤辣', '泰棒了比心', '疯狂敲碗', '优雅永不过时', '破大防了', '小丑竟是我', '尊嘟假嘟', '绝了绝了', '退退退', 'CPU烧了', '赢麻了', '偷笑不敢看', 'V我50', '吃瓜一线', '困到起飞', '扛着火车跑']
+      },
+      {
+        id: 'social',
+        name: '礼貌社交',
+        desc: '客气体面·辛苦老师啦/收到感谢/拜托',
+        icon: '🤝',
+        tag: '客气体面',
+        texts: ['辛苦老师啦', '收到感谢', '马上安排', '给您倒杯茶', '实在抱歉', '感激涕零', '非常理解', '万分感谢', '让您见笑了', '请教一下', '祝您顺利', '受宠若惊', '拜托您啦', '围观学习', '不打扰您休息', '回聊祝顺']
+      },
+      {
+        id: 'pet_mood',
+        name: '萌宠心声',
+        desc: '毛孩子专属·开饭啦/猫猫流泪/求摸头',
+        icon: '🐾',
+        tag: '萌宠专属',
+        texts: ['开饭啦干饭', '歪头卖萌', '疯狂拆家', '给口吃的吧', '狗带了', '猫猫流泪', '哈士奇狂怒', '吓掉猫毛', '猫猫鄙视', '狗头问号', '霸气小猫', '舔舔小爪', '求摸下巴', '看两脚兽打架', '呼噜呼噜', '撒欢开跑']
+      },
+      {
+        id: 'custom',
+        name: '自定义16句台词',
+        desc: '自由逐行编辑 16 句个性台词',
+        icon: '✏️',
+        tag: '自由定制',
+        texts: []
+      }
     ],
 
     stylePresets: [
-      { id: 'wechat_sticker', icon: '✨', name: '经典手绘', desc: '2D扁平·原生贴纸感' },
-      { id: 'real_person', icon: '📸', name: '写实真人', desc: '真实摄影·生动还原' },
-      { id: 'cute_chibi', icon: '🐱', name: 'Q版萌系', desc: '圆润大眼·治愈可爱' },
-      { id: 'funny_line', icon: '✏️', name: '沙雕线描', desc: '黑白线稿·斗图神作' },
-      { id: '3d_toy', icon: '🧸', name: '3D公仔', desc: '立体潮玩·盲盒质感' },
-      { id: 'custom', icon: '🎨', name: '自定义画风', desc: '输入专属画风词' }
+      { id: 'wechat_sticker', icon: '✨', name: '经典手绘', desc: '2D扁平·原生贴纸感', tag: '经典' },
+      { id: 'real_person', icon: '📸', name: '写实真人', desc: '真实摄影·生动人像还原', tag: '热门' },
+      { id: 'cute_chibi', icon: '🐱', name: 'Q版萌系', desc: '圆润大眼·治愈可爱', tag: '治愈' },
+      { id: 'funny_line', icon: '✏️', name: '沙雕线描', desc: '黑白线稿·斗图神作', tag: '魔性' },
+      { id: '3d_toy', icon: '🧸', name: '3D公仔', desc: '立体潮玩·盲盒质感', tag: '潮玩' },
+      { id: 'custom', icon: '🎨', name: '自定义画风', desc: '输入专属提示词', tag: '自由' }
     ],
+
+    // 弹窗与折叠抽屉状态
+    showStyleDrawer: false,
+    showThemeDrawer: false,
+    showDescInput: false,
+    showInlineTextsPreview: false,
+    activeDrawerThemeId: 'worker',
+    activeDrawerThemeObj: null,
+    currentStyleObj: null,
+    currentThemeObj: null,
 
     // 运行与展示状态
     showModal: false,
@@ -62,6 +155,14 @@ Page({
   _pollTimer: null,
 
   onLoad(options) {
+    const defaultStyle = this.data.stylePresets.find(s => s.id === this.data.selectedStyle) || this.data.stylePresets[0];
+    const defaultTheme = this.data.themePackages.find(t => t.id === this.data.textMode) || this.data.themePackages[0];
+    this.setData({
+      currentStyleObj: defaultStyle,
+      currentThemeObj: defaultTheme,
+      activeDrawerThemeObj: defaultTheme
+    });
+
     if (options && options.refUrl) {
       const url = decodeURIComponent(options.refUrl);
       this.setData({ refImagePath: url });
@@ -196,12 +297,124 @@ Page({
     }
   },
 
+  // --- 画风抽屉交互 ---
+  openStyleDrawer() {
+    this.setData({ showStyleDrawer: true });
+  },
+
+  closeStyleDrawer() {
+    this.setData({ showStyleDrawer: false });
+  },
+
+  selectStyleFromDrawer(e) {
+    const id = e.currentTarget.dataset.id;
+    const styleObj = this.data.stylePresets.find(s => s.id === id) || this.data.stylePresets[0];
+    this.setData({
+      selectedStyle: id,
+      currentStyleObj: styleObj
+    });
+    if (id !== 'custom') {
+      this.setData({ showStyleDrawer: false });
+    }
+  },
+
+  confirmStyleDrawer() {
+    this.setData({ showStyleDrawer: false });
+  },
+
+  // --- 场景主题与台词抽屉交互 ---
+  openThemeDrawer() {
+    const curThemeId = this.data.textMode === 'none' ? 'none' : (this.data.textMode === 'custom' ? 'custom' : this.data.selectedTheme);
+    const activeObj = this.data.themePackages.find(t => t.id === curThemeId) || this.data.themePackages[0];
+    this.setData({
+      showThemeDrawer: true,
+      activeDrawerThemeId: curThemeId,
+      activeDrawerThemeObj: activeObj
+    });
+  },
+
+  closeThemeDrawer() {
+    this.setData({ showThemeDrawer: false });
+  },
+
+  selectThemeInDrawer(e) {
+    const id = e.currentTarget.dataset.id;
+    const activeObj = this.data.themePackages.find(t => t.id === id) || this.data.themePackages[0];
+    this.setData({
+      activeDrawerThemeId: id,
+      activeDrawerThemeObj: activeObj
+    });
+  },
+
+  confirmThemeChoice(e) {
+    const id = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) || this.data.activeDrawerThemeId;
+    const themeObj = this.data.themePackages.find(t => t.id === id) || this.data.themePackages[0];
+    if (id === 'none') {
+      this.setData({
+        textMode: 'none',
+        selectedTheme: 'none',
+        currentThemeObj: themeObj,
+        showThemeDrawer: false,
+        showInlineTextsPreview: false
+      });
+    } else if (id === 'custom') {
+      this.setData({
+        textMode: 'custom',
+        selectedTheme: 'custom',
+        currentThemeObj: themeObj,
+        showThemeDrawer: false
+      });
+    } else {
+      this.setData({
+        textMode: 'auto',
+        selectedTheme: id,
+        currentThemeObj: themeObj,
+        showThemeDrawer: false,
+        showInlineTextsPreview: false
+      });
+    }
+  },
+
+  switchToCustomFromTheme(e) {
+    const themeId = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) || this.data.activeDrawerThemeId || this.data.selectedTheme;
+    const themeObj = this.data.themePackages.find(t => t.id === themeId);
+    const customStr = (themeObj && themeObj.texts && themeObj.texts.length > 0) ? themeObj.texts.join('\n') : '';
+    const customObj = this.data.themePackages.find(t => t.id === 'custom') || this.data.themePackages[this.data.themePackages.length - 1];
+    this.setData({
+      textMode: 'custom',
+      selectedTheme: 'custom',
+      customTexts: customStr,
+      currentThemeObj: customObj,
+      showThemeDrawer: false,
+      showInlineTextsPreview: false
+    });
+    wx.showToast({ title: '已将台词载入自定义输入框', icon: 'none' });
+  },
+
+  toggleInlineTextsPreview() {
+    this.setData({ showInlineTextsPreview: !this.data.showInlineTextsPreview });
+  },
+
+  toggleDescInput() {
+    this.setData({ showDescInput: !this.data.showDescInput });
+  },
+
   selectTextMode(e) {
-    this.setData({ textMode: e.currentTarget.dataset.mode });
+    const mode = e.currentTarget.dataset.mode;
+    const themeObj = this.data.themePackages.find(t => t.id === mode) || this.data.currentThemeObj;
+    this.setData({
+      textMode: mode,
+      currentThemeObj: themeObj
+    });
   },
 
   selectTheme(e) {
-    this.setData({ selectedTheme: e.currentTarget.dataset.id });
+    const id = e.currentTarget.dataset.id;
+    const themeObj = this.data.themePackages.find(t => t.id === id) || this.data.themePackages[0];
+    this.setData({
+      selectedTheme: id,
+      currentThemeObj: themeObj
+    });
   },
 
   onInputCustomTexts(e) {
@@ -213,7 +426,12 @@ Page({
   },
 
   selectStyle(e) {
-    this.setData({ selectedStyle: e.currentTarget.dataset.id });
+    const id = e.currentTarget.dataset.id;
+    const styleObj = this.data.stylePresets.find(s => s.id === id) || this.data.stylePresets[0];
+    this.setData({
+      selectedStyle: id,
+      currentStyleObj: styleObj
+    });
   },
 
   onInputCustomStyle(e) {
