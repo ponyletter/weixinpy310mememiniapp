@@ -1504,6 +1504,15 @@ Page({
     });
   },
 
+  goToMemeMaker() {
+    let url = '/pages/remix/remix?tab=meme_maker';
+    const text = (this.data.caption || '').trim();
+    if (text) {
+      url += '&caption=' + encodeURIComponent(text);
+    }
+    wx.navigateTo({ url });
+  },
+
   dismissFavoriteTip() {
     this.setData({ showFavoriteTip: false });
     wx.setStorageSync('dismiss_fav_tip', true);

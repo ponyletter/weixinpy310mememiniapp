@@ -146,8 +146,8 @@
       </view>
     </scroll-view>
 
-    <!-- 素材 4 列网格 -->
-    <view class="mat-grid">
+    <!-- 素材 4 列网格 (有搜索结果时) -->
+    <view class="mat-grid" wx:if="{{materialsList && materialsList.length > 0}}">
       <view 
         wx:for="{{materialsList}}" 
         wx:key="id" 
@@ -161,10 +161,101 @@
     </view>
 
     <!-- 加载更多 -->
-    <view class="mat-load-more" wx:if="{{matHasMore}}">
+    <view class="mat-load-more" wx:if="{{matHasMore && materialsList && materialsList.length > 0}}">
       <button class="btn-mat-more" bindtap="loadMoreMaterials" disabled="{{matLoading}}">
         {{matLoading ? '⏳ 正在载入...' : '加载更多素材 ⬇️'}}
       </button>
+    </view>
+
+    <!-- 搜索未命中兜底：智能定制专属表情包 (永远有结果！) -->
+    <view class="search-fallback-card card" wx:if="{{!matLoading && materialsList.length === 0 && matSearchQuery}}">
+      <view class="fallback-header">
+        <view class="fallback-badge-row">
+          <text class="fallback-badge">✨ 智能定制表情包</text>
+          <text class="fallback-pill">搜索永不落空</text>
+        </view>
+        <view class="fallback-title">未搜到相关表情？立即为您专属定制</view>
+        <view class="fallback-desc">已将台词预填为「<text class="highlight-query">{{matSearchQuery}}</text>」，选择下方经典梗图底图即可一键生成专属表情：</view>
+      </view>
+
+      <!-- 经典梗图底图模版网格 -->
+      <view class="fallback-tpl-grid">
+        <view 
+          wx:for="{{memeTemplates}}" 
+          wx:key="id" 
+          class="fallback-tpl-card"
+          bindtap="openCustomMemeModal"
+          data-tpl="{{item}}"
+        >
+          <view class="fallback-tpl-thumb-wrap">
+            <image class="fallback-tpl-img" src="{{item.thumb_url || item.image_url}}" mode="aspectFit" lazy-load="true"></image>
+            <!-- 模版空白处实时悬浮台词 -->
+            <view class="fallback-floating-caption">{{matSearchQuery}}</view>
+          </view>
+          <view class="fallback-tpl-meta">
+            <text class="fallback-tpl-name">{{item.title}}</text>
+            <text class="fallback-tpl-action">立即生成 ›</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 搜索空状态一键定制 / 表情生成弹窗 -->
+  <view wx:if="{{showCustomMemeModal}}" class="modal-mask" bindtap="closeCustomMemeModal">
+    <view class="custom-meme-modal-card card" catchtap="stopBubble">
+      <view class="custom-modal-header">
+        <view class="custom-modal-title-wrap">
+          <text class="custom-modal-title">{{currentTpl.title || '专属表情定制'}}</text>
+          <text class="custom-modal-sub">已根据你的搜索词智能排版</text>
+        </view>
+        <text class="mat-modal-close" bindtap="closeCustomMemeModal">✕</text>
+      </view>
+
+      <!-- 渲染图预览舞台 -->
+      <view class="custom-modal-preview-stage checkerboard-bg">
+        <view wx:if="{{customRendering}}" class="custom-stage-loading">
+          <text class="loading-icon">⏳</text>
+          <text class="loading-hint">正在极速绘制高清表情...</text>
+        </view>
+        <image 
+          class="custom-modal-img" 
+          src="{{customRenderedUrl || currentTpl.image_url}}" 
+          mode="aspectFit"
+        ></image>
+      </view>
+
+      <!-- 台词微调 -->
+      <view class="custom-input-box">
+        <text class="custom-input-label">微调台词</text>
+        <view class="custom-input-row">
+          <input 
+            class="form-input custom-meme-input" 
+            placeholder="输入想要配的台词" 
+            value="{{customCaption}}" 
+            bindinput="onInputCustomCaption"
+            bindconfirm="onConfirmCustomCaption"
+            maxlength="40"
+          />
+          <button class="btn-custom-refresh" bindtap="onConfirmCustomCaption" disabled="{{customRendering}}">
+            {{customRendering ? '绘图中' : '重新生成'}}
+          </button>
+        </view>
+      </view>
+
+      <!-- 操作按钮栏 -->
+      <view class="custom-modal-actions">
+        <button class="btn-primary btn-custom-action" bindtap="saveCustomMemeToAlbum" disabled="{{customRendering}}">
+          📥 保存到手机相册
+        </button>
+        <button class="btn-secondary btn-custom-action" bindtap="saveCustomMemeToCol" disabled="{{customRendering}}">
+          📁 存入表情合集
+        </button>
+      </view>
+
+      <view class="custom-modal-deep-link" bindtap="goToRemixMemeMaker">
+        <text>想要调节字号、文字颜色或位置？前往百宝箱自由排版 ›</text>
+      </view>
     </view>
   </view>
 

@@ -20,7 +20,15 @@ Page({
     matLoading: false,
     matSearchQuery: '',
     showMatModal: false,
-    activeMatItem: {}
+    activeMatItem: {},
+
+    // 搜索未命中智能定制模版库
+    memeTemplates: [],
+    showCustomMemeModal: false,
+    currentTpl: null,
+    customCaption: '',
+    customRenderedUrl: '',
+    customRendering: false
   },
 
   onLoad(options) {
@@ -31,6 +39,7 @@ Page({
       wx.showToast({ title: '请选择存入的合集', icon: 'none' });
     }
     this.fetchData();
+    this.fetchMemeTemplates();
   },
 
   onShow() {
@@ -57,9 +66,14 @@ Page({
   switchTab(e) {
     const tab = e.currentTarget.dataset.tab;
     this.setData({ activeTab: tab });
-    if (tab === 'materials' && (!this.data.materialsList || this.data.materialsList.length === 0)) {
-      this.fetchMaterialsCategories();
-      this.fetchMaterialsList('all', 1, false);
+    if (tab === 'materials') {
+      if (!this.data.materialsList || this.data.materialsList.length === 0) {
+        this.fetchMaterialsCategories();
+        this.fetchMaterialsList('all', 1, false);
+      }
+      if (!this.data.memeTemplates || this.data.memeTemplates.length === 0) {
+        this.fetchMemeTemplates();
+      }
     }
   },
 
@@ -425,6 +439,167 @@ Page({
     wx.navigateTo({
       url: `/pages/sticker16/sticker16?refUrl=${encodeURIComponent(url)}`
     });
+  },
+
+  // ==================== 搜索未命中智能定制模版 ====================
+  fetchMemeTemplates() {
+    app.request({
+      url: `${app.globalData.baseURL}/api/materials/templates`,
+      method: 'GET',
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.data) {
+          const list = res.data.data.map(item => ({
+            ...item,
+            image_url: app.toAbsoluteUrl(item.image_url),
+            thumb_url: app.toAbsoluteUrl(item.thumb_url || item.image_url)
+          }));
+          this.setData({ memeTemplates: list });
+        }
+      }
+    });
+  },
+
+  openCustomMemeModal(e) {
+    const tpl = e.currentTarget.dataset.tpl;
+    const caption = (this.data.matSearchQuery || tpl.default_text || '专属定制').trim();
+    this.setData({
+      showCustomMemeModal: true,
+      currentTpl: tpl,
+      customCaption: caption,
+      customRenderedUrl: '',
+      customRendering: true
+    });
+    this.renderCustomMeme(tpl.id, caption);
+  },
+
+  closeCustomMemeModal() {
+    this.setData({ showCustomMemeModal: false });
+  },
+
+  onInputCustomCaption(e) {
+    this.setData({ customCaption: e.detail.value });
+  },
+
+  onConfirmCustomCaption() {
+    if (!this.data.customCaption.trim() || !this.data.currentTpl) return;
+    this.renderCustomMeme(this.data.currentTpl.id, this.data.customCaption.trim());
+  },
+
+  renderCustomMeme(tplId, caption) {
+    this.setData({ customRendering: true });
+    app.request({
+      url: `${app.globalData.baseURL}/api/materials/render-meme`,
+      method: 'POST',
+      header: { 'content-type': 'application/x-www-form-urlencoded' },
+      data: {
+        template_id: tplId,
+        caption: caption,
+        font_size: 28,
+        pos: 'bottom',
+        color: '#1e293b'
+      },
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.data) {
+          this.setData({
+            customRenderedUrl: app.toAbsoluteUrl(res.data.data.image_url),
+            customRendering: false
+          });
+        } else {
+          this.setData({ customRendering: false });
+          wx.showToast({ title: (res.data && res.data.detail) || '生成失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        this.setData({ customRendering: false });
+        wx.showToast({ title: '网络超时', icon: 'none' });
+      }
+    });
+  },
+
+  saveCustomMemeToAlbum() {
+    const url = this.data.customRenderedUrl;
+    if (!url) {
+      wx.showToast({ title: '请等待表情绘制完成', icon: 'none' });
+      return;
+    }
+    wx.showLoading({ title: '正在保存相册...' });
+    wx.downloadFile({
+      url: url,
+      success: (res) => {
+        wx.hideLoading();
+        if (res.statusCode === 200 && res.tempFilePath) {
+          wx.saveImageToPhotosAlbum({
+            filePath: res.tempFilePath,
+            success: () => {
+              wx.showToast({ title: '已保存至手机相册！', icon: 'success' });
+            },
+            fail: () => {
+              wx.showToast({ title: '保存失败或缺少权限', icon: 'none' });
+            }
+          });
+        } else {
+          wx.showToast({ title: '下载失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络请求失败', icon: 'none' });
+      }
+    });
+  },
+
+  saveCustomMemeToCol() {
+    const url = this.data.customRenderedUrl;
+    if (!url) {
+      wx.showToast({ title: '请等待表情绘制完成', icon: 'none' });
+      return;
+    }
+    const openid = app.globalData.openid || wx.getStorageSync('openid');
+    const cols = this.data.myCollections || [];
+    if (cols.length === 0) {
+      // 自动创建默认合集并存入
+      wx.showLoading({ title: '正在存入合集...' });
+      app.request({
+        url: `${app.globalData.baseURL}/api/collection/create`,
+        method: 'POST',
+        data: {
+          openid: openid,
+          title: '我的专属表情',
+          description: '收录自定义表情'
+        },
+        success: (cRes) => {
+          if (cRes.data && cRes.data.data) {
+            this.saveItemToCol(cRes.data.data.collection_id, url);
+            this.closeCustomMemeModal();
+          } else {
+            wx.hideLoading();
+            wx.showToast({ title: '存入合集失败', icon: 'none' });
+          }
+        },
+        fail: () => {
+          wx.hideLoading();
+          wx.showToast({ title: '网络连接超时', icon: 'none' });
+        }
+      });
+    } else {
+      // 存入第一个用户合集
+      this.saveItemToCol(cols[0].collection_id, url);
+      this.closeCustomMemeModal();
+    }
+  },
+
+  goToRemixMemeMaker() {
+    const tpl = this.data.currentTpl;
+    const caption = this.data.customCaption;
+    this.closeCustomMemeModal();
+    let url = `/pages/remix/remix?tab=meme_maker`;
+    if (tpl && tpl.id) {
+      url += `&tpl=${tpl.id}`;
+    }
+    if (caption) {
+      url += `&caption=${encodeURIComponent(caption)}`;
+    }
+    wx.navigateTo({ url });
   },
 
   stopBubble() {},

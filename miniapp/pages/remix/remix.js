@@ -27,6 +27,7 @@ function getShareableOutput(url) {
 
 const TOOL_META = {
   sticker16: { id: 'sticker16', name: '1图变16款', icon: '🤹' },
+  meme_maker: { id: 'meme_maker', name: '模版配字', icon: '🎭' },
   video: { id: 'video', name: '视频转GIF', icon: '📹' },
   picker: { id: 'picker', name: '图片取色', icon: '🔍' },
   images: { id: 'images', name: '多图合成', icon: '▦' },
@@ -36,8 +37,41 @@ const TOOL_META = {
 
 Page({
   data: {
-    tab: 'video', // 'video' | 'picker' | 'images' | 'stitch'
+    tab: 'video', // 'meme_maker' | 'video' | 'picker' | 'images' | 'stitch'
     recentTools: [],
+
+    // 0. 经典模版配字
+    memeTemplates: [],
+    filteredMemeTemplates: [],
+    memeCategories: [
+      { id: 'all', name: '🌟 全部' },
+      { id: 'funny', name: '🐼 经典熊猫' },
+      { id: 'worker', name: '💼 打工人' },
+      { id: 'cute', name: '🐱 萌宠可爱' },
+      { id: 'sarcasm', name: '🍉 吐槽斗图' }
+    ],
+    activeMemeCat: 'all',
+    selectedTemplate: null,
+    memeCaption: '听懂掌声！',
+    memeCaptionPos: 'bottom', // 'bottom' | 'top' | 'center'
+    memeFontSize: 28,
+    memeTextColor: '#1e293b',
+    isRenderingMeme: false,
+    memeResultUrl: '',
+    memeInspirations: [
+      '听懂掌声！',
+      '你在教我做事？',
+      '我裂开了',
+      '打工是不可能打工的',
+      '暗中观察.jpg',
+      '给大佬递茶！',
+      '退！退！退！',
+      '真的假的？我不信',
+      '今天又是摸鱼的一天',
+      '对对对，你说的都对',
+      '坐等吃瓜，精彩！',
+      '富婆饿饿饭饭'
+    ],
 
     // 1. 视频转动图
     videoPath: '',
@@ -126,20 +160,25 @@ Page({
       recents = recents.filter(id => TOOL_META[id]);
     }
     if (!recents || !Array.isArray(recents) || recents.length === 0) {
-      recents = ['video', 'compress', 'picker', 'images', 'stitch'];
+      recents = ['meme_maker', 'sticker16', 'video', 'picker', 'images', 'stitch'];
     }
     wx.setStorageSync('remix_recent_tools', recents);
     const recentTools = recents.map(id => TOOL_META[id]).filter(Boolean);
     this.setData({ recentTools });
 
-    const initialTab = (options && options.tab && TOOL_META[options.tab]) ? options.tab : 'video';
+    const initialTab = (options && options.tab && TOOL_META[options.tab]) ? options.tab : 'meme_maker';
     this.setData({ tab: initialTab });
     this.recordRecentTool(initialTab);
+
+    if (options && options.caption) {
+      this.setData({ memeCaption: decodeQueryValue(options.caption) });
+    }
+    this.fetchMemeTemplates(options && options.tpl);
   },
 
   recordRecentTool(tab) {
     if (!TOOL_META[tab]) return;
-    let recents = wx.getStorageSync('remix_recent_tools') || ['video', 'compress', 'picker', 'images', 'stitch'];
+    let recents = wx.getStorageSync('remix_recent_tools') || ['meme_maker', 'video', 'picker', 'images', 'stitch'];
     recents = recents.filter(t => TOOL_META[t]);
     recents = [tab, ...recents.filter(t => t !== tab)].slice(0, 5);
     wx.setStorageSync('remix_recent_tools', recents);
@@ -164,6 +203,13 @@ Page({
       captionText: ''
     });
     this.recordRecentTool(tab);
+    if (tab === 'meme_maker') {
+      if (!this.data.memeTemplates || this.data.memeTemplates.length === 0) {
+        this.fetchMemeTemplates();
+      } else if (!this.data.memeResultUrl) {
+        this.triggerMemeRender();
+      }
+    }
   },
 
   goToSticker16() {
@@ -1061,6 +1107,158 @@ Page({
         wx.showToast({ title: '网络连接超时', icon: 'none' });
       }
     });
+  },
+
+  // ================= 经典模版配字工坊 =================
+  fetchMemeTemplates(targetTplId) {
+    app.request({
+      url: `${app.globalData.baseURL}/api/materials/templates`,
+      method: 'GET',
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.data) {
+          const list = res.data.data.map(it => ({
+            ...it,
+            image_url: app.toAbsoluteUrl(it.image_url),
+            thumb_url: app.toAbsoluteUrl(it.thumb_url || it.image_url)
+          }));
+          let selected = list[0] || null;
+          if (targetTplId) {
+            const found = list.find(it => it.id === targetTplId);
+            if (found) selected = found;
+          }
+          const cat = this.data.activeMemeCat || 'all';
+          const filtered = cat === 'all' ? list : list.filter(it => it.category === cat);
+          this.setData({
+            memeTemplates: list,
+            filteredMemeTemplates: filtered,
+            selectedTemplate: selected
+          });
+          this.triggerMemeRender();
+        }
+      }
+    });
+  },
+
+  onSelectMemeCat(e) {
+    const cat = e.currentTarget.dataset.id;
+    const list = this.data.memeTemplates || [];
+    const filtered = cat === 'all' ? list : list.filter(it => it.category === cat);
+    this.setData({
+      activeMemeCat: cat,
+      filteredMemeTemplates: filtered
+    });
+  },
+
+  onSelectMemeTemplate(e) {
+    const tpl = e.currentTarget.dataset.tpl;
+    if (!tpl) return;
+    this.setData({ selectedTemplate: tpl });
+    this.triggerMemeRender();
+  },
+
+  onInputMemeCaption(e) {
+    this.setData({ memeCaption: e.detail.value });
+  },
+
+  applyInspiration(e) {
+    const text = e.currentTarget.dataset.text;
+    this.setData({ memeCaption: text });
+    this.triggerMemeRender();
+  },
+
+  setMemeCaptionPos(e) {
+    const pos = e.currentTarget.dataset.pos;
+    this.setData({ memeCaptionPos: pos });
+    this.triggerMemeRender();
+  },
+
+  setMemeTextColor(e) {
+    const color = e.currentTarget.dataset.color;
+    this.setData({ memeTextColor: color });
+    this.triggerMemeRender();
+  },
+
+  onMemeFontSizeChange(e) {
+    this.setData({ memeFontSize: e.detail.value });
+    this.triggerMemeRender();
+  },
+
+  triggerMemeRender() {
+    const tpl = this.data.selectedTemplate;
+    if (!tpl) return;
+    const caption = (this.data.memeCaption || tpl.default_text || '专属表情').trim();
+    this.setData({ isRenderingMeme: true });
+
+    app.request({
+      url: `${app.globalData.baseURL}/api/materials/render-meme`,
+      method: 'POST',
+      header: { 'content-type': 'application/x-www-form-urlencoded' },
+      data: {
+        template_id: tpl.id,
+        caption: caption,
+        font_size: this.data.memeFontSize || 28,
+        pos: this.data.memeCaptionPos || 'bottom',
+        color: this.data.memeTextColor || '#1e293b'
+      },
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.data) {
+          const fullUrl = app.toAbsoluteUrl(res.data.data.image_url);
+          this.setData({
+            memeResultUrl: fullUrl,
+            remixResultUrl: fullUrl,
+            captionText: caption,
+            isRenderingMeme: false
+          });
+        } else {
+          this.setData({ isRenderingMeme: false });
+          wx.showToast({ title: (res.data && res.data.detail) || '绘图失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        this.setData({ isRenderingMeme: false });
+        wx.showToast({ title: '网络超时', icon: 'none' });
+      }
+    });
+  },
+
+  saveMemeToAlbum() {
+    const url = this.data.memeResultUrl;
+    if (!url) {
+      wx.showToast({ title: '请先等待合成完成', icon: 'none' });
+      return;
+    }
+    wx.showLoading({ title: '正在保存相册...' });
+    wx.downloadFile({
+      url: url,
+      success: (res) => {
+        wx.hideLoading();
+        if (res.statusCode === 200 && res.tempFilePath) {
+          wx.saveImageToPhotosAlbum({
+            filePath: res.tempFilePath,
+            success: () => wx.showToast({ title: '已保存至手机相册！', icon: 'success' }),
+            fail: () => wx.showToast({ title: '保存失败或缺少权限', icon: 'none' })
+          });
+        } else {
+          wx.showToast({ title: '下载表情失败', icon: 'none' });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '网络请求失败', icon: 'none' });
+      }
+    });
+  },
+
+  saveMemeToCollection() {
+    if (!this.data.memeResultUrl) {
+      wx.showToast({ title: '请先等待合成完成', icon: 'none' });
+      return;
+    }
+    this.setData({
+      remixResultUrl: this.data.memeResultUrl,
+      captionText: this.data.memeCaption
+    });
+    this.addToCollection();
   },
 
   // ================= 结果预览、保存与分享 =================

@@ -32,6 +32,9 @@
     <view class="remix-tab remix-tab-highlight" bindtap="goToSticker16">
       <text class="remix-tab-icon">🤹</text><text>1图变16款</text>
     </view>
+    <view class="remix-tab {{tab === 'meme_maker' ? 'active' : ''}}" bindtap="switchTab" data-tab="meme_maker">
+      <text class="remix-tab-icon">🎭</text><text>模版配字</text>
+    </view>
     <view class="remix-tab {{tab === 'video' ? 'active' : ''}}" bindtap="switchTab" data-tab="video">
       <text class="remix-tab-icon">📹</text><text>视频转GIF</text>
     </view>
@@ -46,6 +49,179 @@
     </view>
     <view class="remix-tab remix-tab-action" bindtap="openStickerEditor">
       <text class="remix-tab-icon">🖍️</text><text>贴纸修图</text>
+    </view>
+  </view>
+
+  <!-- ================= 模式: 经典模版配字工坊 ================= -->
+  <view wx:if="{{tab === 'meme_maker'}}" class="card action-box meme-maker-box">
+    <view class="section-title-row">
+      <view>
+        <view class="section-title">经典梗图模版配字</view>
+        <text class="section-kicker">选择经典空白底图，输入爆笑台词，1秒生成专属表情</text>
+      </view>
+      <view class="badge badge-purple">20款底图</view>
+    </view>
+
+    <!-- 实时合成预览卡片 -->
+    <view class="meme-preview-stage checkerboard-bg">
+      <view wx:if="{{isRenderingMeme}}" class="meme-stage-loading">
+        <text class="loading-spinner">⏳</text>
+        <text class="loading-text">正在绘制高清表情...</text>
+      </view>
+      <image 
+        class="meme-stage-img" 
+        src="{{memeResultUrl || (selectedTemplate ? selectedTemplate.image_url : '')}}" 
+        mode="aspectFit"
+        bindtap="previewRemixResult"
+      ></image>
+      <view class="meme-stage-hint">点击预览大图 · 所见即所得</view>
+    </view>
+
+    <!-- 分类筛选胶囊栏 -->
+    <scroll-view scroll-x class="meme-cat-scroll" enable-flex="true">
+      <view class="meme-cat-chips">
+        <view 
+          wx:for="{{memeCategories}}" 
+          wx:key="id" 
+          class="meme-cat-chip {{activeMemeCat === item.id ? 'active' : ''}}"
+          bindtap="onSelectMemeCat"
+          data-id="{{item.id}}"
+        >
+          {{item.name}}
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 模版横向滚动选择器 -->
+    <scroll-view scroll-x class="meme-tpl-scroll" enable-flex="true">
+      <view class="meme-tpl-list">
+        <view 
+          wx:for="{{filteredMemeTemplates}}" 
+          wx:key="id" 
+          class="meme-tpl-thumb-card {{selectedTemplate && selectedTemplate.id === item.id ? 'selected' : ''}}"
+          bindtap="onSelectMemeTemplate"
+          data-tpl="{{item}}"
+        >
+          <image class="meme-tpl-thumb-img" src="{{item.thumb_url || item.image_url}}" mode="aspectFit"></image>
+          <text class="meme-tpl-thumb-name">{{item.title}}</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 台词输入框 -->
+    <view class="form-item-remix" style="margin-top: 24rpx;">
+      <view class="caption-input-header">
+        <text class="form-label-remix">表情台词</text>
+        <text class="char-count-tag">{{memeCaption.length}}/40</text>
+      </view>
+      <view class="caption-input-row">
+        <input 
+          class="form-input-remix meme-caption-input" 
+          placeholder="输入要配的台词，如：你在教我做事？" 
+          value="{{memeCaption}}" 
+          bindinput="onInputMemeCaption" 
+          bindconfirm="triggerMemeRender"
+          maxlength="40" 
+        />
+        <button class="btn-quick-sync" bindtap="triggerMemeRender" disabled="{{isRenderingMeme}}">
+          {{isRenderingMeme ? '绘图中' : '刷新预览'}}
+        </button>
+      </view>
+    </view>
+
+    <!-- 灵感热词标签 -->
+    <view class="inspiration-section">
+      <text class="inspiration-title">💡 灵感热词（点击填入）：</text>
+      <view class="inspiration-chips">
+        <view 
+          wx:for="{{memeInspirations}}" 
+          wx:key="*this" 
+          class="inspiration-chip"
+          bindtap="applyInspiration"
+          data-text="{{item}}"
+        >
+          {{item}}
+        </view>
+      </view>
+    </view>
+
+    <!-- 样式设置：位置、字号、颜色 -->
+    <view class="meme-style-panel">
+      <!-- 位置 -->
+      <view class="style-row">
+        <text class="style-label">文字位置</text>
+        <view class="style-chips">
+          <view class="style-chip {{memeCaptionPos === 'bottom' ? 'active' : ''}}" bindtap="setMemeCaptionPos" data-pos="bottom">底部（推荐）</view>
+          <view class="style-chip {{memeCaptionPos === 'top' ? 'active' : ''}}" bindtap="setMemeCaptionPos" data-pos="top">顶部</view>
+          <view class="style-chip {{memeCaptionPos === 'center' ? 'active' : ''}}" bindtap="setMemeCaptionPos" data-pos="center">画面中间</view>
+        </view>
+      </view>
+
+      <!-- 字体颜色 -->
+      <view class="style-row">
+        <text class="style-label">文字颜色</text>
+        <view class="color-chips">
+          <view 
+            class="color-dot-wrap {{memeTextColor === '#1e293b' ? 'active' : ''}}" 
+            bindtap="setMemeTextColor" 
+            data-color="#1e293b"
+          >
+            <view class="color-dot" style="background: #1e293b;"></view>
+            <text class="color-name">纯黑</text>
+          </view>
+          <view 
+            class="color-dot-wrap {{memeTextColor === '#dc2626' ? 'active' : ''}}" 
+            bindtap="setMemeTextColor" 
+            data-color="#dc2626"
+          >
+            <view class="color-dot" style="background: #dc2626;"></view>
+            <text class="color-name">亮红</text>
+          </view>
+          <view 
+            class="color-dot-wrap {{memeTextColor === '#ea580c' ? 'active' : ''}}" 
+            bindtap="setMemeTextColor" 
+            data-color="#ea580c"
+          >
+            <view class="color-dot" style="background: #ea580c;"></view>
+            <text class="color-name">醒目橙</text>
+          </view>
+          <view 
+            class="color-dot-wrap {{memeTextColor === '#2563eb' ? 'active' : ''}}" 
+            bindtap="setMemeTextColor" 
+            data-color="#2563eb"
+          >
+            <view class="color-dot" style="background: #2563eb;"></view>
+            <text class="color-name">深蓝</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 字号滑块 -->
+      <view class="style-row slider-style-row">
+        <view class="slider-title-row">
+          <text class="style-label">字体大小</text>
+          <text class="slider-val-num">{{memeFontSize}} px</text>
+        </view>
+        <slider 
+          min="20" 
+          max="42" 
+          value="{{memeFontSize}}" 
+          step="2" 
+          bindchange="onMemeFontSizeChange" 
+          block-size="16" 
+          activeColor="#7c3aed"
+        />
+      </view>
+    </view>
+
+    <!-- 操作按钮组 -->
+    <view class="meme-actions-row">
+      <button class="btn-primary btn-meme-save" bindtap="saveMemeToAlbum" disabled="{{isRenderingMeme}}">
+        📥 保存到手机相册
+      </button>
+      <button class="btn-secondary btn-meme-col" bindtap="saveMemeToCollection" disabled="{{isRenderingMeme}}">
+        📁 存入表情合集
+      </button>
     </view>
   </view>
 

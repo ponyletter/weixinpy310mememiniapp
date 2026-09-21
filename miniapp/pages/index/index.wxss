@@ -113,6 +113,62 @@
   white-space: nowrap;
 }
 
+/* ========== 经典梗图模版配字横幅 ========== */
+.feature-banner-mememaker {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18rpx 22rpx;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border: 1.5rpx solid #ddd6fe;
+  border-radius: 18rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 4rpx 14rpx rgba(124, 58, 237, 0.12);
+}
+
+.feature-banner-mememaker .banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.feature-banner-mememaker .banner-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.feature-banner-mememaker .banner-badge-purple {
+  font-size: 18rpx;
+  font-weight: 700;
+  background: #7c3aed;
+  color: #ffffff;
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+}
+
+.feature-banner-mememaker .banner-title {
+  font-size: 27rpx;
+  font-weight: 800;
+  color: #4c1d95;
+}
+
+.feature-banner-mememaker .banner-desc {
+  font-size: 21rpx;
+  color: #6d28d9;
+}
+
+.feature-banner-mememaker .banner-arrow-btn-purple {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #ffffff;
+  background: #7c3aed;
+  padding: 10rpx 18rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(124, 58, 237, 0.25);
+  white-space: nowrap;
+}
+
 /* ========== 模版选择器胶囊栏 ========== */
 .template-selector-bar {
   display: flex;
