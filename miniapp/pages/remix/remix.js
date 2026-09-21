@@ -27,7 +27,7 @@ function getShareableOutput(url) {
 
 const TOOL_META = {
   sticker16: { id: 'sticker16', name: '1图变16款', icon: '🤹' },
-  meme_maker: { id: 'meme_maker', name: '模版配字', icon: '🎭' },
+  meme_maker: { id: 'meme_maker', name: '模板配字', icon: '🎭' },
   video: { id: 'video', name: '视频转GIF', icon: '📹' },
   picker: { id: 'picker', name: '图片取色', icon: '🔍' },
   images: { id: 'images', name: '多图合成', icon: '▦' },
@@ -40,19 +40,16 @@ Page({
     tab: 'video', // 'meme_maker' | 'video' | 'picker' | 'images' | 'stitch'
     recentTools: [],
 
-    // 0. 经典模版配字
+    // 0. 经典模板配字
     memeTemplates: [],
     filteredMemeTemplates: [],
     memeCategories: [
       { id: 'all', name: '🌟 全部' },
-      { id: 'funny', name: '🐼 经典熊猫' },
-      { id: 'worker', name: '💼 打工人' },
-      { id: 'cute', name: '🐱 萌宠可爱' },
-      { id: 'sarcasm', name: '🍉 吐槽斗图' }
+      { id: 'classic', name: '🐼 经典熊猫头' }
     ],
     activeMemeCat: 'all',
     selectedTemplate: null,
-    memeCaption: '听懂掌声！',
+    memeCaption: '我就静静看着你',
     memeCaptionPos: 'bottom', // 'bottom' | 'top' | 'center'
     memeFontSize: 28,
     memeTextColor: '#1e293b',
@@ -1122,7 +1119,7 @@ Page({
     });
   },
 
-  // ================= 经典模版配字工坊 =================
+  // ================= 经典模板配字工坊 =================
   fetchMemeTemplates(targetTplId) {
     app.request({
       url: `${app.globalData.baseURL}/api/materials/templates`,

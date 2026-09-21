@@ -381,7 +381,7 @@
       <!-- 文字样式配置 -->
       <view class="config-row-vertical">
         <view class="config-label-row">
-          <text class="config-name">🖋️ 模版配字默认样式</text>
+          <text class="config-name">🖋️ 模板配字默认样式</text>
           <text class="config-badge-desc">进入配字页时自动应用</text>
         </view>
 

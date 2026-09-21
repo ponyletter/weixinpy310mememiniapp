@@ -33,7 +33,7 @@
       <text class="remix-tab-icon">🤹</text><text>1图变16款</text>
     </view>
     <view class="remix-tab {{tab === 'meme_maker' ? 'active' : ''}}" bindtap="switchTab" data-tab="meme_maker">
-      <text class="remix-tab-icon">🎭</text><text>模版配字</text>
+      <text class="remix-tab-icon">🎭</text><text>模板配字</text>
     </view>
     <view class="remix-tab {{tab === 'video' ? 'active' : ''}}" bindtap="switchTab" data-tab="video">
       <text class="remix-tab-icon">📹</text><text>视频转GIF</text>
@@ -52,14 +52,14 @@
     </view>
   </view>
 
-  <!-- ================= 模式: 经典模版配字工坊 ================= -->
+  <!-- ================= 模式: 经典模板配字工坊 ================= -->
   <view wx:if="{{tab === 'meme_maker'}}" class="card action-box meme-maker-box">
     <view class="section-title-row">
       <view>
-        <view class="section-title">经典梗图模版配字</view>
-        <text class="section-kicker">选择经典空白底图，输入爆笑台词，1秒生成专属表情</text>
+        <view class="section-title">经典空白梗图配字</view>
+        <text class="section-kicker">精选无字熊猫头，统一留白排版，输入台词即可生成</text>
       </view>
-      <view class="badge badge-purple">20款底图</view>
+      <view class="badge badge-purple">7款精选</view>
     </view>
 
     <!-- 实时合成预览卡片 -->
@@ -92,7 +92,7 @@
       </view>
     </scroll-view>
 
-    <!-- 模版横向滚动选择器 -->
+    <!-- 模板横向滚动选择器 -->
     <scroll-view scroll-x class="meme-tpl-scroll" enable-flex="true">
       <view class="meme-tpl-list">
         <view 

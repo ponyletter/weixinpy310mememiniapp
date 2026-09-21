@@ -119,6 +119,12 @@ class ChineseBQBService:
         }
 
     @classmethod
+    def get_item(cls, item_id: str) -> Optional[Dict[str, Any]]:
+        """按目录 ID 获取单个素材；供服务端白名单模板解析使用。"""
+        cls._ensure_loaded()
+        return next((item for item in cls._items if item["id"] == item_id), None)
+
+    @classmethod
     def search_materials(cls, query: str, category: Optional[str] = None, page: int = 1, page_size: int = 24) -> Dict[str, Any]:
         cls._ensure_loaded()
         q = (query or "").strip().lower()

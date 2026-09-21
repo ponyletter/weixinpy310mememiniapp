@@ -438,15 +438,21 @@ def test_meme_rename_and_estimate_endpoints(client: TestClient):
 
 def test_render_meme_accepts_saved_text_style_options(client: TestClient, monkeypatch):
     from app.core.wechat_service import WeChatService
+    from app.api import materials
 
     async def allow_text(_cls, _text, _openid=None):
         return True, ""
 
     monkeypatch.setattr(WeChatService, "check_text_security", classmethod(allow_text))
+
+    async def load_template(_template):
+        return Image.new("RGBA", (120, 100), "white")
+
+    monkeypatch.setattr(materials, "_load_template_image", load_template)
     response = client.post(
         "/api/materials/render-meme",
         data={
-            "template_id": "tpl_panda_question",
+            "template_id": "classic_panda_question",
             "caption": "字体设置测试",
             "font_size": "34",
             "color": "#3b82f6",

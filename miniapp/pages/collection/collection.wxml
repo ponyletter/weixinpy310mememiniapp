@@ -167,18 +167,18 @@
       </button>
     </view>
 
-    <!-- 搜索未命中兜底：智能定制专属表情包 (永远有结果！) -->
+    <!-- 搜索未命中兜底：使用精选空白梗图配字 -->
     <view class="search-fallback-card card" wx:if="{{!matLoading && materialsList.length === 0 && matSearchQuery}}">
       <view class="fallback-header">
         <view class="fallback-badge-row">
-          <text class="fallback-badge">✨ 智能定制表情包</text>
-          <text class="fallback-pill">搜索永不落空</text>
+          <text class="fallback-badge">🐼 经典空白梗图</text>
+          <text class="fallback-pill">精选无字素材</text>
         </view>
-        <view class="fallback-title">未搜到相关表情？立即为您专属定制</view>
-        <view class="fallback-desc">已将台词预填为「<text class="highlight-query">{{matSearchQuery}}</text>」，选择下方经典梗图底图即可一键生成专属表情：</view>
+        <view class="fallback-title">没有现成结果，用你的搜索词现场配一张</view>
+        <view class="fallback-desc">台词已预填为「<text class="highlight-query">{{matSearchQuery}}</text>」，选择一张人工筛选的经典无字底图：</view>
       </view>
 
-      <!-- 经典梗图底图模版网格 -->
+      <!-- 经典梗图底图模板网格 -->
       <view class="fallback-tpl-grid">
         <view 
           wx:for="{{memeTemplates}}" 
@@ -189,8 +189,6 @@
         >
           <view class="fallback-tpl-thumb-wrap">
             <image class="fallback-tpl-img" src="{{item.thumb_url || item.image_url}}" mode="aspectFit" lazy-load="true"></image>
-            <!-- 模版空白处实时悬浮台词 -->
-            <view class="fallback-floating-caption">{{matSearchQuery}}</view>
           </view>
           <view class="fallback-tpl-meta">
             <text class="fallback-tpl-name">{{item.title}}</text>

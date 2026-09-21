@@ -1,7 +1,9 @@
 import json
+import io
 import uuid
 import re
 from typing import Optional
+import httpx
 from fastapi import APIRouter, Query, Response, Form, HTTPException
 from PIL import Image, ImageDraw
 
@@ -11,6 +13,7 @@ from app.core.wechat_service import WeChatService
 from app.database import add_item_to_collection
 
 router = APIRouter(prefix="/api/materials", tags=["materials"])
+_template_image_cache = {}
 
 
 @router.get("/categories")
@@ -47,7 +50,7 @@ def search_materials(
     page_size: int = Query(24, ge=1, le=100, description="每页数量")
 ):
     """
-    关键词实时搜索 5,800+ 款 ChineseBQB 开源表情素材
+    关键词实时搜索 5,800+ 款 ChineseBQB 公开表情素材
     """
     response.headers["Cache-Control"] = "public, max-age=300"
     data = ChineseBQBService.search_materials(query=q, category=category, page=page, page_size=page_size)
@@ -57,7 +60,7 @@ def search_materials(
 @router.get("/templates")
 def list_meme_templates(response: Response):
     """
-    获取 20 款经典表情包底图模版列表（用于搜索空状态定制、百宝箱模版配字）
+    获取人工筛选的无字经典表情模板（用于搜索空状态定制、百宝箱模板配字）
     """
     response.headers["Cache-Control"] = "public, max-age=1800"
     tpl_file = settings.STATIC_DIR / "meme_templates" / "templates.json"
@@ -71,9 +74,49 @@ def list_meme_templates(response: Response):
     return {"code": 0, "data": []}
 
 
+def _get_meme_template(template_id: str):
+    tpl_file = settings.STATIC_DIR / "meme_templates" / "templates.json"
+    if not tpl_file.exists():
+        return None
+    try:
+        with open(tpl_file, "r", encoding="utf-8") as f:
+            templates = json.load(f)
+        return next((item for item in templates if item.get("id") == template_id), None)
+    except (OSError, ValueError):
+        return None
+
+
+async def _load_template_image(template: dict) -> Image.Image:
+    """只下载清单中指定的 ChineseBQB 素材，不接受客户端传入任意 URL。"""
+    source_item = ChineseBQBService.get_item(template.get("source_item_id", ""))
+    if not source_item:
+        raise HTTPException(status_code=404, detail="表情模板底图不存在")
+    source_url = source_item["url"]
+    if not source_url.startswith("https://zhaoolee.com/ChineseBQB/"):
+        raise HTTPException(status_code=400, detail="表情模板来源不受信任")
+    cached = _template_image_cache.get(source_item["id"])
+    if cached is not None:
+        return cached.copy()
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            response = await client.get(source_url)
+            response.raise_for_status()
+        if len(response.content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="表情模板文件过大")
+        image = Image.open(io.BytesIO(response.content)).convert("RGBA")
+        if len(_template_image_cache) >= 16:
+            _template_image_cache.clear()
+        _template_image_cache[source_item["id"]] = image
+        return image.copy()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="暂时无法读取表情模板，请稍后重试") from exc
+
+
 @router.post("/render-meme")
 async def render_custom_meme(
-    template_id: str = Form("tpl_panda_question"),
+    template_id: str = Form(...),
     caption: str = Form(...),
     font_size: int = Form(28),
     color: str = Form("#1e293b"),
@@ -97,19 +140,21 @@ async def render_custom_meme(
     if not is_safe:
         raise HTTPException(status_code=400, detail=tip or "内容包含违规敏感信息，请修改后重试")
 
-    # 载入底图模板
-    tpl_path = settings.STATIC_DIR / "meme_templates" / f"{template_id}.png"
-    if not tpl_path.exists():
-        # 回退默认
-        tpl_path = settings.STATIC_DIR / "meme_templates" / "tpl_panda_question.png"
-    if not tpl_path.exists():
-        raise HTTPException(status_code=404, detail="表情模版底图不存在")
+    template = _get_meme_template(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="表情模板已下线，请重新选择")
 
-    # 打开底图
-    try:
-        base_img = Image.open(tpl_path).convert("RGBA")
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail="无法读取底图模板") from exc
+    # 经典斗图样式：主体居上、底部固定大留白，避免文字压住表情。
+    source_img = await _load_template_image(template)
+    base_img = Image.new("RGBA", (480, 480), (255, 255, 255, 255))
+    scale = min(400 / source_img.width, 280 / source_img.height)
+    source_img = source_img.resize(
+        (max(1, int(source_img.width * scale)), max(1, int(source_img.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    source_x = (480 - source_img.width) // 2
+    source_y = max(8, (310 - source_img.height) // 2)
+    base_img.alpha_composite(source_img, (source_x, source_y))
 
     w, h = base_img.size
     draw = ImageDraw.Draw(base_img)
@@ -118,11 +163,12 @@ async def render_custom_meme(
     f_size = max(18, min(48, font_size))
     from app.api.convert import _get_cjk_font
     safe_font_style = font_style if font_style in {"regular", "bold", "serif"} else "bold"
-    font = _get_cjk_font(
-        f_size,
-        bold=safe_font_style == "bold",
-        serif=safe_font_style == "serif",
-    )
+    def make_font(size):
+        return _get_cjk_font(
+            size,
+            bold=safe_font_style == "bold",
+            serif=safe_font_style == "serif",
+        )
 
     # 解析文字颜色
     hex_color = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -134,11 +180,16 @@ async def render_custom_meme(
         text_color = (r, g, b, 255)
 
     # 自动折行计算：单行最多字数
-    chars_per_line = max(6, int((w - 40) / f_size))
     import textwrap
-    lines = textwrap.wrap(caption_text, width=chars_per_line) or [caption_text]
-    line_h = int(f_size * 1.35)
-    total_text_h = len(lines) * line_h
+    while True:
+        font = make_font(f_size)
+        chars_per_line = max(6, int((w - 48) / f_size))
+        lines = textwrap.wrap(caption_text, width=chars_per_line) or [caption_text]
+        line_h = int(f_size * 1.35)
+        total_text_h = len(lines) * line_h
+        if total_text_h <= 140 or f_size == 18:
+            break
+        f_size = max(18, f_size - 2)
 
     # 纵向起始位置
     if pos == "top":
@@ -146,8 +197,7 @@ async def render_custom_meme(
     elif pos == "center":
         start_y = (h - total_text_h) // 2
     else: # bottom
-        # 模版底部留白区域在 y=270~380 之间
-        start_y = max(270, h - total_text_h - 25)
+        start_y = max(320, h - total_text_h - 28)
 
     # 逐行居中绘制，添加轻微高对比白描边让文字格外清晰
     curr_y = start_y

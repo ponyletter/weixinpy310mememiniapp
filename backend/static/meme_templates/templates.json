@@ -1,322 +1,51 @@
 [
   {
-    "id": "tpl_panda_question",
-    "category": "funny",
-    "category_title": "经典熊猫",
-    "title": "熊猫头 · 满脸问号",
-    "default_text": "你在教我做事？",
-    "theme": "panda_question",
-    "tags": [
-      "熊猫头",
-      "问号",
-      "疑惑",
-      "懵逼"
-    ],
-    "image_url": "/static/meme_templates/tpl_panda_question.png",
-    "thumb_url": "/static/meme_templates/tpl_panda_question_thumb.png"
+    "id": "classic_panda_smirk", "source_item_id": "0fae3fa24f9139f8ca0f", "category": "classic", "category_title": "经典熊猫头",
+    "title": "邪魅一笑", "default_text": "我就静静看着你", "tags": ["熊猫头", "坏笑", "经典"],
+    "image_url": "https://zhaoolee.com/ChineseBQB/media/226f5d8bc6d8e492d5323686d0ec6b451c99f909cd9c299b139955ff18230a38.jpg",
+    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/226f5d8bc6d8e492d5323686d0ec6b451c99f909cd9c299b139955ff18230a38.jpg",
+    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
   },
   {
-    "id": "tpl_panda_thumb",
-    "category": "funny",
-    "category_title": "经典熊猫",
-    "title": "熊猫头 · 点赞大笑",
-    "default_text": "听懂掌声！",
-    "theme": "panda_thumb",
-    "tags": [
-      "熊猫头",
-      "点赞",
-      "好评",
-      "大笑"
-    ],
-    "image_url": "/static/meme_templates/tpl_panda_thumb.png",
-    "thumb_url": "/static/meme_templates/tpl_panda_thumb_thumb.png"
+    "id": "classic_panda_angry", "source_item_id": "5b78f15e9a4cae19a3cb", "category": "classic", "category_title": "经典熊猫头",
+    "title": "逐渐生气", "default_text": "你再说一遍？", "tags": ["熊猫头", "生气", "反击"],
+    "image_url": "https://zhaoolee.com/ChineseBQB/media/d47432b9a0c85b7f7616542d3f3e98a91102c6f99aa3212bd89b60b76e00ba62.jpg",
+    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/d47432b9a0c85b7f7616542d3f3e98a91102c6f99aa3212bd89b60b76e00ba62.jpg",
+    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
   },
   {
-    "id": "tpl_panda_cry",
-    "category": "funny",
-    "category_title": "经典熊猫",
-    "title": "熊猫头 · 猛男落泪",
-    "default_text": "扎心了老铁",
-    "theme": "panda_cry",
-    "tags": [
-      "熊猫头",
-      "大哭",
-      "悲伤",
-      "扎心"
-    ],
-    "image_url": "/static/meme_templates/tpl_panda_cry.png",
-    "thumb_url": "/static/meme_templates/tpl_panda_cry_thumb.png"
+    "id": "classic_panda_cry", "source_item_id": "5636918c5c2eb21677b2", "category": "classic", "category_title": "经典熊猫头",
+    "title": "捂嘴落泪", "default_text": "我真的会谢", "tags": ["熊猫头", "哭", "委屈"],
+    "image_url": "https://zhaoolee.com/ChineseBQB/media/ec924bafbabf7027f4a43c15b05438ed0bd7688ec609448b957602fef1397a81.jpg",
+    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/ec924bafbabf7027f4a43c15b05438ed0bd7688ec609448b957602fef1397a81.jpg",
+    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
   },
   {
-    "id": "tpl_panda_peek",
-    "category": "funny",
-    "category_title": "经典熊猫",
-    "title": "熊猫头 · 暗中观察",
-    "default_text": "暗中观察.jpg",
-    "theme": "panda_peek",
-    "tags": [
-      "熊猫头",
-      "偷看",
-      "观察",
-      "吃瓜"
-    ],
-    "image_url": "/static/meme_templates/tpl_panda_peek.png",
-    "thumb_url": "/static/meme_templates/tpl_panda_peek_thumb.png"
+    "id": "classic_panda_question", "source_item_id": "a1a4188433c77467be2f", "category": "classic", "category_title": "经典熊猫头",
+    "title": "满头问号", "default_text": "你认真的吗？", "tags": ["熊猫头", "问号", "疑惑"],
+    "image_url": "https://zhaoolee.com/ChineseBQB/media/e3ea9ba5dd46713449411b264009be222b9cb4e50c54d1524fd127a919631102.jpg",
+    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/e3ea9ba5dd46713449411b264009be222b9cb4e50c54d1524fd127a919631102.jpg",
+    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
   },
   {
-    "id": "tpl_panda_lean",
-    "category": "funny",
-    "category_title": "经典熊猫",
-    "title": "熊猫头 · 战术后仰",
-    "default_text": "战术后仰！",
-    "theme": "panda_lean",
-    "tags": [
-      "熊猫头",
-      "震惊",
-      "后仰",
-      "害怕"
-    ],
-    "image_url": "/static/meme_templates/tpl_panda_lean.png",
-    "thumb_url": "/static/meme_templates/tpl_panda_lean_thumb.png"
+    "id": "classic_panda_speechless", "source_item_id": "c427298f7a91956dcd5e", "category": "classic", "category_title": "经典熊猫头",
+    "title": "无语凝噎", "default_text": "一时竟无言以对", "tags": ["熊猫头", "无语", "沉默"],
+    "image_url": "https://zhaoolee.com/ChineseBQB/media/4f6f0409f54ada1bdc180cb0007f6c8bae16920d12f6b5d55fc374254de1e3be.jpg",
+    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/4f6f0409f54ada1bdc180cb0007f6c8bae16920d12f6b5d55fc374254de1e3be.jpg",
+    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
   },
   {
-    "id": "tpl_panda_break",
-    "category": "funny",
-    "category_title": "经典熊猫",
-    "title": "熊猫头 · 我裂开了",
-    "default_text": "我直接当场裂开",
-    "theme": "panda_break",
-    "tags": [
-      "熊猫头",
-      "裂开",
-      "崩溃",
-      "暴躁"
-    ],
-    "image_url": "/static/meme_templates/tpl_panda_break.png",
-    "thumb_url": "/static/meme_templates/tpl_panda_break_thumb.png"
+    "id": "classic_panda_shocked", "source_item_id": "adf4fd19dfcdc7a98e7a", "category": "classic", "category_title": "经典熊猫头",
+    "title": "当场震惊", "default_text": "还有这种操作？", "tags": ["熊猫头", "震惊", "惊讶"],
+    "image_url": "https://zhaoolee.com/ChineseBQB/media/7b8aca23a151c66f07311485ebedcf804fdd731be115176da8e6d672a29a7cf3.jpg",
+    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/7b8aca23a151c66f07311485ebedcf804fdd731be115176da8e6d672a29a7cf3.jpg",
+    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
   },
   {
-    "id": "tpl_panda_smug",
-    "category": "funny",
-    "category_title": "经典熊猫",
-    "title": "熊猫头 · 得意坏笑",
-    "default_text": "就这？就这？",
-    "theme": "panda_smug",
-    "tags": [
-      "熊猫头",
-      "坏笑",
-      "得意",
-      "挑衅"
-    ],
-    "image_url": "/static/meme_templates/tpl_panda_smug.png",
-    "thumb_url": "/static/meme_templates/tpl_panda_smug_thumb.png"
-  },
-  {
-    "id": "tpl_panda_shrug",
-    "category": "funny",
-    "category_title": "经典熊猫",
-    "title": "熊猫头 · 无奈摊手",
-    "default_text": "我也很绝望啊",
-    "theme": "panda_shrug",
-    "tags": [
-      "熊猫头",
-      "摊手",
-      "无奈",
-      "无所谓"
-    ],
-    "image_url": "/static/meme_templates/tpl_panda_shrug.png",
-    "thumb_url": "/static/meme_templates/tpl_panda_shrug_thumb.png"
-  },
-  {
-    "id": "tpl_cat_tea",
-    "category": "cute",
-    "category_title": "萌宠可爱",
-    "title": "奶茶猫猫 · 吸吸奶茶",
-    "default_text": "吨吨吨！快乐水",
-    "theme": "cat_tea",
-    "tags": [
-      "猫咪",
-      "奶茶",
-      "可爱",
-      "快乐"
-    ],
-    "image_url": "/static/meme_templates/tpl_cat_tea.png",
-    "thumb_url": "/static/meme_templates/tpl_cat_tea_thumb.png"
-  },
-  {
-    "id": "tpl_dog_tilt",
-    "category": "cute",
-    "category_title": "萌宠可爱",
-    "title": "歪头柴犬 · 眼神清澈",
-    "default_text": "真的假的？我不信",
-    "theme": "dog_tilt",
-    "tags": [
-      "柴犬",
-      "萌宠",
-      "疑惑",
-      "呆萌"
-    ],
-    "image_url": "/static/meme_templates/tpl_dog_tilt.png",
-    "thumb_url": "/static/meme_templates/tpl_dog_tilt_thumb.png"
-  },
-  {
-    "id": "tpl_bear_heart",
-    "category": "cute",
-    "category_title": "萌宠可爱",
-    "title": "贴贴小熊 · 给你小心心",
-    "default_text": "爱你哟么么哒~",
-    "theme": "bear_heart",
-    "tags": [
-      "小熊",
-      "比心",
-      "贴贴",
-      "表白"
-    ],
-    "image_url": "/static/meme_templates/tpl_bear_heart.png",
-    "thumb_url": "/static/meme_templates/tpl_bear_heart_thumb.png"
-  },
-  {
-    "id": "tpl_cat_stars",
-    "category": "cute",
-    "category_title": "萌宠可爱",
-    "title": "星星眼猫 · 哇塞崇拜",
-    "default_text": "大佬太强了吧！",
-    "theme": "cat_stars",
-    "tags": [
-      "猫咪",
-      "崇拜",
-      "崇拜",
-      "星星眼"
-    ],
-    "image_url": "/static/meme_templates/tpl_cat_stars.png",
-    "thumb_url": "/static/meme_templates/tpl_cat_stars_thumb.png"
-  },
-  {
-    "id": "tpl_doge_smile",
-    "category": "cute",
-    "category_title": "萌宠可爱",
-    "title": "狗头保命 · 蜜汁微笑",
-    "default_text": "狗头保命 [滑稽]",
-    "theme": "doge_smile",
-    "tags": [
-      "狗头",
-      "保命",
-      "滑稽",
-      "微笑"
-    ],
-    "image_url": "/static/meme_templates/tpl_doge_smile.png",
-    "thumb_url": "/static/meme_templates/tpl_doge_smile_thumb.png"
-  },
-  {
-    "id": "tpl_worker_type",
-    "category": "worker",
-    "category_title": "打工人",
-    "title": "疯狂搬砖 · 键盘敲出火",
-    "default_text": "打工是不可能打工的",
-    "theme": "worker_type",
-    "tags": [
-      "打工人",
-      "加班",
-      "敲键盘",
-      "搬砖"
-    ],
-    "image_url": "/static/meme_templates/tpl_worker_type.png",
-    "thumb_url": "/static/meme_templates/tpl_worker_type_thumb.png"
-  },
-  {
-    "id": "tpl_worker_fish",
-    "category": "worker",
-    "category_title": "打工人",
-    "title": "摸鱼喝茶 · 心静自然凉",
-    "default_text": "今天又是摸鱼的一天",
-    "theme": "worker_fish",
-    "tags": [
-      "摸鱼",
-      "喝茶",
-      "佛系",
-      "打工人"
-    ],
-    "image_url": "/static/meme_templates/tpl_worker_fish.png",
-    "thumb_url": "/static/meme_templates/tpl_worker_fish_thumb.png"
-  },
-  {
-    "id": "tpl_worker_bald",
-    "category": "worker",
-    "category_title": "打工人",
-    "title": "需求又改 · 当场头秃",
-    "default_text": "需求别再改了！",
-    "theme": "worker_bald",
-    "tags": [
-      "改需求",
-      "头秃",
-      "抓狂",
-      "程序员"
-    ],
-    "image_url": "/static/meme_templates/tpl_worker_bald.png",
-    "thumb_url": "/static/meme_templates/tpl_worker_bald_thumb.png"
-  },
-  {
-    "id": "tpl_worker_run",
-    "category": "worker",
-    "category_title": "打工人",
-    "title": "准点下班 · 溜之大吉",
-    "default_text": "下班！一秒都不多待",
-    "theme": "worker_run",
-    "tags": [
-      "下班",
-      "溜了",
-      "周五",
-      "飞奔"
-    ],
-    "image_url": "/static/meme_templates/tpl_worker_run.png",
-    "thumb_url": "/static/meme_templates/tpl_worker_run_thumb.png"
-  },
-  {
-    "id": "tpl_sarcasm_melon",
-    "category": "sarcasm",
-    "category_title": "吐槽斗图",
-    "title": "前排吃瓜 · 坐看神仙打架",
-    "default_text": "坐等吃瓜，精彩！",
-    "theme": "sarcasm_melon",
-    "tags": [
-      "吃瓜",
-      "看戏",
-      "八卦",
-      "围观"
-    ],
-    "image_url": "/static/meme_templates/tpl_sarcasm_melon.png",
-    "thumb_url": "/static/meme_templates/tpl_sarcasm_melon_thumb.png"
-  },
-  {
-    "id": "tpl_sarcasm_roll",
-    "category": "sarcasm",
-    "category_title": "吐槽斗图",
-    "title": "翻大白眼 · 累了毁灭吧",
-    "default_text": "对对对，你说的都对",
-    "theme": "sarcasm_roll",
-    "tags": [
-      "白眼",
-      "无语",
-      "敷衍",
-      "毁灭吧"
-    ],
-    "image_url": "/static/meme_templates/tpl_sarcasm_roll.png",
-    "thumb_url": "/static/meme_templates/tpl_sarcasm_roll_thumb.png"
-  },
-  {
-    "id": "tpl_classic_salute",
-    "category": "sarcasm",
-    "category_title": "吐槽斗图",
-    "title": "抱拳拜谢 · 大佬牛逼",
-    "default_text": "给大佬递茶！",
-    "theme": "classic_salute",
-    "tags": [
-      "抱拳",
-      "感谢",
-      "大佬",
-      "佩服"
-    ],
-    "image_url": "/static/meme_templates/tpl_classic_salute.png",
-    "thumb_url": "/static/meme_templates/tpl_classic_salute_thumb.png"
+    "id": "classic_panda_blush", "source_item_id": "3ec6df0a7ce29b108456", "category": "classic", "category_title": "经典熊猫头",
+    "title": "脸红害羞", "default_text": "你这样我会害羞的", "tags": ["熊猫头", "害羞", "脸红"],
+    "image_url": "https://zhaoolee.com/ChineseBQB/media/bd48f84a99e25f0a5c2b8c90c720f584d4f602100ea70de9047317a4668030b7.jpg",
+    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/bd48f84a99e25f0a5c2b8c90c720f584d4f602100ea70de9047317a4668030b7.jpg",
+    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
   }
 ]

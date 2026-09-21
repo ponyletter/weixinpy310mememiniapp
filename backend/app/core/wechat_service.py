@@ -1,5 +1,6 @@
 import io
 import time
+import hashlib
 import httpx
 import logging
 from datetime import datetime
@@ -12,6 +13,21 @@ logger = logging.getLogger(__name__)
 class WeChatService:
     _access_token: Optional[str] = None
     _token_expires_at: float = 0
+    _image_check_cache: Dict[str, Tuple[float, bool, str]] = {}
+    _image_check_cache_ttl: int = 600
+
+    @staticmethod
+    def _security_result(data: Dict[str, Any]) -> Tuple[bool, str]:
+        """只把微信明确返回的风险结果判为违规，接口故障不冒充内容违规。"""
+        errcode = data.get("errcode", 0)
+        result = data.get("result") or {}
+        if errcode == 87014:
+            return False, "所发布内容包含违规信息，请修改后重试"
+        if result.get("suggest") in ("risky", "review"):
+            return False, "所发布内容包含违规信息，请修改后重试"
+        if result.get("label") not in (None, 100):
+            return False, "所发布内容包含违规信息，请修改后重试"
+        return True, ""
 
     @classmethod
     async def get_access_token(cls) -> Optional[str]:
@@ -167,25 +183,33 @@ class WeChatService:
                 logger.info(f"微信文本安全检测结果: text='{clean_text[:20]}' res={data}")
 
                 errcode = data.get("errcode", 0)
-                if errcode == 87014:
-                    return False, "所发布内容包含违规信息，请修改后重试"
-
-                result = data.get("result", {})
-                if result.get("suggest") in ("risky", "review"):
-                    return False, "所发布内容包含违规信息，请修改后重试"
-                if result.get("label") not in (None, 100):
-                    return False, "所发布内容包含违规信息，请修改后重试"
+                is_safe, tip = cls._security_result(data)
+                if not is_safe:
+                    return is_safe, tip
 
                 # 若报 openid 不匹配等错误，降级回退 v1 简单接口再次校验
                 if errcode == 40003:
                     fb_resp = await client.post(url, json={"content": clean_text})
                     fb_data = fb_resp.json()
-                    if fb_data.get("errcode") == 87014:
-                        return False, "所发布内容包含违规信息，请修改后重试"
+                    fb_safe, fb_tip = cls._security_result(fb_data)
+                    if not fb_safe:
+                        return fb_safe, fb_tip
+                    fb_errcode = fb_data.get("errcode", 0)
+                    if fb_errcode != 0:
+                        logger.warning(
+                            "微信文本安全降级检测失败，按服务异常放行: errcode=%s, errmsg=%s",
+                            fb_errcode,
+                            fb_data.get("errmsg"),
+                        )
+                    return True, ""
 
                 if errcode != 0:
-                    logger.warning(f"微信文本安全检测返回非零错误码: {errcode}, data={data}")
-                    return False, "所发布内容包含违规信息，请修改后重试"
+                    logger.warning(
+                        "微信文本安全检测失败，按服务异常放行: errcode=%s, errmsg=%s",
+                        errcode,
+                        data.get("errmsg"),
+                    )
+                    return True, ""
 
                 return True, ""
         except Exception as e:
@@ -218,6 +242,11 @@ class WeChatService:
             buf = io.BytesIO()
             im.save(buf, format="JPEG", quality=85)
             check_bytes = buf.getvalue()
+            cache_key = hashlib.sha256(check_bytes).hexdigest()
+            cached = cls._image_check_cache.get(cache_key)
+            now = time.monotonic()
+            if cached and now - cached[0] < cls._image_check_cache_ttl:
+                return cached[1], cached[2]
 
             url = f"https://api.weixin.qq.com/wxa/img_sec_check?access_token={token}"
             async with httpx.AsyncClient(timeout=8.0) as client:
@@ -227,13 +256,21 @@ class WeChatService:
                 logger.info(f"微信图片安全检测结果: res={data}")
 
                 errcode = data.get("errcode", 0)
-                # 微信官方违规码: 87014 或任何非零错误码判定为不合规
-                if errcode == 87014 or errcode != 0:
-                    logger.warning(f"微信图片安全拦截: errcode={errcode}, errmsg={data.get('errmsg')}")
-                    return False, "所发布内容包含违规信息，请修改后重试"
+                is_safe, tip = cls._security_result(data)
+                if not is_safe:
+                    logger.warning("微信图片安全拦截: errcode=%s", errcode)
+                elif errcode != 0:
+                    logger.warning(
+                        "微信图片安全检测失败，按服务异常放行: errcode=%s, errmsg=%s",
+                        errcode,
+                        data.get("errmsg"),
+                    )
 
-                return True, ""
+                # 避免上传预检与生成接口对同一图片连续送检，降低限频和结果抖动。
+                if len(cls._image_check_cache) >= 512:
+                    cls._image_check_cache.clear()
+                cls._image_check_cache[cache_key] = (now, is_safe, tip)
+                return is_safe, tip
         except Exception as e:
             logger.error(f"微信图片安全检测异常: {e}")
             return True, ""
-
