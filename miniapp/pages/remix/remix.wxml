@@ -216,13 +216,18 @@
     </view>
 
     <!-- 操作按钮组 -->
-    <view class="meme-actions-row">
-      <button class="btn-primary btn-meme-save" bindtap="saveMemeToAlbum" disabled="{{isRenderingMeme}}">
-        📥 保存到手机相册
+    <view class="meme-actions-stack">
+      <button class="btn-secondary btn-meme-preview" bindtap="previewRemixResult" disabled="{{isRenderingMeme}}">
+        🔍 预览大图 (长按可直接转发到微信聊天)
       </button>
-      <button class="btn-secondary btn-meme-col" bindtap="saveMemeToCollection" disabled="{{isRenderingMeme}}">
-        📁 存入表情合集
-      </button>
+      <view class="meme-actions-row">
+        <button class="btn-primary btn-meme-save" bindtap="saveMemeToAlbum" disabled="{{isRenderingMeme}}">
+          📥 保存到相册
+        </button>
+        <button class="btn-secondary btn-meme-col" bindtap="saveMemeToCollection" disabled="{{isRenderingMeme}}">
+          📁 存入表情合集
+        </button>
+      </view>
     </view>
   </view>
 

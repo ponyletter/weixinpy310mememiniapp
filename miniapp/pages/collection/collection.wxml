@@ -212,7 +212,7 @@
       </view>
 
       <!-- 渲染图预览舞台 -->
-      <view class="custom-modal-preview-stage checkerboard-bg">
+      <view class="custom-modal-preview-stage checkerboard-bg" bindtap="previewCustomMemeImage">
         <view wx:if="{{customRendering}}" class="custom-stage-loading">
           <text class="loading-icon">⏳</text>
           <text class="loading-hint">正在极速绘制高清表情...</text>
@@ -222,6 +222,7 @@
           src="{{customRenderedUrl || currentTpl.image_url}}" 
           mode="aspectFit"
         ></image>
+        <view class="modal-img-preview-hint">点击预览大图 · 长按可直接转发</view>
       </view>
 
       <!-- 台词微调 -->
@@ -243,13 +244,18 @@
       </view>
 
       <!-- 操作按钮栏 -->
-      <view class="custom-modal-actions">
-        <button class="btn-primary btn-custom-action" bindtap="saveCustomMemeToAlbum" disabled="{{customRendering}}">
-          📥 保存到手机相册
+      <view class="custom-modal-btn-stack">
+        <button class="btn-custom-preview" bindtap="previewCustomMemeImage" disabled="{{customRendering}}">
+          🔍 预览大图 (长按可直接转发到聊天)
         </button>
-        <button class="btn-secondary btn-custom-action" bindtap="saveCustomMemeToCol" disabled="{{customRendering}}">
-          📁 存入表情合集
-        </button>
+        <view class="custom-modal-actions">
+          <button class="btn-primary btn-custom-action" bindtap="saveCustomMemeToAlbum" disabled="{{customRendering}}">
+            📥 保存到相册
+          </button>
+          <button class="btn-secondary btn-custom-action" bindtap="saveCustomMemeToCol" disabled="{{customRendering}}">
+            📁 存入表情合集
+          </button>
+        </view>
       </view>
 
       <view class="custom-modal-deep-link" bindtap="goToRemixMemeMaker">
@@ -265,16 +271,20 @@
         <text class="mat-modal-title">{{activeMatItem.title}}</text>
         <text class="mat-modal-close" bindtap="closeMatModal">✕</text>
       </view>
-      <view class="mat-modal-img-wrap">
+      <view class="mat-modal-img-wrap" bindtap="previewMaterialImage">
         <image class="mat-modal-img" src="{{activeMatItem.url || activeMatItem.thumb_url}}" mode="aspectFit"></image>
+        <view class="modal-img-preview-hint">点击预览大图 · 长按可直接转发</view>
       </view>
       <view class="mat-modal-actions">
-        <button class="btn-mat-save" style="width: 100%;" bindtap="saveMaterialToAlbum">
-          📥 保存到手机相册
+        <button class="btn-mat-preview" bindtap="previewMaterialImage">
+          🔍 预览大图 (长按可转发)
+        </button>
+        <button class="btn-mat-save" bindtap="saveMaterialToAlbum">
+          📥 保存到相册
         </button>
       </view>
       <view class="mat-modal-tip">
-        💡 保存到相册后，可前往「1图变16张表情」选取作为参考图
+        💡 预览大图后长按可直接发给微信好友，也可保存到相册
       </view>
     </view>
   </view>

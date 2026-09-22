@@ -1293,9 +1293,29 @@
 }
 
 /* 按钮组 */
+.meme-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
 .meme-actions-row {
   display: flex;
   gap: 16rpx;
+}
+
+.btn-meme-preview {
+  width: 100%;
+  background: #f5f3ff;
+  color: #7c3aed;
+  font-size: 26rpx;
+  font-weight: 700;
+  padding: 16rpx;
+  border-radius: 16rpx;
+  border: 1.5rpx solid #ddd6fe;
+  line-height: normal;
+  text-align: center;
+  margin: 0;
 }
 
 .btn-meme-save {

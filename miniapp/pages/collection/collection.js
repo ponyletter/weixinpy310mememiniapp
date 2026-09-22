@@ -383,6 +383,18 @@ Page({
     this.setData({ showMatModal: false });
   },
 
+  // 预览素材大图（支持微信原生全屏预览与长按直接转发到聊天）
+  previewMaterialImage() {
+    const item = this.data.activeMatItem;
+    const url = (item && (item.url || item.thumb_url)) || '';
+    if (!url) return;
+    const absUrl = app.toAbsoluteUrl(url);
+    wx.previewImage({
+      urls: [absUrl],
+      current: absUrl
+    });
+  },
+
   // 保存素材图片到手机相册
   saveMaterialToAlbum() {
     const item = this.data.activeMatItem;
@@ -513,6 +525,17 @@ Page({
         this.setData({ customRendering: false });
         wx.showToast({ title: '网络超时', icon: 'none' });
       }
+    });
+  },
+
+  // 预览定制生成的表情大图（支持长按直接转发到微信聊天）
+  previewCustomMemeImage() {
+    const url = this.data.customRenderedUrl || (this.data.currentTpl && this.data.currentTpl.image_url);
+    if (!url) return;
+    const absUrl = app.toAbsoluteUrl(url);
+    wx.previewImage({
+      urls: [absUrl],
+      current: absUrl
     });
   },
 
