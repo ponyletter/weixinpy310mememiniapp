@@ -1111,13 +1111,14 @@ async def run_generate_pipeline(
         failed_task_dir = settings.OUTPUT_DIR / task_id
         # 保留失败现场一段时间，便于排错；后台任务会延迟清理。
         mark_failed_task_dir(failed_task_dir, str(e))
+        err_msg = "图片处理遇到问题，额度已自动返还，请稍后重试" if is_audit_mode_active() else "生成服务暂时不可用，额度已自动返还，请稍后重试"
         TASK_STORE[task_id] = {
             "openid": openid,
             "status": "failed",
             "progress": 100,
             "stage": "error",
-            "stage_text": "出图失败",
-            "error": "生成服务暂时不可用，请稍后重试"
+            "stage_text": "制作未完成",
+            "error": err_msg
         }
         try:
             with get_db() as conn:
@@ -1595,13 +1596,14 @@ def get_task_status(task_id: str, current_openid: CurrentOpenid):
             },
         }
     if owner["status"] == "failed":
+        err_msg = "图片处理遇到问题，请稍后重试" if is_audit_mode_active() else "生成服务暂时不可用，请稍后重试"
         return {
             "code": 0,
             "data": {
                 "status": "failed",
                 "progress": 100,
                 "stage": "error",
-                "stage_text": "生成服务暂时不可用，请稍后重试",
+                "stage_text": err_msg,
             },
         }
 
