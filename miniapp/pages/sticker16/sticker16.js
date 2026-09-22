@@ -10,6 +10,7 @@ Page({
     selectedStyle: 'wechat_sticker',
     customStyleText: '',
     characterDesc: '',
+    localProcessingOnly: true, // 默认合规本地处理模式，动态由后端配置驱动
     customTextsPlaceholder: '收到\n好的老板\n疯狂搬砖\n摸鱼中\n头秃了\n我太难了\n别催了\n下班溜了\n血压上来了\n需求是啥\n搞定收工\n夸得我脸红\n跪求别催\n吃瓜看戏\n困到变形\n告辞溜了',
 
     themePackages: [
@@ -128,7 +129,7 @@ Page({
     hasCompletedTask: false,
     currentStep: 1,
     progress: 5,
-    stageTitle: '阶段 1/4: 提取角色视觉特征...',
+    stageTitle: '阶段 1/4: 读取图片素材...',
     elapsedSeconds: 0,
     estimatedSeconds: 60,
 
@@ -163,6 +164,8 @@ Page({
       activeDrawerThemeObj: defaultTheme
     });
 
+    this.fetchBackendCapabilities();
+
     if (options && options.refUrl) {
       const url = decodeURIComponent(options.refUrl);
       this.setData({ refImagePath: url });
@@ -171,7 +174,22 @@ Page({
   },
 
   onShow() {
+    this.fetchBackendCapabilities();
     this.checkResumeActiveTask();
+  },
+
+  fetchBackendCapabilities() {
+    app.request({
+      url: `${app.globalData.baseURL}/api/wechat/info`,
+      method: 'GET',
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.capabilities) {
+          const isLocal = !!res.data.capabilities.local_processing_only;
+          this.setData({ localProcessingOnly: isLocal });
+        }
+      },
+      fail: () => {}
+    });
   },
 
   onUnload() {
@@ -214,7 +232,7 @@ Page({
             estimatedSeconds: est,
             elapsedSeconds: elapsed,
             progress: calculatedProgress,
-            stageTitle: '正在恢复云端渲染进度...'
+            stageTitle: '正在恢复图片处理进度...'
           });
 
           this.generationStartedAt = activeTask.timestamp || (now - elapsed * 1000);
@@ -323,6 +341,31 @@ Page({
     this.setData({ showStyleDrawer: false });
   },
 
+  selectComposition(e) {
+    this.setData({ composition: e.currentTarget.dataset.comp });
+  },
+
+  selectStyle(e) {
+    const id = e.currentTarget.dataset.id;
+    const styleObj = this.data.stylePresets.find(s => s.id === id) || this.data.stylePresets[0];
+    this.setData({
+      selectedStyle: id,
+      currentStyleObj: styleObj
+    });
+  },
+
+  onInputCustomStyle(e) {
+    this.setData({ customStyleText: e.detail.value });
+  },
+
+  onInputDesc(e) {
+    this.setData({ characterDesc: e.detail.value });
+  },
+
+  toggleDescInput() {
+    this.setData({ showDescInput: !this.data.showDescInput });
+  },
+
   // --- 场景主题与台词抽屉交互 ---
   openThemeDrawer() {
     const curThemeId = this.data.textMode === 'none' ? 'none' : (this.data.textMode === 'custom' ? 'custom' : this.data.selectedTheme);
@@ -396,10 +439,6 @@ Page({
     this.setData({ showInlineTextsPreview: !this.data.showInlineTextsPreview });
   },
 
-  toggleDescInput() {
-    this.setData({ showDescInput: !this.data.showDescInput });
-  },
-
   selectTextMode(e) {
     const mode = e.currentTarget.dataset.mode;
     const themeObj = this.data.themePackages.find(t => t.id === mode) || this.data.currentThemeObj;
@@ -420,27 +459,6 @@ Page({
 
   onInputCustomTexts(e) {
     this.setData({ customTexts: e.detail.value });
-  },
-
-  selectComposition(e) {
-    this.setData({ composition: e.currentTarget.dataset.comp });
-  },
-
-  selectStyle(e) {
-    const id = e.currentTarget.dataset.id;
-    const styleObj = this.data.stylePresets.find(s => s.id === id) || this.data.stylePresets[0];
-    this.setData({
-      selectedStyle: id,
-      currentStyleObj: styleObj
-    });
-  },
-
-  onInputCustomStyle(e) {
-    this.setData({ customStyleText: e.detail.value });
-  },
-
-  onInputDesc(e) {
-    this.setData({ characterDesc: e.detail.value });
   },
 
   preventBubble() {},
@@ -514,7 +532,7 @@ Page({
     this.setData({
       currentStep: 1,
       progress: 6,
-      stageTitle: '正在上传素材并启动云端任务...'
+      stageTitle: '正在上传素材并启动图片处理...'
     });
 
     setTimeout(() => {
@@ -554,9 +572,9 @@ Page({
     const formData = {
       output_mode: 'sticker16',
       text_package: finalTheme,
-      style_preset: finalStyle,
-      composition_preset: this.data.composition,
-      character_desc: this.data.characterDesc || '',
+      style_preset: this.data.localProcessingOnly ? 'original' : finalStyle,
+      composition_preset: this.data.localProcessingOnly ? 'original' : this.data.composition,
+      character_desc: this.data.localProcessingOnly ? '' : (this.data.characterDesc || ''),
       bg_preset: 'white',
       openid: openid
     };
@@ -748,7 +766,7 @@ Page({
     this.setData({ isGenerating: false });
     wx.showModal({
       title: '制作未完成',
-      content: errorMsg || '生图遇到问题，额度已自动返还。',
+      content: errorMsg || '图片处理遇到问题，额度已自动返还。',
       showCancel: false,
       confirmText: '我知道了'
     });

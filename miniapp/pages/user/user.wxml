@@ -80,18 +80,6 @@
     </view>
   </view>
 
-  <!-- 邀请好友福利 -->
-  <view class="section-title">邀请好友 <text class="section-sub">双方各得 5 次</text></view>
-  <view class="card invite-card">
-    <view class="invite-info">
-      <view class="invite-meta">
-        <text class="invite-label">我的邀请码</text>
-        <text class="invite-code" selectable="true">{{user.invite_code || '---'}}</text>
-      </view>
-      <button class="btn-xs btn-copy" bindtap="copyInviteCode">复制邀请码</button>
-    </view>
-  </view>
-
   <!-- 兑换码中心 -->
   <view class="section-title">兑换福利码</view>
   <view class="card redeem-card">
@@ -130,18 +118,6 @@
       </view>
     </view>
 
-    <!-- 业务合作与专属咨询 (保留微信号 Mykahr) -->
-    <view class="menu-item" bindtap="openConsultModal">
-      <view class="menu-item-left">
-        <text class="menu-item-icon">💼</text>
-        <text class="menu-text">业务合作与专属咨询</text>
-      </view>
-      <view class="menu-item-right">
-        <text class="menu-tag-wechat">微信: Mykahr</text>
-        <text class="menu-arrow">›</text>
-      </view>
-    </view>
-
     <!-- 查看充值与开通订单记录 -->
     <view class="menu-item" bindtap="goToOrderCenter">
       <view class="menu-item-left">
@@ -169,6 +145,16 @@
       <view class="menu-item-left">
         <text class="menu-item-icon">📜</text>
         <text class="menu-text">服务协议与隐私说明</text>
+      </view>
+      <view class="menu-item-right">
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <view class="menu-item" bindtap="deleteAccount">
+      <view class="menu-item-left">
+        <text class="menu-item-icon">🗑️</text>
+        <text class="menu-text">注销账号并删除数据</text>
       </view>
       <view class="menu-item-right">
         <text class="menu-arrow">›</text>
@@ -239,7 +225,7 @@
         </view>
         <view class="agreement-section">
           <view class="agreement-h">四、隐私保护与数据存储</view>
-          <view class="agreement-p">平台使用微信开放平台提供的账号标识记录制作额度、订单和作品信息，并保存用户主动提交的头像、昵称及生成素材。请勿上传敏感或未经授权的内容，也不要向他人转发表情素材的管理链接。</view>
+          <view class="agreement-p">平台使用微信开放平台提供的账号标识记录制作额度、订单和作品信息，并保存用户主动提交的头像、昵称及生成素材，仅用于提供本小程序功能。您可删除单个作品，也可在个人中心选择“注销账号并删除数据”永久删除个人资料及用户数据。请勿上传敏感或未经授权的内容，也不要向他人转发表情素材的管理链接。</view>
         </view>
         <view class="agreement-section">
           <view class="agreement-h">五、官方客服与售后咨询</view>

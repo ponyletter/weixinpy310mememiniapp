@@ -42,7 +42,7 @@
   <view class="feature-banner-sticker16" bindtap="goToSticker16">
     <view class="banner-content">
       <text class="banner-title">🌟 一张照片变 16 张表情包</text>
-      <text class="banner-desc">上传一张生活照或表情，1次额度立得16款Q版贴纸</text>
+      <text class="banner-desc">{{localProcessingOnly ? '保留原图主体，制作16款配字贴纸' : '上传一张生活照或表情，1次额度立得16款Q版贴纸'}}</text>
     </view>
     <view class="banner-arrow-btn">立即体验 ›</view>
   </view>
@@ -114,10 +114,10 @@
 
   <!-- 台词与角色描述：紧凑折叠 -->
   <view class="form-compact card">
-    <!-- 当选择“自定义动作”模板时，呈现专属动作流描述输入框 -->
-    <view wx:if="{{selectedTemplate === 'custom'}}" class="form-item-compact custom-action-item">
+    <!-- 当选择“自定义动作”模板且处于 AI 模式时，呈现专属动作流描述输入框 -->
+    <view wx:if="{{!localProcessingOnly && selectedTemplate === 'custom'}}" class="form-item-compact custom-action-item">
       <view class="form-label-row">
-          <text class="form-label-sm form-label-highlight">自定义动作</text>
+        <text class="form-label-sm form-label-highlight">自定义动作</text>
         <text class="btn-xs-inline btn-idea-highlight" bindtap="pickCustomActionIdea">动作灵感</text>
       </view>
       <input
@@ -157,8 +157,8 @@
       </view>
     </view>
 
-    <!-- 角色人设 (可折叠，默认留空，上传头像自带角色无需填写) -->
-    <view class="advanced-desc-box">
+    <!-- 角色人设 (仅在 AI 模式下展示，可折叠，默认留空) -->
+    <view class="advanced-desc-box" wx:if="{{!localProcessingOnly}}">
       <view class="advanced-desc-toggle" bindtap="toggleShowAdvDesc">
         <text class="toggle-icon">{{showAdvDesc ? '▾' : '▸'}}</text>
         <text class="toggle-text">补充角色细节（选填）</text>
@@ -201,11 +201,11 @@
       <!-- 离开小程序不影响后台生成温馨提醒 -->
       <view class="bg-running-notice-card">
         <view class="bg-notice-head">
-          <text class="bg-notice-badge">⚡ 云端渲染中</text>
+          <text class="bg-notice-badge">⚡ {{localProcessingOnly ? '图片处理中' : '云端渲染中'}}</text>
           <text class="bg-notice-title">离开小程序不影响生成</text>
         </view>
         <text class="bg-notice-desc">
-          正在进行画面渲染与透明去背。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，完成后重新进入即可查看与保存！
+          {{localProcessingOnly ? '正在进行图片动效、字幕排版与格式处理。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，完成后重新进入即可查看与保存！' : '正在进行画面渲染与透明去背。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，完成后重新进入即可查看与保存！'}}
         </text>
       </view>
     </view>
@@ -490,15 +490,15 @@
         <view class="guide-step-card">
           <view class="guide-step-index">1</view>
           <view class="guide-step-info">
-            <text class="guide-step-tit">选动作模版或写自定义动作</text>
-            <text class="guide-step-sub">涵盖飞吻、打工摸鱼、魔性比心、战斗等热门动作模版，随心挑选！</text>
+            <text class="guide-step-tit">选择图片动效模版</text>
+            <text class="guide-step-sub">涵盖爱心、趣味晃动、打工摸鱼等常用动效，随心挑选！</text>
           </view>
         </view>
         <view class="guide-step-card">
           <view class="guide-step-index">2</view>
           <view class="guide-step-info">
             <text class="guide-step-tit">上传照片或在线涂鸦随手画</text>
-            <text class="guide-step-sub">支持真人、萌宠、动漫头像或手绘涂鸦，系统自动定位并扣出角色主体。</text>
+            <text class="guide-step-sub">支持真人、萌宠、插画或手绘涂鸦，用于裁切、排版与动效处理。</text>
           </view>
         </view>
         <view class="guide-step-card">

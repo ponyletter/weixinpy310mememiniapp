@@ -11,6 +11,7 @@ from app.config import settings
 from app.security import CurrentOpenid, require_same_user
 from app.core.wechat_service import WeChatService
 from app.payment import handle_wechat_message_notify
+from app.database import is_audit_mode_active
 
 router = APIRouter(tags=["wechat"])
 logger = logging.getLogger(__name__)
@@ -113,6 +114,7 @@ async def wechat_msg_receive(
 @router.get("/api/wechat/info")
 def get_wechat_public_info():
     """微信公开配置"""
+    local_processing_only = is_audit_mode_active()
     return {
         "app_id": settings.WX_APPID,
         "offer_id": settings.XPAY_OFFER_ID,
@@ -121,6 +123,10 @@ def get_wechat_public_info():
         "order_center_path": "pages/order/order",
         "base_url": "https://meme.tg-cc755.cn",
         "message_push_url": settings.WX_MSG_PUSH_URL,
+        "capabilities": {
+            "local_processing_only": local_processing_only,
+            "ai_generation_enabled": not local_processing_only,
+        },
     }
 
 @router.get("/pages/order/order")

@@ -197,15 +197,6 @@ AUDIT_TEMPLATES = [
         "default_caption": "比心心",
         "is_custom": False,
         "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="", frame_count=16: build_meme_prompt("heart_dance", char, text, has_image, is_sketch, custom_action, frame_count)
-    },
-    {
-        "id": "custom",
-        "title": "✨ 自由定制 (个性台词)",
-        "desc": "支持自由输入专属台词字幕与动态排版",
-        "action": "个性定制",
-        "default_caption": "看我的",
-        "is_custom": True,
-        "prompt_builder": lambda char, text, has_image=False, is_sketch=False, custom_action="", frame_count=16: build_meme_prompt("custom", char, text, has_image, is_sketch, custom_action, frame_count)
     }
 ]
 
@@ -492,6 +483,5 @@ def build_sticker16_prompt(
         "total resolution 1024x1024 pixels."
     )
     return prompt
-
 
 

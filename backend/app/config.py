@@ -18,11 +18,13 @@ class Settings(BaseSettings):
     )
 
     PROJECT_NAME: str = "GIF表情包制作神器 Web H5 API"
-    API_REVISION: str = "social-memes-timer-20260922-v3"
+    API_REVISION: str = "review-compliance-20260922-v4"
     HOST: str = "0.0.0.0"
     PORT: int = 8290
     DEBUG: bool = False
-    AUDIT_MODE: bool = False  # 审核模式开关：True 为审核期降级纯图像处理，False 为全量 AI 动图生成模式
+    # Fail closed: a fresh deployment starts as a local image-processing tool.
+    # AI capabilities may only be enabled in a separately reviewed release.
+    AUDIT_MODE: bool = True
 
     STORAGE_DIR: Path = BASE_DIR / "storage"
     UPLOAD_DIR: Path = BASE_DIR / "storage" / "uploads"

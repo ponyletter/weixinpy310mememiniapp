@@ -25,9 +25,7 @@ Page({
     showTemplateDrawer: false,
     mode: 'upload', // 'upload' | 'sketch'
     refImagePath: '',
-    characterDesc: '',
     caption: '么么哒',
-    customActionText: '',
     isGenerating: false,
     progress: 0,
     stageText: '',
@@ -44,7 +42,6 @@ Page({
     userCollections: [],
     selectedColId: '',
     newColTitle: '',
-    showAdvDesc: false,
 
     // 16 款静态表情成品支持
     isSticker16: false,
@@ -56,6 +53,12 @@ Page({
     currentFrameCount: 16,
     currentResolution: '240x240',
     showSpecsSheet: false,
+    localProcessingOnly: true, // 默认合规本地处理模式，由后端动态配置驱动
+
+    // 自定义动作与角色人设
+    customActionText: '',
+    characterDesc: '',
+    showAdvDesc: false,
 
     // 动态拟合耗时进度条
     elapsedSeconds: 0,
@@ -120,9 +123,11 @@ Page({
     this.updateQuotaInfo();
     this.initSketchCanvas();
     this.checkResumeActiveTask();
+    this.fetchBackendCapabilities();
   },
 
   onShow() {
+    this.fetchBackendCapabilities();
     this.updateQuotaInfo();
     this.checkResumeActiveTask();
     this.checkForwardMaterials();
@@ -251,37 +256,6 @@ Page({
     this.closeTemplateDrawer();
   },
 
-  onInputCustomAction(e) {
-    this.setData({ customActionText: e.detail.value });
-  },
-
-  async onBlurCustomAction(e) {
-    const text = (e.detail.value || this.data.customActionText || '').trim();
-    if (!text) return;
-    const isSafe = await app.checkTextSecurity(text);
-    if (!isSafe) {
-      this.setData({ customActionText: '' });
-    }
-  },
-
-  pickCustomActionIdea() {
-    const ideas = [
-      '双手叉腰仰天长笑，眼角笑出泪花',
-      '委屈巴巴揉眼睛抹眼泪，嘴巴扁扁抽泣',
-      '双手竖起大拇指疯狂点赞，伴随节奏摇摆',
-      '双手捧咖啡慢慢吹气轻啜，满脸惬意享受',
-      '震惊地张大嘴巴双手抱头，双眼瞪圆如铜铃',
-      '双手作揖连连拜谢，身体不断前倾作揖',
-      '拿着放大镜探头探脑，好奇地左顾右盼暗中观察'
-    ];
-    wx.showActionSheet({
-      itemList: ideas,
-      success: (res) => {
-        this.setData({ customActionText: ideas[res.tapIndex] });
-      }
-    });
-  },
-
   switchMode(e) {
     const mode = e.currentTarget.dataset.mode;
     this.setData({ mode });
@@ -355,6 +329,51 @@ Page({
     this.setData({ refImagePath: '' });
   },
 
+  fetchBackendCapabilities() {
+    app.request({
+      url: `${app.globalData.baseURL}/api/wechat/info`,
+      method: 'GET',
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.capabilities) {
+          const isLocal = !!res.data.capabilities.local_processing_only;
+          this.setData({ localProcessingOnly: isLocal });
+        }
+      },
+      fail: () => {}
+    });
+  },
+
+  onInputCustomAction(e) {
+    this.setData({ customActionText: e.detail.value });
+  },
+
+  async onBlurCustomAction(e) {
+    const text = (e.detail.value || this.data.customActionText || '').trim();
+    if (!text) return;
+    const isSafe = await app.checkTextSecurity(text);
+    if (!isSafe) {
+      this.setData({ customActionText: '' });
+    }
+  },
+
+  pickCustomActionIdea() {
+    const ideas = [
+      '双手叉腰仰天长笑，眼角笑出泪花',
+      '委屈巴巴揉眼睛抹眼泪，嘴巴扁扁抽泣',
+      '双手竖起大拇指疯狂点赞，伴随节奏摇摆',
+      '双手捧咖啡慢慢吹气轻啜，满脸惬意享受',
+      '震惊地张大嘴巴双手抱头，双眼瞪圆如铜铃',
+      '双手作揖连连拜谢，身体不断前倾作揖',
+      '拿着放大镜探头探脑，好奇地左顾右盼暗中观察'
+    ];
+    wx.showActionSheet({
+      itemList: ideas,
+      success: (res) => {
+        this.setData({ customActionText: ideas[res.tapIndex] });
+      }
+    });
+  },
+
   onInputDesc(e) {
     this.setData({ characterDesc: e.detail.value });
   },
@@ -366,6 +385,10 @@ Page({
     if (!isSafe) {
       this.setData({ characterDesc: '' });
     }
+  },
+
+  toggleShowAdvDesc() {
+    this.setData({ showAdvDesc: !this.data.showAdvDesc });
   },
 
   onInputCaption(e) {
@@ -389,17 +412,13 @@ Page({
     }
   },
 
-  toggleShowAdvDesc() {
-    this.setData({ showAdvDesc: !this.data.showAdvDesc });
-  },
-
   getCaptionSuggestions() {
     wx.showLoading({ title: '正在提取灵感...' });
     app.request({
       url: `${app.globalData.baseURL}/api/convert/caption-suggest`,
       method: 'POST',
       header: { 'content-type': 'application/x-www-form-urlencoded' },
-      data: { keyword: this.data.characterDesc || '摸鱼' },
+      data: { keyword: '摸鱼' },
       success: (res) => {
         wx.hideLoading();
         if (res.data && res.data.suggestions && res.data.suggestions.length > 0) {
@@ -752,7 +771,7 @@ Page({
   async startGenerate() {
     if (this.data.isGenerating) return;
 
-    if (this.data.selectedTemplate === 'custom' && !this.data.customActionText.trim()) {
+    if (!this.data.localProcessingOnly && this.data.selectedTemplate === 'custom' && !this.data.customActionText.trim()) {
       wx.showToast({ title: '请填写自定义动作描述', icon: 'none' });
       return;
     }
@@ -867,7 +886,7 @@ Page({
     this.setData({
       isGenerating: true,
       progress: Math.max(this.data.progress || 0, 5),
-      stageText: '正在上传素材并启动云端任务...',
+      stageText: this.data.localProcessingOnly ? '正在上传素材并启动图片处理...' : '正在上传素材并启动云端任务...',
       gifResultUrl: '',
       gifLoaded: false,
       gifWarning: ''
@@ -879,9 +898,9 @@ Page({
 
     const formData = {
       action_type: this.data.selectedTemplate,
-      character_desc: this.data.characterDesc,
+      character_desc: this.data.localProcessingOnly ? '' : (this.data.characterDesc || ''),
       custom_caption: this.data.caption,
-      custom_action: this.data.customActionText ? this.data.customActionText.trim() : '',
+      custom_action: this.data.localProcessingOnly ? '' : (this.data.customActionText ? this.data.customActionText.trim() : ''),
       fps: gifConfig.fps || 8,
       resolution: resolution,
       frame_count: frameCount,

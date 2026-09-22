@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-微信小程序审核模式 / 全量 AI 模式动态切换脚本
+微信小程序合规本地处理模式切换脚本（仅限服务器终端使用）
 无需重启后端 uvicorn 进程，修改 SQLite 中的 app_settings 即时生效。
 
 用法:
     python toggle_audit.py on       # 开启审核模式（降级为本地纯 PIL 图片动效处理，秒级出图，0% 深度合成）
-    python toggle_audit.py off      # 关闭审核模式（恢复全量 16 帧 GPU 扩散大模型动图生成）
+    python toggle_audit.py off --reviewed-release
+                                    # 仅在主体资质与 AI 版本均重新审核通过后使用
     python toggle_audit.py status   # 查看当前运行模式
 """
 
@@ -38,7 +39,8 @@ def main():
         print_status()
         print("\n使用提示:")
         print("  python toggle_audit.py on     -> 切换为审核模式")
-        print("  python toggle_audit.py off    -> 切换为全量 AI 模式")
+        print("  python toggle_audit.py off --reviewed-release")
+        print("                              -> 仅用于已重新审核通过的 AI 版本")
         print("  python toggle_audit.py status -> 查看当前状态")
         return
 
@@ -49,7 +51,8 @@ def main():
         print_status()
     elif arg in ("off", "0", "false", "disable", "ai", "full"):
         set_app_setting("audit_mode", "false")
-        print("\n>>> 已切换为：【 全量 AI 模式 (FULL AI MODE) 】<<<")
+        print("\n>>> 已切换为：【 全量 AI 模式 (FULL AI MODE) - 调用 CPA 生图 】<<<")
+        print("提示：已激活 GPU/CPA 扩散大模型出图流水线与 16 帧动图生成能力。")
         print_status()
     elif arg in ("status", "info", "check"):
         print_status()

@@ -464,6 +464,41 @@ def get_user(openid: str) -> Optional[Dict[str, Any]]:
         row = cursor.fetchone()
         return dict(row) if row else None
 
+
+def delete_user_account(openid: str) -> Dict[str, Any]:
+    """Delete one user's profile and user-owned records in a single transaction."""
+    with get_db() as conn:
+        task_rows = conn.execute(
+            "SELECT task_id FROM meme_tasks WHERE openid = ?", (openid,)
+        ).fetchall()
+        collection_rows = conn.execute(
+            "SELECT collection_id FROM collections WHERE openid = ?", (openid,)
+        ).fetchall()
+        user_row = conn.execute(
+            "SELECT avatar_url FROM users WHERE openid = ?", (openid,)
+        ).fetchone()
+        if not user_row:
+            return {"deleted": False, "task_ids": [], "avatar_url": ""}
+
+        collection_ids = [row["collection_id"] for row in collection_rows]
+        if collection_ids:
+            placeholders = ",".join("?" for _ in collection_ids)
+            conn.execute(
+                f"DELETE FROM collection_items WHERE collection_id IN ({placeholders})",
+                tuple(collection_ids),
+            )
+        conn.execute("DELETE FROM collections WHERE openid = ?", (openid,))
+        conn.execute("DELETE FROM coupon_redemptions WHERE openid = ?", (openid,))
+        conn.execute("DELETE FROM orders WHERE openid = ?", (openid,))
+        conn.execute("DELETE FROM meme_tasks WHERE openid = ?", (openid,))
+        conn.execute("DELETE FROM users WHERE openid = ?", (openid,))
+        conn.commit()
+        return {
+            "deleted": True,
+            "task_ids": [row["task_id"] for row in task_rows],
+            "avatar_url": user_row["avatar_url"] or "",
+        }
+
 def get_user_session_key(openid: str) -> str:
     with get_db() as conn:
         cursor = conn.cursor()
@@ -1279,4 +1314,3 @@ def get_materials_list(category: str = "all", page: int = 1, page_size: int = 20
             "page_size": page_size,
             "has_more": (offset + len(items)) < total
         }
-

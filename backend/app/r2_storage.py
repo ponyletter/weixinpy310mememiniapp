@@ -158,6 +158,38 @@ async def publish_avatar(path: Path, filename: str) -> str:
     return _public_url(key)
 
 
+async def delete_user_artifacts(task_ids: list[str], avatar_url: str = "") -> None:
+    """Best-effort removal of a user's durable task objects and uploaded avatar."""
+    if not is_r2_enabled():
+        return
+    client = await asyncio.to_thread(_client)
+    keys: list[str] = []
+    for task_id in task_ids:
+        prefix = task_object_key(task_id, "")
+        response = await asyncio.to_thread(
+            client.list_objects_v2,
+            Bucket=settings.R2_BUCKET,
+            Prefix=prefix,
+        )
+        keys.extend(item["Key"] for item in response.get("Contents", []))
+
+    if avatar_url and is_public_r2_url(avatar_url):
+        public_path = urlsplit(settings.R2_PUBLIC_BASE_URL).path.rstrip("/")
+        object_path = urlsplit(avatar_url).path
+        key = object_path[len(public_path):].lstrip("/") if object_path.startswith(public_path) else ""
+        if key:
+            keys.append(key)
+
+    for start in range(0, len(keys), 1000):
+        batch = keys[start:start + 1000]
+        if batch:
+            await asyncio.to_thread(
+                client.delete_objects,
+                Bucket=settings.R2_BUCKET,
+                Delete={"Objects": [{"Key": key} for key in batch], "Quiet": True},
+            )
+
+
 def is_public_r2_url(value: str) -> bool:
     if not value or not settings.R2_PUBLIC_BASE_URL:
         return False

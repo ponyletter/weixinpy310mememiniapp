@@ -1,6 +1,7 @@
 import io
 import json
 import hashlib
+import asyncio
 
 import pytest
 from fastapi.testclient import TestClient
@@ -46,6 +47,60 @@ def test_health_exposes_deployment_revision(client: TestClient):
     assert response.json()["revision"] == settings.API_REVISION
 
 
+def test_public_capabilities_are_fail_closed(client: TestClient):
+    response = client.get("/api/wechat/info")
+    assert response.status_code == 200
+    capabilities = response.json()["capabilities"]
+    assert capabilities == {
+        "local_processing_only": True,
+        "ai_generation_enabled": False,
+    }
+
+
+def test_production_has_no_public_mode_toggle_or_debug_generation(client: TestClient, monkeypatch):
+    monkeypatch.setattr(settings, "DEBUG", False)
+    assert client.get("/api/admin/audit-mode").status_code == 404
+    assert client.post("/api/admin/audit-mode", json={"audit_mode": False}).status_code == 404
+    assert client.post("/api/debug/preview-prompt").status_code == 404
+    assert client.post("/api/debug/test-sticker16").status_code == 404
+    assert client.get("/api/debug/task-status/" + "a" * 32).status_code == 404
+
+
+def test_local_processing_mode_never_calls_external_image_api(client: TestClient, monkeypatch):
+    import httpx
+    from app.api.meme import TASK_STORE, run_generate_pipeline
+    from app.database import set_app_setting
+
+    set_app_setting("audit_mode", "true")
+
+    class ForbiddenAsyncClient:
+        def __init__(self, *args, **kwargs):
+            raise AssertionError("local processing mode attempted an external AI request")
+
+    monkeypatch.setattr(httpx, "AsyncClient", ForbiddenAsyncClient)
+    task_id = "b" * 32
+    asyncio.run(
+        run_generate_pipeline(
+            task_id=task_id,
+            ref_image_bytes=png_bytes("blue"),
+            action_type="kiss",
+            custom_caption="测试",
+            character_desc="",
+            fps=8,
+            make_transparent=True,
+            padding_percent=2.5,
+            is_sketch=False,
+            openid="",
+            custom_action="",
+            frame_count=4,
+            resolution="240x240",
+            output_mode="gif",
+        )
+    )
+    assert TASK_STORE[task_id]["status"] == "completed"
+    assert (settings.OUTPUT_DIR / task_id / "meme_result.gif").is_file()
+
+
 def png_bytes(color: str = "red") -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (32, 32), color).save(buffer, "PNG")
@@ -82,6 +137,34 @@ def test_authentication_and_user_isolation(client: TestClient):
     assert client.get(f"/api/user/profile?openid={bob}", headers=alice_headers).status_code == 403
     forged = {"Authorization": alice_headers["Authorization"] + "tampered"}
     assert client.get(f"/api/user/profile?openid={alice}", headers=forged).status_code == 401
+
+
+def test_account_deletion_removes_user_records_and_local_outputs(client: TestClient):
+    from app.database import get_db
+
+    openid, headers = login(client, "delete_account")
+    task_id = "d" * 32
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO meme_tasks (task_id, openid, status) VALUES (?, ?, 'completed')",
+            (task_id, openid),
+        )
+        conn.execute(
+            "INSERT INTO orders (order_id, openid, package_id, amount, quota_reward) VALUES (?, ?, ?, ?, ?)",
+            ("order-delete", openid, "meme_100", 100, 20),
+        )
+        conn.commit()
+    task_dir = settings.OUTPUT_DIR / task_id
+    task_dir.mkdir()
+    (task_dir / "meme_result.gif").write_bytes(b"gif")
+
+    response = client.delete("/api/user/account", headers=headers)
+    assert response.status_code == 200
+    assert not task_dir.exists()
+    with get_db() as conn:
+        assert conn.execute("SELECT 1 FROM users WHERE openid = ?", (openid,)).fetchone() is None
+        assert conn.execute("SELECT 1 FROM meme_tasks WHERE openid = ?", (openid,)).fetchone() is None
+        assert conn.execute("SELECT 1 FROM orders WHERE openid = ?", (openid,)).fetchone() is None
 
 
 def test_collection_ownership(client: TestClient):

@@ -32,7 +32,6 @@ from app.database import (
     get_estimated_generation_duration,
     format_datetime_china,
     is_audit_mode_active,
-    set_app_setting,
 )
 from app.security import CurrentOpenid, require_same_user
 from app.storage_cleanup import mark_failed_task_dir
@@ -79,6 +78,8 @@ def build_prompt(
     custom_action: str = Form(""),
 ):
     """根据动作与角色描述，动态生成让 ChatGPT 原生绘制动态跳跃汉字的专用 Prompt"""
+    if is_audit_mode_active():
+        raise HTTPException(status_code=404, detail="接口不存在")
     templates = get_active_templates()
     template = next((t for t in templates if t["id"] == action_type), templates[0])
     final_prompt = template["prompt_builder"](character_desc.strip(), custom_caption.strip(), has_image, is_sketch, custom_action.strip())
@@ -1264,6 +1265,7 @@ async def generate_async(
 @router.get("/meme/sticker16-packages")
 def get_sticker16_packages():
     """获取 16 款表情贴纸预设场景文案包、风格与版型配置"""
+    local_processing_only = is_audit_mode_active()
     packages = []
     for pkg_id, texts in SCENE_TEXT_PACKAGES.items():
         packages.append({
@@ -1275,9 +1277,14 @@ def get_sticker16_packages():
     return {
         "code": 0,
         "data": {
+            "local_processing_only": local_processing_only,
             "packages": packages,
             "emotions": EMOTION_TAGS_16,
-            "styles": [
+            "styles": [{
+                "id": "original",
+                "title": "保留原图",
+                "desc": "仅进行裁切、字幕排版与格式处理",
+            }] if local_processing_only else [
                 {"id": "chibi_3d", "title": "3D Q版粘土 (推荐)", "desc": "泡泡玛特盲盒质感，饱满圆润，色彩鲜亮"},
                 {"id": "anime", "title": "日漫二次元", "desc": "精美动漫画风，神情夸张生动"},
                 {"id": "funny_line", "title": "恶搞沙雕简笔画", "desc": "蘑菇头/熊猫头风味，魔性搞笑斗图必备"}
@@ -1306,6 +1313,8 @@ def preview_prompt(
     custom_action: str = Form(""),
 ):
     """【调试辅助】预览将发送给绘图引擎的 16 宫格专业英文提示词"""
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="接口不存在")
     prompt = build_sticker16_prompt(
         character_desc=character_desc.strip(),
         style=style_preset,
@@ -1343,6 +1352,8 @@ async def debug_test_sticker16(
     force_audit: bool = Form(False),
 ):
     """【Web控制台专用】直接测试 16 静态表情包生成，免去小程序鉴权，快速联调"""
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="接口不存在")
     task_id = uuid.uuid4().hex
     ref_image_bytes = None
     upload_file = image or ref_image
@@ -1427,6 +1438,8 @@ async def debug_test_sticker16(
 @router.get("/debug/task-status/{task_id}")
 def debug_get_task_status(task_id: str):
     """【调试专用】无鉴权查询任务状态与进度"""
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="接口不存在")
     if task_id in TASK_STORE:
         task_info = TASK_STORE[task_id]
         public_info = {k: v for k, v in task_info.items() if k != "openid"}
@@ -1775,36 +1788,3 @@ def delete_meme(req: DeleteMemeRequest, current_openid: CurrentOpenid):
         if task_dir.is_dir():
             shutil.rmtree(task_dir, ignore_errors=True)
     return {"success": True, "message": "作品已从历史记录中删除"}
-
-
-class AuditModeToggleRequest(BaseModel):
-    audit_mode: Optional[bool] = None
-
-
-@router.get("/admin/audit-mode")
-def get_audit_mode():
-    """获取当前审核模式状态"""
-    active = is_audit_mode_active()
-    return {
-        "code": 0,
-        "audit_mode": active,
-        "message": "当前处于审核模式 (纯动效合规模式)" if active else "当前处于全量 AI 动图生成模式"
-    }
-
-
-@router.post("/admin/audit-mode")
-def set_audit_mode(req: Optional[AuditModeToggleRequest] = None, mode: Optional[str] = None):
-    """动态切换审核模式（无需重启服务，即时生效）"""
-    target = True
-    if req and req.audit_mode is not None:
-        target = req.audit_mode
-    elif mode is not None:
-        target = mode.lower() in ("true", "1", "on", "yes")
-
-    set_app_setting("audit_mode", "true" if target else "false")
-    active = is_audit_mode_active()
-    return {
-        "code": 0,
-        "audit_mode": active,
-        "message": f"审核模式已{'开启 (纯动效合规模式)' if active else '关闭 (全量 AI 动图模式)'}"
-    }

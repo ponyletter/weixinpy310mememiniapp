@@ -922,6 +922,49 @@ Page({
     this.setData({ showAgreementModal: false });
   },
 
+  deleteAccount() {
+    wx.showModal({
+      title: '永久注销账号',
+      content: '将删除个人资料、作品、合集、额度和订单记录，且无法恢复。是否继续？',
+      confirmText: '永久删除',
+      confirmColor: '#dc2626',
+      success: (first) => {
+        if (!first.confirm) return;
+        wx.showModal({
+          title: '再次确认',
+          content: '注销后需重新登录并创建新账号。确认永久删除全部个人数据？',
+          confirmText: '确认注销',
+          confirmColor: '#dc2626',
+          success: (second) => {
+            if (!second.confirm) return;
+            wx.showLoading({ title: '正在注销...', mask: true });
+            app.request({
+              url: `${app.globalData.baseURL}/api/user/account`,
+              method: 'DELETE',
+              success: (res) => {
+                wx.hideLoading();
+                if (res.statusCode === 200 && res.data && res.data.success) {
+                  wx.clearStorageSync();
+                  app.globalData.openid = '';
+                  app.globalData.accessToken = '';
+                  app.globalData.userInfo = null;
+                  wx.showToast({ title: '账号已注销', icon: 'success' });
+                  setTimeout(() => wx.reLaunch({ url: '/pages/index/index' }), 900);
+                } else {
+                  wx.showToast({ title: (res.data && res.data.detail) || '注销失败', icon: 'none' });
+                }
+              },
+              fail: () => {
+                wx.hideLoading();
+                wx.showToast({ title: '网络异常，请稍后重试', icon: 'none' });
+              }
+            });
+          }
+        });
+      }
+    });
+  },
+
   stopBubble() {},
 
   goToOrderCenter() {

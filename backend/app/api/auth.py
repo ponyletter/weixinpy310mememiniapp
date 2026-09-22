@@ -1,3 +1,5 @@
+import asyncio
+import shutil
 import uuid
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Response, UploadFile, File
@@ -13,9 +15,11 @@ from app.database import (
     update_user_profile,
     user_daily_checkin,
     redeem_coupon,
-    get_user_orders
+    get_user_orders,
+    delete_user_account,
+    is_audit_mode_active,
 )
-from app.r2_storage import publish_avatar
+from app.r2_storage import delete_user_artifacts, publish_avatar
 
 router = APIRouter(prefix="/api/user", tags=["user_and_auth"])
 
@@ -40,6 +44,8 @@ async def wechat_login(req: LoginRequest):
     """微信小程序登录 (code2session) 或开发模拟登录"""
     code = req.code.strip()
     inviter_code = req.inviter_code.strip() if req.inviter_code else ""
+    if is_audit_mode_active():
+        inviter_code = ""
 
     # 开发环境/测试支持 Mock 快速登录
     if settings.DEBUG and (code.startswith("mock_") or code.startswith("test_")):
@@ -169,3 +175,28 @@ def list_orders(response: Response, current_openid: CurrentOpenid, openid: str =
     orders = get_user_orders(require_same_user(openid, current_openid))
     response.headers["Cache-Control"] = "no-store"
     return {"success": True, "orders": orders}
+
+
+@router.delete("/account")
+async def delete_account(current_openid: CurrentOpenid):
+    """Permanently delete the authenticated user's account and generated assets."""
+    result = delete_user_account(current_openid)
+    if not result.get("deleted"):
+        raise HTTPException(status_code=404, detail="账号不存在或已注销")
+
+    for task_id in result["task_ids"]:
+        task_dir = settings.OUTPUT_DIR / task_id
+        if task_dir.is_dir():
+            await asyncio.to_thread(shutil.rmtree, task_dir, True)
+
+    avatar_url = result.get("avatar_url", "")
+    if avatar_url.startswith("/static/avatars/"):
+        avatar_path = settings.STATIC_DIR / "avatars" / avatar_url.rsplit("/", 1)[-1]
+        avatar_path.unlink(missing_ok=True)
+    try:
+        await delete_user_artifacts(result["task_ids"], avatar_url)
+    except Exception:
+        # The account and database records are already gone. Log-free best effort
+        # keeps a temporary storage outage from blocking the user's deletion right.
+        pass
+    return {"success": True, "message": "账号及个人数据已删除"}

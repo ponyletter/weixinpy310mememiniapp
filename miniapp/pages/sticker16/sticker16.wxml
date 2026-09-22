@@ -1,8 +1,8 @@
 <view class="container">
   <!-- 顶部标题引导区 -->
   <view class="page-heading">
-    <text class="page-title">一张照片变出 16 张表情包</text>
-    <text class="page-subtitle">上传一张自拍、萌宠或从素材库保存的表情，一键生成 16 款生动实用的聊天表情贴纸。</text>
+    <text class="page-title">一张照片制作 16 张配字贴纸</text>
+    <text class="page-subtitle">保留原图主体，通过裁切、排版与字幕组合制作一套聊天贴纸。</text>
   </view>
 
   <!-- 历史完成提醒条 -->
@@ -38,40 +38,42 @@
       </view>
     </view>
 
-    <!-- 2. 贴纸画风选择器 (紧凑胶囊卡片，点击底部抽屉弹窗选择) -->
-    <view class="section-title" style="margin-top: 20px;">
-      <text class="section-step">2</text>
-      <text class="section-name">贴纸画风</text>
-      <text class="section-tag">点击可弹窗更换</text>
-    </view>
-    <view class="compact-selector-bar" bindtap="openStyleDrawer">
-      <view class="compact-selector-left">
-        <text class="compact-selector-icon">{{currentStyleObj.icon || '🎨'}}</text>
-        <view class="compact-selector-info">
-          <view class="compact-selector-title">
-            <text class="cs-name">{{currentStyleObj.name || '经典手绘'}}</text>
-            <text class="cs-badge">{{currentStyleObj.tag || '推荐'}}</text>
-          </view>
-          <text class="compact-selector-desc">{{selectedStyle === 'custom' && customStyleText ? customStyleText : (currentStyleObj.desc || '2D扁平·原生贴纸感')}}</text>
-        </view>
+    <!-- 2. 贴纸画风选择器 (仅在全量 AI 模式下展示，审核/本地模式下自动隐藏) -->
+    <block wx:if="{{!localProcessingOnly}}">
+      <view class="section-title" style="margin-top: 20px;">
+        <text class="section-step">2</text>
+        <text class="section-name">贴纸画风</text>
+        <text class="section-tag">点击可弹窗更换</text>
       </view>
-      <view class="compact-selector-btn">更换画风 ›</view>
-    </view>
+      <view class="compact-selector-bar" bindtap="openStyleDrawer">
+        <view class="compact-selector-left">
+          <text class="compact-selector-icon">{{currentStyleObj.icon || '🎨'}}</text>
+          <view class="compact-selector-info">
+            <view class="compact-selector-title">
+              <text class="cs-name">{{currentStyleObj.name || '经典手绘'}}</text>
+              <text class="cs-badge">{{currentStyleObj.tag || '推荐'}}</text>
+            </view>
+            <text class="compact-selector-desc">{{selectedStyle === 'custom' && customStyleText ? customStyleText : (currentStyleObj.desc || '2D扁平·原生贴纸感')}}</text>
+          </view>
+        </view>
+        <view class="compact-selector-btn">更换画风 ›</view>
+      </view>
 
-    <!-- 若选择自定义画风，支持直接在此内联微调 -->
-    <view wx:if="{{selectedStyle === 'custom'}}" class="sub-panel" style="margin-top: 10px;">
-      <input 
-        class="desc-input" 
-        placeholder="输入自定义画风：复古美式插画、赛博朋克像素风..." 
-        placeholder-style="color: #94a3b8; font-size: 13px;"
-        value="{{customStyleText}}"
-        bindinput="onInputCustomStyle"
-      />
-    </view>
+      <!-- 若选择自定义画风，支持直接在此内联微调 -->
+      <view wx:if="{{selectedStyle === 'custom'}}" class="sub-panel" style="margin-top: 10px;">
+        <input 
+          class="desc-input" 
+          placeholder="输入自定义画风：复古美式插画、赛博朋克像素风..." 
+          placeholder-style="color: #94a3b8; font-size: 13px;"
+          value="{{customStyleText}}"
+          bindinput="onInputCustomStyle"
+        />
+      </view>
+    </block>
 
-    <!-- 3. 场景主题与台词选择器 (紧凑胶囊卡片，点击抽屉选择并支持查看16句台词) -->
+    <!-- 3. 场景主题与台词选择器 -->
     <view class="section-title" style="margin-top: 20px;">
-      <text class="section-step">3</text>
+      <text class="section-step">{{localProcessingOnly ? '2' : '3'}}</text>
       <text class="section-name">场景主题与台词</text>
       <text class="section-tag">多主题预设 · 实时查看台词</text>
     </view>
@@ -124,48 +126,50 @@
       </view>
     </view>
 
-    <!-- 4. 构图视角 (高度压缩为单行极简控制条) -->
-    <view class="section-title" style="margin-top: 20px;">
-      <text class="section-step">4</text>
-      <text class="section-name">构图视角</text>
-      <text class="section-tag">手势动作更生动</text>
-    </view>
-    <view class="compact-comp-row">
-      <view 
-        class="comp-segment {{composition === 'bust' ? 'active' : ''}}"
-        bindtap="selectComposition"
-        data-comp="bust"
-      >
-        <text class="comp-seg-icon">👤</text>
-        <text class="comp-seg-name">半身动作 (推荐)</text>
+    <!-- 4. 构图视角 & 5. 补充外貌特征 (仅在全量 AI 模式下展示) -->
+    <block wx:if="{{!localProcessingOnly}}">
+      <view class="section-title" style="margin-top: 20px;">
+        <text class="section-step">4</text>
+        <text class="section-name">构图视角</text>
+        <text class="section-tag">手势动作更生动</text>
       </view>
-      <view 
-        class="comp-segment {{composition === 'closeup' ? 'active' : ''}}"
-        bindtap="selectComposition"
-        data-comp="closeup"
-      >
-        <text class="comp-seg-icon">🔍</text>
-        <text class="comp-seg-name">大头特写</text>
+      <view class="compact-comp-row">
+        <view 
+          class="comp-segment {{composition === 'bust' ? 'active' : ''}}"
+          bindtap="selectComposition"
+          data-comp="bust"
+        >
+          <text class="comp-seg-icon">👤</text>
+          <text class="comp-seg-name">半身动作 (推荐)</text>
+        </view>
+        <view 
+          class="comp-segment {{composition === 'closeup' ? 'active' : ''}}"
+          bindtap="selectComposition"
+          data-comp="closeup"
+        >
+          <text class="comp-seg-icon">🔍</text>
+          <text class="comp-seg-name">大头特写</text>
+        </view>
       </view>
-    </view>
 
-    <!-- 5. 补充外貌特征 (折叠式，点击展开，完全不占首页空间) -->
-    <view class="desc-fold-box">
-      <view class="desc-fold-toggle" bindtap="toggleDescInput">
-        <text class="desc-fold-arrow">{{showDescInput ? '▾' : '▸'}}</text>
-        <text class="desc-fold-text">补充角色细节特征（选填）</text>
-        <text class="desc-fold-badge" wx:if="{{characterDesc}}">已填写</text>
+      <!-- 5. 补充外貌特征 (折叠式，点击展开，完全不占首页空间) -->
+      <view class="desc-fold-box">
+        <view class="desc-fold-toggle" bindtap="toggleDescInput">
+          <text class="desc-fold-arrow">{{showDescInput ? '▾' : '▸'}}</text>
+          <text class="desc-fold-text">补充角色细节特征（选填）</text>
+          <text class="desc-fold-badge" wx:if="{{characterDesc}}">已填写</text>
+        </view>
+        <view wx:if="{{showDescInput}}" class="desc-fold-content">
+          <input 
+            class="desc-input" 
+            placeholder="例如：戴圆框眼镜的青年、白色带橘斑小猫、穿黄色卫衣..." 
+            placeholder-style="color: #94a3b8; font-size: 13px;"
+            value="{{characterDesc}}"
+            bindinput="onInputDesc"
+          />
+        </view>
       </view>
-      <view wx:if="{{showDescInput}}" class="desc-fold-content">
-        <input 
-          class="desc-input" 
-          placeholder="例如：戴圆框眼镜的青年、白色带橘斑小猫、穿黄色卫衣..." 
-          placeholder-style="color: #94a3b8; font-size: 13px;"
-          value="{{characterDesc}}"
-          bindinput="onInputDesc"
-        />
-      </view>
-    </view>
+    </block>
   </view>
 
   <!-- ==================== 底部固定操作栏 (安全区适配，全屏按钮永不裁切) ==================== -->
@@ -189,20 +193,20 @@
         <text class="section-title-text">{{isGenerating ? '正在逐帧渲染 16 款表情' : '16 款专属表情贴纸已就绪'}}</text>
       </view>
       <text class="status-pill {{isGenerating ? 'pill-processing' : 'pill-done'}}">
-        {{isGenerating ? '云端渲染中' : '制作成功'}}
+        {{isGenerating ? (localProcessingOnly ? '图片处理中' : '云端渲染中') : '制作成功'}}
       </text>
     </view>
 
-    <!-- 流程指示器 (1 分析原型 -> 2 绘制分镜 -> 3 矩阵切片 -> 4 制作完成) -->
+    <!-- 流程指示器 (1 分析原型/读取图片 -> 2 绘制分镜/字幕排版 -> 3 矩阵切片 -> 4 制作完成) -->
     <view class="step-flow-bar">
       <view class="flow-item {{currentStep >= 1 ? 'active' : ''}}">
         <text class="flow-dot">1</text>
-        <text class="flow-text">分析原型</text>
+        <text class="flow-text">{{localProcessingOnly ? '读取图片' : '分析原型'}}</text>
       </view>
       <text class="flow-arrow">➔</text>
       <view class="flow-item {{currentStep >= 2 ? 'active' : ''}}">
         <text class="flow-dot">2</text>
-        <text class="flow-text">绘制分镜</text>
+        <text class="flow-text">{{localProcessingOnly ? '字幕排版' : '绘制分镜'}}</text>
       </view>
       <text class="flow-arrow">➔</text>
       <view class="flow-item {{currentStep >= 3 ? 'active' : ''}}">
@@ -231,11 +235,11 @@
       <!-- 离开小程序不影响后台生成温馨提醒 -->
       <view class="bg-running-notice-card">
         <view class="bg-notice-head">
-          <text class="bg-notice-badge">⚡ 云端渲染中</text>
+          <text class="bg-notice-badge">⚡ {{localProcessingOnly ? '图片处理中' : '云端渲染中'}}</text>
           <text class="bg-notice-title">离开小程序不影响生成</text>
         </view>
         <text class="bg-notice-desc">
-          正在进行画面渲染与 16 帧切片对齐。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，完成后重新进入本页即可查看与保存！
+          {{localProcessingOnly ? '正在进行裁切、字幕排版与16张贴纸导出。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，完成后重新进入本页即可查看与保存！' : '正在进行画面渲染与 16 帧切片对齐。您可以放心退出小程序、切换微信聊天或锁屏，系统会在后台持续运算，完成后重新进入本页即可查看与保存！'}}
         </text>
       </view>
     </view>
