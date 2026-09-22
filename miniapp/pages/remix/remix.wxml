@@ -74,7 +74,6 @@
         mode="aspectFit"
         bindtap="previewRemixResult"
       ></image>
-      <view class="meme-stage-hint">点击预览大图 · 所见即所得</view>
     </view>
 
     <!-- 分类筛选胶囊栏 -->
@@ -218,14 +217,14 @@
     <!-- 操作按钮组 -->
     <view class="meme-actions-stack">
       <button class="btn-secondary btn-meme-preview" bindtap="previewRemixResult" disabled="{{isRenderingMeme}}">
-        🔍 预览大图 (长按可直接转发到微信聊天)
+        🔍 预览大图
       </button>
       <view class="meme-actions-row">
         <button class="btn-primary btn-meme-save" bindtap="saveMemeToAlbum" disabled="{{isRenderingMeme}}">
-          📥 保存到相册
+          📥 保存相册
         </button>
         <button class="btn-secondary btn-meme-col" bindtap="saveMemeToCollection" disabled="{{isRenderingMeme}}">
-          📁 存入表情合集
+          📁 存入合集
         </button>
       </view>
     </view>

@@ -307,7 +307,7 @@
           🔍 预览大图
         </button>
         <button class="btn-large-save" bindtap="saveSingleStickerToAlbum">
-          📥 保存到手机相册
+          📥 保存相册
         </button>
       </view>
     </view>

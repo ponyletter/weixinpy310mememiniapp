@@ -222,7 +222,6 @@
           src="{{customRenderedUrl || currentTpl.image_url}}" 
           mode="aspectFit"
         ></image>
-        <view class="modal-img-preview-hint">点击预览大图 · 长按可直接转发</view>
       </view>
 
       <!-- 台词微调 -->
@@ -246,14 +245,14 @@
       <!-- 操作按钮栏 -->
       <view class="custom-modal-btn-stack">
         <button class="btn-custom-preview" bindtap="previewCustomMemeImage" disabled="{{customRendering}}">
-          🔍 预览大图 (长按可直接转发到聊天)
+          🔍 预览大图
         </button>
         <view class="custom-modal-actions">
           <button class="btn-primary btn-custom-action" bindtap="saveCustomMemeToAlbum" disabled="{{customRendering}}">
-            📥 保存到相册
+            📥 保存相册
           </button>
           <button class="btn-secondary btn-custom-action" bindtap="saveCustomMemeToCol" disabled="{{customRendering}}">
-            📁 存入表情合集
+            📁 存入合集
           </button>
         </view>
       </view>
@@ -273,18 +272,14 @@
       </view>
       <view class="mat-modal-img-wrap" bindtap="previewMaterialImage">
         <image class="mat-modal-img" src="{{activeMatItem.url || activeMatItem.thumb_url}}" mode="aspectFit"></image>
-        <view class="modal-img-preview-hint">点击预览大图 · 长按可直接转发</view>
       </view>
       <view class="mat-modal-actions">
         <button class="btn-mat-preview" bindtap="previewMaterialImage">
-          🔍 预览大图 (长按可转发)
+          🔍 预览大图
         </button>
         <button class="btn-mat-save" bindtap="saveMaterialToAlbum">
-          📥 保存到相册
+          📥 保存相册
         </button>
-      </view>
-      <view class="mat-modal-tip">
-        💡 预览大图后长按可直接发给微信好友，也可保存到相册
       </view>
     </view>
   </view>
