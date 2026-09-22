@@ -217,7 +217,8 @@ Page({
             stageTitle: '正在恢复云端渲染进度...'
           });
 
-          this.startProgressTicker(elapsed);
+          this.generationStartedAt = activeTask.timestamp || (now - elapsed * 1000);
+          this.startProgressTicker(elapsed, this.generationStartedAt);
           this.startPollingTask(activeTask.taskId);
 
           setTimeout(() => {
@@ -468,21 +469,20 @@ Page({
       return;
     }
 
-    // 文本内容安全校验
-    const textsToCheck = [this.data.characterDesc];
-    if (this.data.textMode === 'custom' && this.data.customTexts) {
-      textsToCheck.push(this.data.customTexts);
-    }
-    if (this.data.selectedStyle === 'custom' && this.data.customStyleText) {
-      textsToCheck.push(this.data.customStyleText);
-    }
+    // 点击后立即进入可见计时状态，安全校验、远程素材下载和上传都计入用户等待时间。
+    const startedAt = Date.now();
+    this.generationStartedAt = startedAt;
+    this.setData({
+      isGenerating: true,
+      currentStep: 1,
+      progress: 3,
+      stageTitle: '正在校验内容并准备素材...',
+      taskId: '',
+      elapsedSeconds: 0
+    });
+    this.startProgressTicker(0, startedAt);
 
-    for (let txt of textsToCheck) {
-      if (txt && app.checkTextSecurity) {
-        const isSafe = await app.checkTextSecurity(txt);
-        if (!isSafe) return;
-      }
-    }
+    // 提交时由后端统一审核全部文字与图片，避免和后端重复串行检测。
 
     // 检查并准备本地临时文件
     let localFilePath = this.data.refImagePath;
@@ -504,21 +504,18 @@ Page({
         }
       } catch (err) {
         wx.hideLoading();
+        this.cancelStickerStartup();
         wx.showToast({ title: '图片下载失败，请从相册重选', icon: 'none' });
         return;
       }
     }
 
-    // 开启进度计时并平滑滚动到制作区
+    // 安全校验完成，沿用点击时的计时原点进入上传阶段。
     this.setData({
-      isGenerating: true,
       currentStep: 1,
       progress: 6,
-      stageTitle: '阶段 1/4: 提取角色视觉特征...',
-      elapsedSeconds: 0
+      stageTitle: '正在上传素材并启动云端任务...'
     });
-
-    this.startProgressTicker(0);
 
     setTimeout(() => {
       wx.pageScrollTo({
@@ -587,7 +584,7 @@ Page({
           // 持久化存储活跃任务，退出后返回可无缝恢复
           wx.setStorageSync('active_sticker16_task', {
             taskId: taskId,
-            timestamp: Date.now(),
+            timestamp: this.generationStartedAt || startedAt,
             refImagePath: this.data.refImagePath,
             textMode: this.data.textMode,
             estimatedSeconds: est
@@ -611,13 +608,26 @@ Page({
     });
   },
 
-  // 平滑计时器 (支持断点恢复传入已耗时秒数)
-  startProgressTicker(initialSec = 0) {
+  cancelStickerStartup() {
     this.clearTimers();
-    let sec = initialSec;
+    this.generationStartedAt = null;
+    this.setData({
+      isGenerating: false,
+      currentStep: 1,
+      progress: 0,
+      stageTitle: '',
+      elapsedSeconds: 0
+    });
+  },
+
+  // 平滑计时器 (支持断点恢复传入已耗时秒数)
+  startProgressTicker(initialSec = 0, startedAt) {
+    this.clearTimers();
+    const origin = startedAt || this.generationStartedAt || (Date.now() - initialSec * 1000);
+    this.generationStartedAt = origin;
 
     this._timer = setInterval(() => {
-      sec++;
+      const sec = Math.max(0, Math.floor((Date.now() - origin) / 1000));
       const targetSeconds = Math.max(20, this.data.estimatedSeconds || 60);
       let pct = 6;
       if (sec < targetSeconds) {
@@ -630,7 +640,9 @@ Page({
       let step = 1;
       let stage = '阶段 1/4: 提取角色视觉特征...';
 
-      if (sec >= 4 && sec < 18) {
+      if (!this.data.taskId) {
+        stage = this.data.stageTitle || '正在校验内容并上传素材...';
+      } else if (sec >= 4 && sec < 18) {
         step = 2;
         stage = '阶段 2/4: 绘制 16 帧分镜生动表情...';
       } else if (sec >= 18) {
@@ -678,6 +690,7 @@ Page({
   // 生成成功处理
   handleGenerateSuccess(taskData) {
     this.clearTimers();
+    this.generationStartedAt = null;
     const result = taskData.data || taskData;
     const rawItems = result.stickers || result.frames || [];
 
@@ -730,6 +743,7 @@ Page({
 
   handleGenerateFailed(errorMsg) {
     this.clearTimers();
+    this.generationStartedAt = null;
     wx.removeStorageSync('active_sticker16_task');
     this.setData({ isGenerating: false });
     wx.showModal({

@@ -45,12 +45,13 @@ Page({
     filteredMemeTemplates: [],
     memeCategories: [
       { id: 'all', name: '🌟 全部' },
-      { id: 'emoji', name: '😄 大众情绪' },
+      { id: 'social', name: '💬 聊天神回复' },
+      { id: 'emoji', name: '😄 基础情绪' },
       { id: 'classic', name: '✏️ 经典线稿' }
     ],
     activeMemeCat: 'all',
     selectedTemplate: null,
-    memeCaption: '哈哈哈哈哈哈',
+    memeCaption: '你继续，我听着',
     memeCaptionPos: 'bottom', // 'bottom' | 'top' | 'center'
     memeFontSize: 28,
     memeTextColor: '#1e293b',
@@ -59,18 +60,18 @@ Page({
     isRenderingMeme: false,
     memeResultUrl: '',
     memeInspirations: [
-      '听懂掌声！',
+      '你继续，我听着',
+      '这个需求我拒绝',
+      '别催了，正在做了',
+      '拜托了，就这一次',
       '你在教我做事？',
-      '我裂开了',
-      '打工是不可能打工的',
-      '暗中观察.jpg',
-      '给大佬递茶！',
-      '退！退！退！',
+      '收到，但不想改',
+      '我先假装听懂了',
       '真的假的？我不信',
-      '今天又是摸鱼的一天',
+      '今天又是努力摸鱼的一天',
       '对对对，你说的都对',
-      '坐等吃瓜，精彩！',
-      '富婆饿饿饭饭'
+      '这事多少有点离谱',
+      '给你一个重新组织语言的机会'
     ],
 
     // 1. 视频转动图
@@ -1142,7 +1143,8 @@ Page({
           this.setData({
             memeTemplates: list,
             filteredMemeTemplates: filtered,
-            selectedTemplate: selected
+            selectedTemplate: selected,
+            memeCaption: (selected && selected.default_text) || this.data.memeCaption
           });
           this.triggerMemeRender();
         }
@@ -1163,7 +1165,13 @@ Page({
   onSelectMemeTemplate(e) {
     const tpl = e.currentTarget.dataset.tpl;
     if (!tpl) return;
-    this.setData({ selectedTemplate: tpl });
+    const previous = this.data.selectedTemplate;
+    const currentCaption = (this.data.memeCaption || '').trim();
+    const useTemplateCaption = !currentCaption || !previous || currentCaption === previous.default_text;
+    this.setData({
+      selectedTemplate: tpl,
+      memeCaption: useTemplateCaption ? (tpl.default_text || currentCaption) : currentCaption
+    });
     this.triggerMemeRender();
   },
 

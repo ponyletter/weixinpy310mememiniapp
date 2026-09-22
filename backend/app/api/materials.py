@@ -89,7 +89,7 @@ def _get_meme_template(template_id: str):
 
 
 async def _load_template_image(template: dict) -> Image.Image:
-    """只读取模板清单指定的本地开源素材。"""
+    """只读取模板清单指定的本地授权素材。"""
     local_file = template.get("local_file")
     if not local_file:
         raise HTTPException(status_code=404, detail="表情模板底图不存在")
@@ -105,6 +105,40 @@ async def _load_template_image(template: dict) -> Image.Image:
         return Image.open(local_path).convert("RGBA")
     except Exception as exc:
         raise HTTPException(status_code=500, detail="无法读取表情模板") from exc
+
+
+def _crop_transparent_padding(image: Image.Image, padding: int = 8) -> Image.Image:
+    """裁掉透明素材的无效边缘，并保留少量安全边距。"""
+    rgba = image.convert("RGBA")
+    bbox = rgba.getchannel("A").getbbox()
+    if not bbox:
+        return rgba
+    left, top, right, bottom = bbox
+    return rgba.crop(
+        (
+            max(0, left - padding),
+            max(0, top - padding),
+            min(rgba.width, right + padding),
+            min(rgba.height, bottom + padding),
+        )
+    )
+
+
+def _fit_image_in_box(
+    image: Image.Image, box: tuple[int, int, int, int], align_bottom: bool = True
+) -> tuple[Image.Image, tuple[int, int]]:
+    """等比缩放素材到指定区域，默认贴近文字一侧，避免产生大块空白。"""
+    left, top, right, bottom = box
+    box_w = max(1, right - left)
+    box_h = max(1, bottom - top)
+    scale = min(box_w / image.width, box_h / image.height)
+    resized = image.resize(
+        (max(1, int(image.width * scale)), max(1, int(image.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    x = left + (box_w - resized.width) // 2
+    y = bottom - resized.height if align_bottom else top + (box_h - resized.height) // 2
+    return resized, (x, y)
 
 
 @router.post("/render-meme")
@@ -144,17 +178,10 @@ async def render_custom_meme(
     if not template:
         raise HTTPException(status_code=404, detail="表情模板已下线，请重新选择")
 
-    # 经典斗图样式：主体居上、底部固定大留白，避免文字压住表情。
+    # 自适应斗图样式：先裁透明边缘，再由文字高度反推图片区。
     source_img = await _load_template_image(template)
     base_img = Image.new("RGBA", (480, 480), (255, 255, 255, 255))
-    scale = min(400 / source_img.width, 280 / source_img.height)
-    source_img = source_img.resize(
-        (max(1, int(source_img.width * scale)), max(1, int(source_img.height * scale))),
-        Image.Resampling.LANCZOS,
-    )
-    source_x = (480 - source_img.width) // 2
-    source_y = max(8, (310 - source_img.height) // 2)
-    base_img.alpha_composite(source_img, (source_x, source_y))
+    source_img = _crop_transparent_padding(source_img)
 
     w, h = base_img.size
     draw = ImageDraw.Draw(base_img)
@@ -196,13 +223,37 @@ async def render_custom_meme(
             break
         f_size = max(18, f_size - 2)
 
-    # 纵向起始位置
+    outer_padding = 24
+    image_text_gap = max(12, min(36, int(template.get("image_text_gap", 20))))
+
+    # 纵向起始位置与图片区联动，短文案不再被固定压到画布最底部。
     if pos == "top":
-        start_y = 30
+        start_y = outer_padding
+        image_box = (
+            outer_padding,
+            start_y + total_text_h + image_text_gap,
+            w - outer_padding,
+            h - outer_padding,
+        )
+        align_bottom = False
     elif pos == "center":
         start_y = (h - total_text_h) // 2
+        image_box = (outer_padding, outer_padding, w - outer_padding, h - outer_padding)
+        align_bottom = False
     else:  # bottom
-        start_y = max(320, h - total_text_h - 28)
+        start_y = h - total_text_h - outer_padding
+        image_box = (
+            outer_padding,
+            outer_padding,
+            w - outer_padding,
+            start_y - image_text_gap,
+        )
+        align_bottom = True
+
+    fitted_source, source_pos = _fit_image_in_box(
+        source_img, image_box, align_bottom=align_bottom
+    )
+    base_img.alpha_composite(fitted_source, source_pos)
 
     # 逐行居中绘制，添加轻微高对比白描边让文字格外清晰
     curr_y = start_y

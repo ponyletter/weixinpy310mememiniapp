@@ -171,12 +171,22 @@ Page({
     }
 
     if (!this.data.isGenerating && !this.data.gifResultUrl) {
+      const startedAt = activeTask.timestamp || now;
+      const elapsed = Math.max(0, Math.floor((now - startedAt) / 1000));
+      this.generationStartedAt = startedAt;
       this.setData({
         isGenerating: true,
         taskId: activeTask.taskId,
         progress: 30,
+        elapsedSeconds: elapsed,
+        estimatedSeconds: activeTask.estimatedSeconds || this.data.estimatedSeconds,
         stageText: '正在恢复后台任务进度...'
       });
+      this.startSmoothProgressBar(
+        activeTask.estimatedSeconds || this.data.estimatedSeconds,
+        startedAt,
+        '正在恢复后台任务进度...'
+      );
       this.pollTaskStatus(activeTask.taskId);
     }
   },
@@ -747,18 +757,6 @@ Page({
       return;
     }
 
-    // 提审与全场景安全防御：提交前先对用户输入文案进行安全检测
-    const textsToCheck = [
-      this.data.selectedTemplate === 'custom' ? this.data.customActionText : '',
-      this.data.caption,
-      this.data.characterDesc
-    ].filter(Boolean);
-
-    for (const t of textsToCheck) {
-      const isSafe = await app.checkTextSecurity(t);
-      if (!isSafe) return;
-    }
-
     if (this.data.quota <= 0 && !this.data.isVip) {
       wx.showModal({
         title: '制作额度不足',
@@ -776,6 +774,29 @@ Page({
       return;
     }
 
+    // 从用户点击开始记录总耗时，而不是等后端返回 task_id 后才开始。
+    const startedAt = Date.now();
+    this.generationStartedAt = startedAt;
+    this._isTaskFinalized = false;
+    this.setData({
+      isGenerating: true,
+      progress: 3,
+      stageText: '正在校验内容并准备上传...',
+      gifResultUrl: '',
+      gifLoaded: false,
+      gifWarning: '',
+      taskId: '',
+      elapsedSeconds: 0,
+      completedSeconds: 0
+    });
+    this.startSmoothProgressBar(
+      this.data.estimatedSeconds || 32,
+      startedAt,
+      '正在校验内容并准备上传...'
+    );
+
+    // 输入失焦时已有即时预检；提交时由后端统一执行权威审核，避免重复串行请求。
+
     // 微信订阅消息：如果已在后台配置模板ID，在点击时发起订阅
     const tmplId = app.globalData.subscribeTemplateId;
     if (tmplId && wx.requestSubscribeMessage) {
@@ -790,18 +811,20 @@ Page({
     }
   },
 
-  startSmoothProgressBar(estDuration) {
+  startSmoothProgressBar(estDuration, startedAt, initialStage) {
     if (this.smoothTimer) {
       clearInterval(this.smoothTimer);
       this.smoothTimer = null;
     }
     const targetSeconds = Math.max(2, estDuration || 32);
-    const startTime = Date.now();
+    const startTime = startedAt || this.generationStartedAt || Date.now();
+    const initialElapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+    this.generationStartedAt = startTime;
     this.setData({
-      elapsedSeconds: 0,
+      elapsedSeconds: initialElapsed,
       estimatedSeconds: targetSeconds,
-      progress: 6,
-      stageText: '极速渲染引擎启动中...'
+      progress: Math.max(this.data.progress || 0, 6),
+      stageText: initialStage || '极速渲染引擎启动中...'
     });
 
     this.smoothTimer = setInterval(() => {
@@ -820,7 +843,9 @@ Page({
       }
 
       let stage = this.data.stageText;
-      if (p < 25) {
+      if (!this.data.taskId) {
+        stage = this.data.stageText || '正在校验内容并上传素材...';
+      } else if (p < 25) {
         stage = '正在解析形象并构建动态分镜...';
       } else if (p < 55) {
         stage = `正在逐帧生成 ${this.data.currentFrameCount} 帧动作序列...`;
@@ -841,12 +866,11 @@ Page({
   executeGeneratePipeline() {
     this.setData({
       isGenerating: true,
-      progress: 5,
-      stageText: '正在启动极速渲染引擎...',
+      progress: Math.max(this.data.progress || 0, 5),
+      stageText: '正在上传素材并启动云端任务...',
       gifResultUrl: '',
       gifLoaded: false,
-      gifWarning: '',
-      elapsedSeconds: 0
+      gifWarning: ''
     });
 
     const gifConfig = app.getGifConfig();
@@ -952,14 +976,15 @@ Page({
       const est = (data.data && data.data.estimated_duration) ? Math.round(data.data.estimated_duration) : 32;
       this.setData({ 
         taskId,
-        estimatedSeconds: est,
-        elapsedSeconds: 0
+        estimatedSeconds: est
       });
+      const startedAt = this.generationStartedAt || Date.now();
       wx.setStorageSync('active_meme_task', {
         taskId: taskId,
-        timestamp: Date.now()
+        timestamp: startedAt,
+        estimatedSeconds: est
       });
-      this.startSmoothProgressBar(est);
+      this.startSmoothProgressBar(est, startedAt, '云端任务已创建，正在生成...');
       this.pollTaskStatus(taskId);
       this.updateQuotaInfo();
     } else {
@@ -1024,7 +1049,12 @@ Page({
               const gifPath = tInfo.data.gif_url;
               const stats = tInfo.data.stats || {};
               const fullGifUrl = app.toAbsoluteUrl(gifPath);
-              const durationSec = Math.round((tInfo.data && tInfo.data.duration_seconds) || (stats && stats.duration_seconds) || this.data.elapsedSeconds || 0);
+              const serverDuration = Math.round((tInfo.data && tInfo.data.duration_seconds) || (stats && stats.duration_seconds) || 0);
+              const userElapsed = this.generationStartedAt
+                ? Math.max(0, Math.round((Date.now() - this.generationStartedAt) / 1000))
+                : 0;
+              const durationSec = Math.max(serverDuration, userElapsed, this.data.elapsedSeconds || 0);
+              this.generationStartedAt = null;
 
               const rawStickers = tInfo.data.stickers || [];
               const isSticker16 = tInfo.data.output_mode === 'sticker16';
@@ -1121,6 +1151,7 @@ Page({
       this.pollTimer = null;
     }
     wx.removeStorageSync('active_meme_task');
+    this.generationStartedAt = null;
     this.setData({ isGenerating: false });
     wx.showModal({
       title: '制作提示',

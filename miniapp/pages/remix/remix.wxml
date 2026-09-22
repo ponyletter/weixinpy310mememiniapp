@@ -56,10 +56,10 @@
   <view wx:if="{{tab === 'meme_maker'}}" class="card action-box meme-maker-box">
     <view class="section-title-row">
       <view>
-        <view class="section-title">开源热门梗图配字</view>
-        <text class="section-kicker">只收录许可证明确的无字素材，统一留白排版</text>
+        <view class="section-title">聊天神回复配字</view>
+        <text class="section-kicker">原创社交反应优先，自动紧凑排版，发群聊更有梗</text>
       </view>
-      <view class="badge badge-purple">10款开源</view>
+      <view class="badge badge-purple">14款可授权</view>
     </view>
 
     <!-- 实时合成预览卡片 -->
@@ -102,7 +102,7 @@
           bindtap="onSelectMemeTemplate"
           data-tpl="{{item}}"
         >
-          <image class="meme-tpl-thumb-img" src="{{item.thumb_url || item.image_url}}" mode="aspectFit"></image>
+          <image class="meme-tpl-thumb-img" src="{{item.thumb_url || item.image_url}}" mode="aspectFit" lazy-load="true"></image>
           <text class="meme-tpl-thumb-name">{{item.title}}</text>
           <text class="meme-tpl-license">{{item.license}}</text>
         </view>

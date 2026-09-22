@@ -503,11 +503,28 @@ def test_open_meme_templates_have_explicit_licenses_and_local_assets(client: Tes
     response = client.get("/api/materials/templates")
     assert response.status_code == 200
     templates = response.json()["data"]
-    assert len(templates) == 10
+    assert len(templates) == 14
     for template in templates:
-        assert template["license"] in {"CC BY-SA 4.0", "CC0 1.0", "Public Domain"}
+        assert template["license"] in {
+            "CC BY-SA 4.0",
+            "CC0 1.0",
+            "Public Domain",
+            "Project Original",
+        }
         assert template["source_url"].startswith("https://")
         assert (settings.STATIC_DIR / "meme_templates" / "open" / template["local_file"]).is_file()
+
+
+def test_meme_template_transparent_padding_is_cropped():
+    from app.api.materials import _crop_transparent_padding
+
+    source = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
+    for x in range(20, 80):
+        for y in range(30, 70):
+            source.putpixel((x, y), (255, 0, 0, 255))
+
+    cropped = _crop_transparent_padding(source, padding=8)
+    assert cropped.size == (76, 56)
 
 
 def test_collection_move_rename_reorder_endpoints(client: TestClient):

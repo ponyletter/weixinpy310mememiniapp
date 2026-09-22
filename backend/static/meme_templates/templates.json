@@ -1,5 +1,29 @@
 [
   {
+    "id": "social_callout", "local_file": "original_callout.png", "category": "social", "category_title": "聊天神回复",
+    "title": "你继续编", "default_text": "你继续，我听着", "tags": ["质疑", "拆穿", "你继续"],
+    "image_url": "/static/meme_templates/open/original_callout.png", "thumb_url": "/static/meme_templates/open/original_callout.png",
+    "source": "项目原创角色", "source_url": "https://github.com/ponyletter/weixinpy310mememiniapp", "license": "Project Original", "image_text_gap": 16
+  },
+  {
+    "id": "social_overworked", "local_file": "original_overworked.png", "category": "social", "category_title": "聊天神回复",
+    "title": "打工人没电", "default_text": "别催了，正在做了", "tags": ["打工", "催促", "加班"],
+    "image_url": "/static/meme_templates/open/original_overworked.png", "thumb_url": "/static/meme_templates/open/original_overworked.png",
+    "source": "项目原创角色", "source_url": "https://github.com/ponyletter/weixinpy310mememiniapp", "license": "Project Original", "image_text_gap": 16
+  },
+  {
+    "id": "social_nope", "local_file": "original_nope.png", "category": "social", "category_title": "聊天神回复",
+    "title": "坚决拒绝", "default_text": "这个需求我拒绝", "tags": ["拒绝", "不要", "退退退"],
+    "image_url": "/static/meme_templates/open/original_nope.png", "thumb_url": "/static/meme_templates/open/original_nope.png",
+    "source": "项目原创角色", "source_url": "https://github.com/ponyletter/weixinpy310mememiniapp", "license": "Project Original", "image_text_gap": 16
+  },
+  {
+    "id": "social_please", "local_file": "original_please.png", "category": "social", "category_title": "聊天神回复",
+    "title": "拜托求情", "default_text": "拜托了，就这一次", "tags": ["拜托", "道歉", "求求了"],
+    "image_url": "/static/meme_templates/open/original_please.png", "thumb_url": "/static/meme_templates/open/original_please.png",
+    "source": "项目原创角色", "source_url": "https://github.com/ponyletter/weixinpy310mememiniapp", "license": "Project Original", "image_text_gap": 16
+  },
+  {
     "id": "open_joy", "local_file": "openmoji_joy.png", "category": "emoji", "category_title": "大众情绪",
     "title": "笑出眼泪", "default_text": "哈哈哈哈哈哈", "tags": ["大笑", "开心", "离谱"],
     "image_url": "/static/meme_templates/open/openmoji_joy.png", "thumb_url": "/static/meme_templates/open/openmoji_joy.png",
