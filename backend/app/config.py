@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     )
 
     PROJECT_NAME: str = "GIF表情包制作神器 Web H5 API"
+    API_REVISION: str = "security-templates-20260922-v2"
     HOST: str = "0.0.0.0"
     PORT: int = 8290
     DEBUG: bool = False

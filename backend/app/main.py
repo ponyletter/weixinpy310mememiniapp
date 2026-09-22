@@ -167,5 +167,8 @@ def read_sticker16():
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "project": settings.PROJECT_NAME}
-
+    return {
+        "status": "ok",
+        "project": settings.PROJECT_NAME,
+        "revision": settings.API_REVISION,
+    }

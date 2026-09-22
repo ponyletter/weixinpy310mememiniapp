@@ -1,19 +1,17 @@
 import json
-import io
 import uuid
 import re
 from typing import Optional
-import httpx
-from fastapi import APIRouter, Query, Response, Form, HTTPException
+from fastapi import APIRouter, Depends, Query, Response, Form, HTTPException
 from PIL import Image, ImageDraw
 
 from app.config import settings
 from app.services.chinesebqb_service import ChineseBQBService
 from app.core.wechat_service import WeChatService
 from app.database import add_item_to_collection
+from app.security import get_optional_openid
 
 router = APIRouter(prefix="/api/materials", tags=["materials"])
-_template_image_cache = {}
 
 
 @router.get("/categories")
@@ -31,13 +29,15 @@ def list_materials(
     response: Response,
     category: str = Query("all", description="分类ID或名称，如 all, bqb-015, 熊猫"),
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(24, ge=1, le=100, description="每页数量")
+    page_size: int = Query(24, ge=1, le=100, description="每页数量"),
 ):
     """
     分页获取 ChineseBQB 指定分类下的表情素材
     """
     response.headers["Cache-Control"] = "public, max-age=1800"
-    data = ChineseBQBService.get_materials(category=category, page=page, page_size=page_size)
+    data = ChineseBQBService.get_materials(
+        category=category, page=page, page_size=page_size
+    )
     return {"code": 0, "data": data}
 
 
@@ -47,13 +47,15 @@ def search_materials(
     q: str = Query("", description="搜索关键词，如 熊猫头、打工人、猫、斗图"),
     category: Optional[str] = Query(None, description="可选限定分类"),
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(24, ge=1, le=100, description="每页数量")
+    page_size: int = Query(24, ge=1, le=100, description="每页数量"),
 ):
     """
     关键词实时搜索 5,800+ 款 ChineseBQB 公开表情素材
     """
     response.headers["Cache-Control"] = "public, max-age=300"
-    data = ChineseBQBService.search_materials(query=q, category=category, page=page, page_size=page_size)
+    data = ChineseBQBService.search_materials(
+        query=q, category=category, page=page, page_size=page_size
+    )
     return {"code": 0, "data": data}
 
 
@@ -87,31 +89,22 @@ def _get_meme_template(template_id: str):
 
 
 async def _load_template_image(template: dict) -> Image.Image:
-    """只下载清单中指定的 ChineseBQB 素材，不接受客户端传入任意 URL。"""
-    source_item = ChineseBQBService.get_item(template.get("source_item_id", ""))
-    if not source_item:
+    """只读取模板清单指定的本地开源素材。"""
+    local_file = template.get("local_file")
+    if not local_file:
         raise HTTPException(status_code=404, detail="表情模板底图不存在")
-    source_url = source_item["url"]
-    if not source_url.startswith("https://zhaoolee.com/ChineseBQB/"):
-        raise HTTPException(status_code=400, detail="表情模板来源不受信任")
-    cached = _template_image_cache.get(source_item["id"])
-    if cached is not None:
-        return cached.copy()
+    assets_root = (settings.STATIC_DIR / "meme_templates" / "open").resolve()
+    local_path = (assets_root / local_file).resolve()
     try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            response = await client.get(source_url)
-            response.raise_for_status()
-        if len(response.content) > 5 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="表情模板文件过大")
-        image = Image.open(io.BytesIO(response.content)).convert("RGBA")
-        if len(_template_image_cache) >= 16:
-            _template_image_cache.clear()
-        _template_image_cache[source_item["id"]] = image
-        return image.copy()
-    except HTTPException:
-        raise
+        local_path.relative_to(assets_root)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="表情模板路径不受信任") from exc
+    if not local_path.is_file():
+        raise HTTPException(status_code=404, detail="表情模板底图不存在")
+    try:
+        return Image.open(local_path).convert("RGBA")
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="暂时无法读取表情模板，请稍后重试") from exc
+        raise HTTPException(status_code=500, detail="无法读取表情模板") from exc
 
 
 @router.post("/render-meme")
@@ -124,7 +117,8 @@ async def render_custom_meme(
     font_style: str = Form("bold"),
     text_stroke: bool = Form(True),
     openid: Optional[str] = Form(None),
-    collection_id: Optional[str] = Form(None)
+    collection_id: Optional[str] = Form(None),
+    current_openid: Optional[str] = Depends(get_optional_openid),
 ):
     """
     【经典梗图配字合成】接收模版ID与台词，自动将台词排版到表情包模版留白处
@@ -136,9 +130,15 @@ async def render_custom_meme(
         raise HTTPException(status_code=400, detail="台词不能超过 60 个字符")
 
     # 安全审核
-    is_safe, tip = await WeChatService.check_text_security(caption_text, openid or "")
+    # 内容安全 2.0 要求真实 openid。优先使用已签名登录态，绝不信任表单伪造值。
+    verified_openid = current_openid or ""
+    is_safe, tip = await WeChatService.check_text_security(
+        caption_text, verified_openid
+    )
     if not is_safe:
-        raise HTTPException(status_code=400, detail=tip or "内容包含违规敏感信息，请修改后重试")
+        raise HTTPException(
+            status_code=400, detail=tip or "内容包含违规敏感信息，请修改后重试"
+        )
 
     template = _get_meme_template(template_id)
     if not template:
@@ -162,7 +162,11 @@ async def render_custom_meme(
     # 字体加载
     f_size = max(18, min(48, font_size))
     from app.api.convert import _get_cjk_font
-    safe_font_style = font_style if font_style in {"regular", "bold", "serif"} else "bold"
+
+    safe_font_style = (
+        font_style if font_style in {"regular", "bold", "serif"} else "bold"
+    )
+
     def make_font(size):
         return _get_cjk_font(
             size,
@@ -181,6 +185,7 @@ async def render_custom_meme(
 
     # 自动折行计算：单行最多字数
     import textwrap
+
     while True:
         font = make_font(f_size)
         chars_per_line = max(6, int((w - 48) / f_size))
@@ -196,12 +201,14 @@ async def render_custom_meme(
         start_y = 30
     elif pos == "center":
         start_y = (h - total_text_h) // 2
-    else: # bottom
+    else:  # bottom
         start_y = max(320, h - total_text_h - 28)
 
     # 逐行居中绘制，添加轻微高对比白描边让文字格外清晰
     curr_y = start_y
-    stroke_color = (255, 255, 255, 255) if text_color != (255, 255, 255, 255) else (0, 0, 0, 255)
+    stroke_color = (
+        (255, 255, 255, 255) if text_color != (255, 255, 255, 255) else (0, 0, 0, 255)
+    )
     for line in lines:
         bbox = draw.textbbox((0, 0), line, font=font)
         tw = bbox[2] - bbox[0]
@@ -227,13 +234,13 @@ async def render_custom_meme(
 
     # 若指定了合集 ID，顺道加入合集
     saved_to_col = False
-    if collection_id and openid:
+    if collection_id and verified_openid:
         try:
             add_item_to_collection(
                 collection_id=collection_id,
                 gif_url=rel_url,
                 title=caption_text[:20],
-                openid=openid
+                openid=verified_openid,
             )
             saved_to_col = True
         except Exception as e:
@@ -246,6 +253,6 @@ async def render_custom_meme(
             "image_url": rel_url,
             "caption": caption_text,
             "template_id": template_id,
-            "saved_to_collection": saved_to_col
-        }
+            "saved_to_collection": saved_to_col,
+        },
     }

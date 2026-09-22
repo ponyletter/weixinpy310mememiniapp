@@ -40,6 +40,12 @@ def login(client: TestClient, name: str = "alice") -> tuple[str, dict[str, str]]
     return data["user"]["openid"], {"Authorization": f"Bearer {data['access_token']}"}
 
 
+def test_health_exposes_deployment_revision(client: TestClient):
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["revision"] == settings.API_REVISION
+
+
 def png_bytes(color: str = "red") -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (32, 32), color).save(buffer, "PNG")
@@ -452,7 +458,7 @@ def test_render_meme_accepts_saved_text_style_options(client: TestClient, monkey
     response = client.post(
         "/api/materials/render-meme",
         data={
-            "template_id": "classic_panda_question",
+            "template_id": "open_joy",
             "caption": "字体设置测试",
             "font_size": "34",
             "color": "#3b82f6",
@@ -466,6 +472,42 @@ def test_render_meme_accepts_saved_text_style_options(client: TestClient, monkey
     assert image_url.endswith("/meme_result.png")
     relative_path = image_url.removeprefix("/outputs/")
     assert (settings.OUTPUT_DIR / relative_path).exists()
+
+
+def test_render_meme_uses_verified_openid_for_text_security(client: TestClient, monkeypatch):
+    from app.api import materials
+    from app.core.wechat_service import WeChatService
+
+    openid, headers = login(client, "meme_security")
+    observed = {}
+
+    async def capture_text(_cls, _text, checked_openid=None):
+        observed["openid"] = checked_openid
+        return True, ""
+
+    async def load_template(_template):
+        return Image.new("RGBA", (120, 100), "white")
+
+    monkeypatch.setattr(WeChatService, "check_text_security", classmethod(capture_text))
+    monkeypatch.setattr(materials, "_load_template_image", load_template)
+    response = client.post(
+        "/api/materials/render-meme",
+        data={"template_id": "open_joy", "caption": "正常测试", "openid": "forged"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert observed["openid"] == openid
+
+
+def test_open_meme_templates_have_explicit_licenses_and_local_assets(client: TestClient):
+    response = client.get("/api/materials/templates")
+    assert response.status_code == 200
+    templates = response.json()["data"]
+    assert len(templates) == 10
+    for template in templates:
+        assert template["license"] in {"CC BY-SA 4.0", "CC0 1.0", "Public Domain"}
+        assert template["source_url"].startswith("https://")
+        assert (settings.STATIC_DIR / "meme_templates" / "open" / template["local_file"]).is_file()
 
 
 def test_collection_move_rename_reorder_endpoints(client: TestClient):

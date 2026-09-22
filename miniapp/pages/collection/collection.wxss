@@ -615,6 +615,14 @@
   text-overflow: ellipsis;
 }
 
+.fallback-tpl-license {
+  font-size: 16rpx;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .fallback-tpl-action {
   font-size: 18rpx;
   color: #7c3aed;
@@ -766,4 +774,3 @@
   font-weight: 600;
   padding-top: 8rpx;
 }
-

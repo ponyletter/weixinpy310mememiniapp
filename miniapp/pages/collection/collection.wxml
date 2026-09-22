@@ -171,8 +171,8 @@
     <view class="search-fallback-card card" wx:if="{{!matLoading && materialsList.length === 0 && matSearchQuery}}">
       <view class="fallback-header">
         <view class="fallback-badge-row">
-          <text class="fallback-badge">🐼 经典空白梗图</text>
-          <text class="fallback-pill">精选无字素材</text>
+          <text class="fallback-badge">✨ 开源空白梗图</text>
+          <text class="fallback-pill">许可证可追溯</text>
         </view>
         <view class="fallback-title">没有现成结果，用你的搜索词现场配一张</view>
         <view class="fallback-desc">台词已预填为「<text class="highlight-query">{{matSearchQuery}}</text>」，选择一张人工筛选的经典无字底图：</view>
@@ -192,6 +192,7 @@
           </view>
           <view class="fallback-tpl-meta">
             <text class="fallback-tpl-name">{{item.title}}</text>
+            <text class="fallback-tpl-license">{{item.source}} · {{item.license}}</text>
             <text class="fallback-tpl-action">立即生成 ›</text>
           </view>
         </view>

@@ -1,51 +1,62 @@
 [
   {
-    "id": "classic_panda_smirk", "source_item_id": "0fae3fa24f9139f8ca0f", "category": "classic", "category_title": "经典熊猫头",
-    "title": "邪魅一笑", "default_text": "我就静静看着你", "tags": ["熊猫头", "坏笑", "经典"],
-    "image_url": "https://zhaoolee.com/ChineseBQB/media/226f5d8bc6d8e492d5323686d0ec6b451c99f909cd9c299b139955ff18230a38.jpg",
-    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/226f5d8bc6d8e492d5323686d0ec6b451c99f909cd9c299b139955ff18230a38.jpg",
-    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
+    "id": "open_joy", "local_file": "openmoji_joy.png", "category": "emoji", "category_title": "大众情绪",
+    "title": "笑出眼泪", "default_text": "哈哈哈哈哈哈", "tags": ["大笑", "开心", "离谱"],
+    "image_url": "/static/meme_templates/open/openmoji_joy.png", "thumb_url": "/static/meme_templates/open/openmoji_joy.png",
+    "source": "OpenMoji", "source_url": "https://github.com/hfg-gmuend/openmoji", "license": "CC BY-SA 4.0"
   },
   {
-    "id": "classic_panda_angry", "source_item_id": "5b78f15e9a4cae19a3cb", "category": "classic", "category_title": "经典熊猫头",
-    "title": "逐渐生气", "default_text": "你再说一遍？", "tags": ["熊猫头", "生气", "反击"],
-    "image_url": "https://zhaoolee.com/ChineseBQB/media/d47432b9a0c85b7f7616542d3f3e98a91102c6f99aa3212bd89b60b76e00ba62.jpg",
-    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/d47432b9a0c85b7f7616542d3f3e98a91102c6f99aa3212bd89b60b76e00ba62.jpg",
-    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
+    "id": "open_thinking", "local_file": "openmoji_thinking.png", "category": "emoji", "category_title": "大众情绪",
+    "title": "认真思考", "default_text": "让我想想……", "tags": ["思考", "疑惑", "等等"],
+    "image_url": "/static/meme_templates/open/openmoji_thinking.png", "thumb_url": "/static/meme_templates/open/openmoji_thinking.png",
+    "source": "OpenMoji", "source_url": "https://github.com/hfg-gmuend/openmoji", "license": "CC BY-SA 4.0"
   },
   {
-    "id": "classic_panda_cry", "source_item_id": "5636918c5c2eb21677b2", "category": "classic", "category_title": "经典熊猫头",
-    "title": "捂嘴落泪", "default_text": "我真的会谢", "tags": ["熊猫头", "哭", "委屈"],
-    "image_url": "https://zhaoolee.com/ChineseBQB/media/ec924bafbabf7027f4a43c15b05438ed0bd7688ec609448b957602fef1397a81.jpg",
-    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/ec924bafbabf7027f4a43c15b05438ed0bd7688ec609448b957602fef1397a81.jpg",
-    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
+    "id": "open_crying", "local_file": "openmoji_crying.png", "category": "emoji", "category_title": "大众情绪",
+    "title": "放声大哭", "default_text": "这谁顶得住啊", "tags": ["哭", "委屈", "难过"],
+    "image_url": "/static/meme_templates/open/openmoji_crying.png", "thumb_url": "/static/meme_templates/open/openmoji_crying.png",
+    "source": "OpenMoji", "source_url": "https://github.com/hfg-gmuend/openmoji", "license": "CC BY-SA 4.0"
   },
   {
-    "id": "classic_panda_question", "source_item_id": "a1a4188433c77467be2f", "category": "classic", "category_title": "经典熊猫头",
-    "title": "满头问号", "default_text": "你认真的吗？", "tags": ["熊猫头", "问号", "疑惑"],
-    "image_url": "https://zhaoolee.com/ChineseBQB/media/e3ea9ba5dd46713449411b264009be222b9cb4e50c54d1524fd127a919631102.jpg",
-    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/e3ea9ba5dd46713449411b264009be222b9cb4e50c54d1524fd127a919631102.jpg",
-    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
+    "id": "open_suspicious", "local_file": "openmoji_suspicious.png", "category": "emoji", "category_title": "大众情绪",
+    "title": "保持怀疑", "default_text": "你确定吗？", "tags": ["怀疑", "不信", "质疑"],
+    "image_url": "/static/meme_templates/open/openmoji_suspicious.png", "thumb_url": "/static/meme_templates/open/openmoji_suspicious.png",
+    "source": "OpenMoji", "source_url": "https://github.com/hfg-gmuend/openmoji", "license": "CC BY-SA 4.0"
   },
   {
-    "id": "classic_panda_speechless", "source_item_id": "c427298f7a91956dcd5e", "category": "classic", "category_title": "经典熊猫头",
-    "title": "无语凝噎", "default_text": "一时竟无言以对", "tags": ["熊猫头", "无语", "沉默"],
-    "image_url": "https://zhaoolee.com/ChineseBQB/media/4f6f0409f54ada1bdc180cb0007f6c8bae16920d12f6b5d55fc374254de1e3be.jpg",
-    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/4f6f0409f54ada1bdc180cb0007f6c8bae16920d12f6b5d55fc374254de1e3be.jpg",
-    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
+    "id": "open_mind_blown", "local_file": "openmoji_mind_blown.png", "category": "emoji", "category_title": "大众情绪",
+    "title": "大脑宕机", "default_text": "居然还能这样？", "tags": ["震惊", "脑洞", "惊讶"],
+    "image_url": "/static/meme_templates/open/openmoji_mind_blown.png", "thumb_url": "/static/meme_templates/open/openmoji_mind_blown.png",
+    "source": "OpenMoji", "source_url": "https://github.com/hfg-gmuend/openmoji", "license": "CC BY-SA 4.0"
   },
   {
-    "id": "classic_panda_shocked", "source_item_id": "adf4fd19dfcdc7a98e7a", "category": "classic", "category_title": "经典熊猫头",
-    "title": "当场震惊", "default_text": "还有这种操作？", "tags": ["熊猫头", "震惊", "惊讶"],
-    "image_url": "https://zhaoolee.com/ChineseBQB/media/7b8aca23a151c66f07311485ebedcf804fdd731be115176da8e6d672a29a7cf3.jpg",
-    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/7b8aca23a151c66f07311485ebedcf804fdd731be115176da8e6d672a29a7cf3.jpg",
-    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
+    "id": "open_rolling_eyes", "local_file": "openmoji_rolling_eyes.png", "category": "emoji", "category_title": "大众情绪",
+    "title": "白眼看天", "default_text": "对对对，你说得都对", "tags": ["白眼", "无语", "敷衍"],
+    "image_url": "/static/meme_templates/open/openmoji_rolling_eyes.png", "thumb_url": "/static/meme_templates/open/openmoji_rolling_eyes.png",
+    "source": "OpenMoji", "source_url": "https://github.com/hfg-gmuend/openmoji", "license": "CC BY-SA 4.0"
   },
   {
-    "id": "classic_panda_blush", "source_item_id": "3ec6df0a7ce29b108456", "category": "classic", "category_title": "经典熊猫头",
-    "title": "脸红害羞", "default_text": "你这样我会害羞的", "tags": ["熊猫头", "害羞", "脸红"],
-    "image_url": "https://zhaoolee.com/ChineseBQB/media/bd48f84a99e25f0a5c2b8c90c720f584d4f602100ea70de9047317a4668030b7.jpg",
-    "thumb_url": "https://zhaoolee.com/ChineseBQB/media/bd48f84a99e25f0a5c2b8c90c720f584d4f602100ea70de9047317a4668030b7.jpg",
-    "source": "ChineseBQB", "source_url": "https://github.com/zhaoolee/ChineseBQB"
+    "id": "open_clown", "local_file": "openmoji_clown.png", "category": "emoji", "category_title": "大众情绪",
+    "title": "小丑竟是我", "default_text": "原来小丑是我自己", "tags": ["小丑", "自嘲", "尴尬"],
+    "image_url": "/static/meme_templates/open/openmoji_clown.png", "thumb_url": "/static/meme_templates/open/openmoji_clown.png",
+    "source": "OpenMoji", "source_url": "https://github.com/hfg-gmuend/openmoji", "license": "CC BY-SA 4.0"
+  },
+  {
+    "id": "open_smirk", "local_file": "openmoji_smirk.png", "category": "emoji", "category_title": "大众情绪",
+    "title": "歪嘴一笑", "default_text": "一切尽在掌握", "tags": ["坏笑", "得意", "拿捏"],
+    "image_url": "/static/meme_templates/open/openmoji_smirk.png", "thumb_url": "/static/meme_templates/open/openmoji_smirk.png",
+    "source": "OpenMoji", "source_url": "https://github.com/hfg-gmuend/openmoji", "license": "CC BY-SA 4.0"
+  },
+  {
+    "id": "open_pokerface", "local_file": "memetastic_pokerface.png", "category": "classic", "category_title": "经典线稿",
+    "title": "面无表情", "default_text": "我的内心毫无波澜", "tags": ["扑克脸", "无语", "冷静"],
+    "image_url": "/static/meme_templates/open/memetastic_pokerface.png", "thumb_url": "/static/meme_templates/open/memetastic_pokerface.png",
+    "source": "MemeTastic extras", "source_url": "https://github.com/gsantner/memetastic/tree/master/extras", "license": "CC0 1.0"
+  },
+  {
+    "id": "open_reaction", "local_file": "duff_reaction.png", "category": "classic", "category_title": "经典线稿",
+    "title": "发生反应", "default_text": "这下真的有反应了", "tags": ["反应", "化学", "变化"],
+    "image_url": "/static/meme_templates/open/duff_reaction.png", "thumb_url": "/static/meme_templates/open/duff_reaction.png",
+    "source": "Wikimedia Commons", "source_url": "https://commons.wikimedia.org/wiki/File:Duff_reaction.png", "license": "Public Domain"
   }
 ]

@@ -45,11 +45,12 @@ Page({
     filteredMemeTemplates: [],
     memeCategories: [
       { id: 'all', name: '🌟 全部' },
-      { id: 'classic', name: '🐼 经典熊猫头' }
+      { id: 'emoji', name: '😄 大众情绪' },
+      { id: 'classic', name: '✏️ 经典线稿' }
     ],
     activeMemeCat: 'all',
     selectedTemplate: null,
-    memeCaption: '我就静静看着你',
+    memeCaption: '哈哈哈哈哈哈',
     memeCaptionPos: 'bottom', // 'bottom' | 'top' | 'center'
     memeFontSize: 28,
     memeTextColor: '#1e293b',

@@ -1,11 +1,16 @@
 # Meme template manifest
 
-`templates.json` is an allowlist of manually reviewed, mostly text-free source images.
-The renderer resolves each `source_item_id` through the bundled ChineseBQB catalog,
-downloads only from the configured ChineseBQB CDN, and places the image on a new
-480 × 480 caption canvas.
+`templates.json` is an allowlist of manually reviewed, text-free source images.
+The renderer reads the checked-in assets from `open/` and places them on a new
+480 × 480 caption canvas. `backend/scripts/import_open_meme_templates.py`
+documents the upstream download URL for every binary asset.
 
-The source repository is recorded on every manifest entry. The ChineseBQB media
-repository does not currently state a media license, so its images must not be
-described as MIT-licensed merely because an integrating client is MIT-licensed.
-Review or replace individual sources before commercial redistribution.
+Every entry includes its source page and media license. The current set uses
+OpenMoji (CC BY-SA 4.0), selected MemeTastic extras (CC0 1.0), and one explicitly
+public-domain Wikimedia Commons drawing. ChineseBQB and Memegen raster templates
+are not bundled because an open-source code license does not automatically license
+third-party meme images.
+
+Attribution for OpenMoji: “All emojis designed by OpenMoji – the open-source emoji
+and icon project. License: CC BY-SA 4.0.” Generated adaptations containing an
+OpenMoji graphic must remain available under CC BY-SA 4.0.
